@@ -30,7 +30,7 @@ setup(
     description="A professional-grade synthetic OHLCV data generator",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/DamienReichhart/BackTrade",
+    url="https://github.com/DamienReichhart/MarketForge",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",

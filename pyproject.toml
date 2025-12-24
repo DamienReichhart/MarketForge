@@ -42,9 +42,9 @@ dev = [
 marketforge = "marketforge.cli.parser:main"
 
 [project.urls]
-Homepage = "https://github.com/DamienReichhart/BackTrade"
-Documentation = "https://github.com/DamienReichhart/BackTrade/blob/main/README.md"
-Repository = "https://github.com/DamienReichhart/BackTrade"
+Homepage = "https://github.com/DamienReichhart/MarketForge"
+Documentation = "https://github.com/DamienReichhart/MarketForge"
+Repository = "https://github.com/DamienReichhart/MarketForge"
 
 [tool.setuptools.packages.find]
 where = ["."]

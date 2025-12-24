@@ -53,7 +53,17 @@ A professional-grade synthetic OHLCV (Open-High-Low-Close-Volume) data generator
 
 - Python 3.10 or higher
 
+### Install from PyPI
+
+For basic users, install the package directly from PyPI:
+
+```bash
+pip install marketforge
+```
+
 ### Install from Source
+
+For developers who want to modify the code or install the latest development version:
 
 ```bash
 # Clone or download the repository
