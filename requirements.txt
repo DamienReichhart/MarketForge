@@ -1,0 +1,17 @@
+# MarketForge Dependencies
+# Python 3.10+ required
+
+# Core numerical and data processing
+numpy>=2.4.0
+scipy>=1.16.3
+pandas>=2.3.3
+
+# CLI framework
+click>=8.3.1
+
+# Progress bars
+tqdm>=4.67.1
+
+# Type checking (development)
+mypy>=1.19.1
+
