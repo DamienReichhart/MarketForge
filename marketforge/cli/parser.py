@@ -272,7 +272,7 @@ def create_cli(
     
     \b
         # Generate all markets
-        python -m marketforge \\
+        marketforge \\
             --output-dir ./data \\
             --from 1764543600 \\
             --to 1767221999 \\
@@ -281,7 +281,7 @@ def create_cli(
     
     \b
         # Generate specific markets
-        python -m marketforge \\
+        marketforge \\
             --output-dir ./data \\
             --from 1764543600 \\
             --to 1767221999 \\

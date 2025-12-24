@@ -17,10 +17,10 @@
 """
 Entry point for the MarketForge CLI.
 
-Run with: python -m marketforge [options]
+Run with: marketforge [options]
 
 Example:
-    python -m marketforge \
+    marketforge \
         --output-dir ./data \
         --market crypto \
         --from 1704067200 \
