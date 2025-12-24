@@ -79,7 +79,7 @@ pip install -r requirements.txt
 ### Verify Installation
 
 ```bash
-python -m marketforge --help
+marketforge --help
 ```
 
 ## Quick Start
@@ -89,7 +89,7 @@ python -m marketforge --help
 Generate data for all markets with default settings:
 
 ```bash
-python -m marketforge \
+marketforge \
     --output-dir ./data \
     --from 1704067200 \
     --to 1704153600 \
@@ -100,7 +100,7 @@ python -m marketforge \
 
 ```bash
 # Generate only crypto market
-python -m marketforge \
+marketforge \
     --output-dir ./data \
     --from 1704067200 \
     --to 1704153600 \
@@ -108,7 +108,7 @@ python -m marketforge \
     --seed 42
 
 # Generate multiple markets
-python -m marketforge \
+marketforge \
     --output-dir ./data \
     --from 1704067200 \
     --to 1704153600 \
@@ -119,7 +119,7 @@ python -m marketforge \
 ### With Anomalies
 
 ```bash
-python -m marketforge \
+marketforge \
     --output-dir ./data \
     --from 1704067200 \
     --to 1704153600 \
@@ -194,10 +194,10 @@ For large datasets, adjust batch size based on available memory:
 
 ```bash
 # Small batch size (less memory, slower)
-python -m marketforge ... --batch-size 10
+marketforge ... --batch-size 10
 
 # Large batch size (more memory, faster)
-python -m marketforge ... --batch-size 50
+marketforge ... --batch-size 50
 ```
 
 ### Parallel Processing
@@ -206,13 +206,13 @@ Enable multi-threaded processing for faster generation:
 
 ```bash
 # Use 4 threads
-python -m marketforge ... --threads 4
+marketforge ... --threads 4
 
 # Sequential processing (no threading)
-python -m marketforge ... --threads 1
+marketforge ... --threads 1
 
 # Auto-detect (default, up to 16 threads)
-python -m marketforge ...
+marketforge ...
 ```
 
 ## Architecture
@@ -475,7 +475,7 @@ volatilities = result.volatilities
 
 ```bash
 # January 2024 (Unix timestamps)
-python -m marketforge \
+marketforge \
     --output-dir ./data/crypto_jan2024 \
     --from 1704067200 \
     --to 1706745599 \
@@ -488,7 +488,7 @@ python -m marketforge \
 ### Example 2: Generate All Markets with Anomalies
 
 ```bash
-python -m marketforge \
+marketforge \
     --output-dir ./data/all_markets \
     --from 1704067200 \
     --to 1704153600 \
@@ -503,7 +503,7 @@ python -m marketforge \
 
 ```bash
 # Large dataset with parallel processing
-python -m marketforge \
+marketforge \
     --output-dir ./data/large_dataset \
     --from 946681200 \
     --to 1767221999 \
@@ -518,7 +518,7 @@ python -m marketforge \
 
 ```bash
 # Small dataset for testing
-python -m marketforge \
+marketforge \
     --output-dir ./data/test \
     --from 1704067200 \
     --to 1704070800 \
@@ -533,7 +533,7 @@ python -m marketforge \
 
 ```bash
 # Generate all markets with anomalies, parallel processing, and progress tracking
-python -m marketforge \
+marketforge \
     --output-dir ./data \
     --from 946681200 \
     --to 1767221999 \
