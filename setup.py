@@ -25,7 +25,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="marketforge",
-    version="1.0.0",
+    version="2.0.0",
     author="REICHHART Damien",
     description="A professional-grade synthetic OHLCV data generator",
     long_description=long_description,
@@ -56,6 +56,9 @@ setup(
     extras_require={
         "dev": [
             "mypy>=1.19.1",
+            "pytest>=8.0.0",
+            "arch>=6.3.0",
+            "statsmodels>=0.14.0",
         ],
     },
     entry_points={
