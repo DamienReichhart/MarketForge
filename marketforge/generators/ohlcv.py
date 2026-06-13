@@ -17,8 +17,11 @@
 """
 OHLCV candle construction from price and return series.
 
-Generates realistic Open-High-Low-Close-Volume candles with proper
-intrabar dynamics including wicks, gaps, and volume correlation.
+Generates realistic Open-High-Low-Close-Volume candles. Intrabar High/Low are
+simulated with a Brownian bridge from open to close scaled by the bar's
+conditional volatility, guaranteeing High >= max(open, close) and
+Low <= min(open, close) by construction. Also models gaps and volume
+correlation with price movement.
 """
 
 from __future__ import annotations
@@ -32,6 +35,58 @@ from marketforge.config.settings import GeneratorConfig, MarketType
 from marketforge.core.returns import ReturnSeriesResult, ReturnGenerator
 from marketforge.generators.volume import VolumeGenerator
 from marketforge.utils.random import RandomState
+
+
+def intrabar_high_low(
+    rng: RandomState,
+    open_prices: np.ndarray,
+    close_prices: np.ndarray,
+    bar_volatility: np.ndarray,
+    k: int = 8,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Vectorized intrabar High/Low via a Brownian bridge from open to close.
+
+    The within-bar log-price is modeled as a Brownian bridge pinned at
+    log(open) and log(close) with per-bar diffusion ``bar_volatility`` (the
+    per-minute conditional volatility). High/Low are the running max/min of the
+    bridge over ``k`` interior sub-steps. Guarantees High >= max(O,C) and
+    Low <= min(O,C) by construction, with range scaling with volatility.
+
+    Args:
+        rng: Random state.
+        open_prices, close_prices: shape (n,) price arrays (> 0).
+        bar_volatility: shape (n,) per-bar log-volatility (std over the bar).
+        k: number of interior sub-steps.
+
+    Returns:
+        (high, low) arrays of shape (n,).
+    """
+    n = open_prices.shape[0]
+    log_o = np.log(open_prices)
+    log_c = np.log(close_prices)
+
+    # Brownian bridge on grid t_j = j/(k+1), j=1..k (interior points).
+    # Build a standard BM via cumulative normal increments, then subtract the
+    # linear interpolation of its endpoints to pin it to zero at both ends.
+    incs = rng.standard_normal((n, k + 1)) * np.sqrt(1.0 / (k + 1))
+    bm = np.cumsum(incs, axis=1)                      # (n, k+1); bm[:, -1] = B(1)
+    t = np.linspace(1.0 / (k + 1), 1.0, k + 1)        # times of bm columns
+    bridge = bm - t[None, :] * bm[:, -1:]             # pin endpoint to 0
+    bridge = bridge[:, :-1]                            # drop endpoint (==0); (n, k)
+    t_int = t[:-1]                                     # interior times; (k,)
+
+    # Scale bridge by per-bar volatility -> intrabar log deviations.
+    deviations = bridge * bar_volatility[:, None]      # (n, k)
+
+    # Linear log-price interpolation between open and close at interior times.
+    base = log_o[:, None] + np.outer(log_c - log_o, t_int)  # (n, k)
+    log_path = base + deviations
+
+    # Candidate extremes include the two endpoints (open, close) and interior path.
+    path_high = np.maximum(np.exp(log_path.max(axis=1)), np.maximum(open_prices, close_prices))
+    path_low = np.minimum(np.exp(log_path.min(axis=1)), np.minimum(open_prices, close_prices))
+    return path_high, path_low
 
 
 @dataclass
@@ -141,22 +196,19 @@ class MultiAssetOHLCVData:
 class OHLCVBuilder:
     """
     Builder for constructing realistic OHLCV candles.
-    
+
     Takes close prices from the return generator and constructs
     realistic OHLC candles with:
     - Open prices that may gap from previous close
-    - High/Low prices based on intrabar volatility
-    - Proper wick simulation (upper and lower shadows)
+    - High/Low simulated via a Brownian bridge from open to close, scaled by
+      the bar's conditional volatility (running max/min over sub-steps),
+      guaranteeing High >= max(open, close) and Low <= min(open, close)
     - Volume correlated with price movement
-    
-    The intrabar high/low are simulated using a model based on the
-    Garman-Klass volatility estimator, which provides realistic
-    range characteristics.
-    
+
     Attributes:
         config: Generator configuration.
         volume_generator: Generator for volume data.
-        
+
     Example:
         >>> config = GeneratorConfig(...)
         >>> builder = OHLCVBuilder(config)
@@ -260,15 +312,13 @@ class OHLCVBuilder:
             OHLCVData for the asset.
         """
         n = len(close_prices)
-        
+
         # Initialize arrays
         open_prices = np.zeros(n)
-        high_prices = np.zeros(n)
-        low_prices = np.zeros(n)
-        
+
         # First candle: open = close (no gap)
         open_prices[0] = close_prices[0] / np.exp(returns[0])
-        
+
         # Generate opens with potential gaps (for non-crypto markets)
         if self._config.market_type != MarketType.CRYPTO:
             gap_probs = self._get_gap_probabilities(timestamps)
@@ -277,16 +327,15 @@ class OHLCVBuilder:
         else:
             # Crypto: open = previous close (no gaps)
             open_prices[1:] = close_prices[:-1]
-        
-        # Generate high/low using intrabar volatility model
-        for i in range(n):
-            high_prices[i], low_prices[i] = self._generate_high_low(
-                rng=rng,
-                open_price=open_prices[i],
-                close_price=close_prices[i],
-                volatility=volatilities[i],
-                return_sign=np.sign(returns[i]) if returns[i] != 0 else 1,
-            )
+
+        # Vectorized intrabar high/low via Brownian bridge
+        high_prices, low_prices = intrabar_high_low(
+            rng,
+            open_prices=open_prices,
+            close_prices=close_prices,
+            bar_volatility=volatilities,
+            k=8,
+        )
         
         return OHLCVData(
             symbol=symbol,
@@ -297,67 +346,6 @@ class OHLCVBuilder:
             close=close_prices,
             volume=volumes,
         )
-    
-    def _generate_high_low(
-        self,
-        rng: RandomState,
-        open_price: float,
-        close_price: float,
-        volatility: float,
-        return_sign: float,
-    ) -> tuple[float, float]:
-        """
-        Generate realistic high and low prices for a candle.
-        
-        Uses a model inspired by Garman-Klass volatility estimator
-        to generate realistic intrabar ranges.
-        
-        Args:
-            rng: Random state for reproducibility.
-            open_price: Opening price.
-            close_price: Closing price.
-            volatility: Conditional volatility for the period.
-            return_sign: Direction of the return (+1 or -1).
-            
-        Returns:
-            Tuple of (high_price, low_price).
-        """
-        # Body of the candle
-        body_high = max(open_price, close_price)
-        body_low = min(open_price, close_price)
-        body_range = body_high - body_low
-        
-        # Expected additional range from wicks
-        # Based on typical ratio of (high-low) to |open-close|
-        # Using exponential distribution for wick sizes
-        mid_price = (open_price + close_price) / 2
-        
-        # Wick sizes as fraction of mid price, scaled by volatility
-        # Upper wick tends to be larger in uptrends, lower wick in downtrends
-        wick_scale = volatility * mid_price * 10  # Scale factor
-        
-        if return_sign >= 0:
-            # Uptrend: smaller upper wick, larger lower wick potential
-            upper_wick = rng.exponential(wick_scale * 0.3)
-            lower_wick = rng.exponential(wick_scale * 0.5)
-        else:
-            # Downtrend: larger upper wick potential, smaller lower wick
-            upper_wick = rng.exponential(wick_scale * 0.5)
-            lower_wick = rng.exponential(wick_scale * 0.3)
-        
-        # Add some randomness to wick bias
-        wick_bias = rng.uniform(0.8, 1.2)
-        upper_wick *= wick_bias
-        lower_wick *= (2 - wick_bias)  # Inverse bias
-        
-        high = body_high + upper_wick
-        low = body_low - lower_wick
-        
-        # Ensure low doesn't go negative
-        if low <= 0:
-            low = body_low * 0.99  # 1% below body low
-        
-        return high, low
     
     def _get_gap_probabilities(self, timestamps: np.ndarray) -> np.ndarray:
         """
