@@ -266,8 +266,9 @@ class OHLCVBuilder:
         volumes = self._volume_generator.generate(
             rng,
             n_steps,
-            np.abs(return_result.returns),  # Absolute returns for volume correlation
+            np.abs(return_result.returns),
             return_result.volatilities,
+            timestamps=return_result.timestamps,
         )
         
         # Build OHLCV for each asset

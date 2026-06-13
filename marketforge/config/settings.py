@@ -228,6 +228,8 @@ class AssetConfig:
             raise ValueError(f"start_price must be positive, got {self.start_price}")
         if self.volatility <= 0:
             raise ValueError(f"volatility must be positive, got {self.volatility}")
+        if self.volume_base <= 0:
+            raise ValueError(f"volume_base must be positive, got {self.volume_base}")
 
 
 @dataclass
