@@ -55,45 +55,53 @@ class RegimeType(str, Enum):
 @dataclass(frozen=True)
 class GARCHParams:
     """
-    GARCH(1,1) model parameters for conditional volatility.
-    
-    The GARCH(1,1) model is: σ²_t = ω + α·ε²_{t-1} + β·σ²_{t-1}
-    
+    GJR-GARCH(1,1) model parameters for conditional volatility with leverage effect.
+
+    The GJR-GARCH(1,1) model is:
+        σ²_t = ω + (α + γ·1[ε_{t-1}<0])·ε²_{t-1} + β·σ²_{t-1}
+
+    When γ=0 this reduces to the classic symmetric GARCH(1,1) model.
+    The leverage term γ captures the asymmetric response of volatility to
+    negative shocks (bad news raises volatility more than good news).
+
     Constraints:
         - ω > 0 (ensures positive variance)
-        - α ≥ 0, β ≥ 0
-        - α + β < 1 (stationarity condition)
-    
+        - α ≥ 0, β ≥ 0, γ ≥ 0
+        - α + β + γ/2 < 1 (stationarity condition; γ/2 is the expected leverage contribution)
+
     Attributes:
         omega: Long-term variance weight (constant term).
         alpha: Weight of lagged squared shock (ARCH term).
         beta: Weight of lagged variance (GARCH term).
+        gamma: Leverage coefficient for negative shocks (GJR asymmetry term).
     """
     omega: float = 0.00001
     alpha: float = 0.05
     beta: float = 0.90
-    
+    gamma: float = 0.0
+
     def __post_init__(self) -> None:
-        """Validate GARCH parameters."""
         if self.omega <= 0:
             raise ValueError(f"omega must be positive, got {self.omega}")
         if self.alpha < 0:
             raise ValueError(f"alpha must be non-negative, got {self.alpha}")
         if self.beta < 0:
             raise ValueError(f"beta must be non-negative, got {self.beta}")
-        if self.alpha + self.beta >= 1:
+        if self.gamma < 0:
+            raise ValueError(f"gamma must be non-negative, got {self.gamma}")
+        if self.persistence >= 1:
             raise ValueError(
-                f"alpha + beta must be < 1 for stationarity, got {self.alpha + self.beta}"
+                f"alpha + beta + gamma/2 must be < 1 for stationarity, "
+                f"got {self.persistence}"
             )
-    
+
     @property
     def persistence(self) -> float:
-        """Return volatility persistence (α + β)."""
-        return self.alpha + self.beta
-    
+        """Volatility persistence α + β + γ/2 (γ/2 = expected leverage contribution)."""
+        return self.alpha + self.beta + self.gamma / 2.0
+
     @property
     def long_run_variance(self) -> float:
-        """Return unconditional (long-run) variance."""
         return self.omega / (1 - self.persistence)
 
 
