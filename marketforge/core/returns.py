@@ -35,7 +35,11 @@ from marketforge.config.settings import (
 )
 from marketforge.core.correlation import CorrelationEngine, create_correlation_engine
 from marketforge.core.garch import GARCHModel, MultiAssetGARCH
+from marketforge.core.innovations import (
+    InnovationGenerator, GaussianInnovations, StudentTInnovations,
+)
 from marketforge.core.regimes import RegimeModel, SmoothRegimeModel
+from marketforge.core.seasonality import SeasonalityModel
 from marketforge.utils.random import RandomState
 
 
@@ -140,7 +144,16 @@ class ReturnGenerator:
         
         # Initialize correlation engine
         self._correlation_engine = CorrelationEngine(config.get_correlation_matrix())
-        
+
+        nu = getattr(config, "innovation_nu", None)
+        self._innovation_gen: InnovationGenerator = (
+            StudentTInnovations(nu) if nu is not None else GaussianInnovations()
+        )
+        self._seasonality = (
+            SeasonalityModel(config.market_type)
+            if getattr(config, "seasonality_enabled", True) else None
+        )
+
         # Initialize GARCH models for each asset
         self._garch_models = [
             GARCHModel(config.garch_params, asset.volatility)
@@ -211,21 +224,29 @@ class ReturnGenerator:
         # Reset models
         self.reset()
         
-        # Step 1: Generate correlated standard normal innovations
-        innovations = self._correlation_engine.generate_correlated_normals(rng, n_steps)
+        # Step 1: Generate correlated, unit-variance innovations (Gaussian or Student-t)
+        innovations = self._innovation_gen.generate(
+            rng, n_steps, self._n_assets, self._correlation_engine.cholesky_matrix
+        )
         
         # Step 2: Generate regime series with multipliers
         regime_indices, drift_mults, vol_mults = self._regime_model.generate_smooth_multiplier_series(
             rng, n_steps
         )
         
+        # Seasonality overlay (variance-neutral); ones if disabled
+        if self._seasonality is not None:
+            seasonal = self._seasonality.multiplier_series(timestamps)
+        else:
+            seasonal = np.ones(n_steps)
+
         # Step 3: Generate GARCH volatilities for each asset
         volatilities = np.zeros((n_steps, self._n_assets))
         for i, (model, asset) in enumerate(zip(self._garch_models, self._asset_configs)):
             model.initialize_state()
             base_vols = model.generate_volatility_series(rng, n_steps, innovations[:, i])
-            # Apply regime volatility multiplier
-            volatilities[:, i] = base_vols * vol_mults
+            # Apply regime volatility multiplier and seasonality
+            volatilities[:, i] = base_vols * vol_mults * seasonal
         
         # Step 4: Compute returns
         returns = np.zeros((n_steps, self._n_assets))
