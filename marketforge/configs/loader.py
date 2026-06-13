@@ -279,5 +279,7 @@ def market_config_to_generator_config(
         seed=seed,
         timeframes=timeframes,
         show_progress=show_progress,
+        innovation_nu=market_defaults.innovation_nu,
+        volume_params=market_defaults.volume_params,
     )
 
