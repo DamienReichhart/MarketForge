@@ -151,6 +151,31 @@ class RegimeParams:
 
 
 @dataclass(frozen=True)
+class VolumeParams:
+    """
+    Parameters for the log-AR(1) volume model.
+
+    log V_t = μ + φ·(log V_{t-1} − μ) + λ·|z_t| + log s(t) + η_t
+
+    Attributes:
+        phi: AR(1) persistence of log-volume (volume clustering), 0 ≤ φ < 1.
+        lam: Sensitivity to absolute standardized returns (MDH coupling).
+        noise_sigma: Std of the idiosyncratic log-volume noise η.
+    """
+    phi: float = 0.7
+    lam: float = 0.3
+    noise_sigma: float = 0.4
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.phi < 1.0):
+            raise ValueError(f"phi must be in [0, 1), got {self.phi}")
+        if self.lam < 0:
+            raise ValueError(f"lam must be non-negative, got {self.lam}")
+        if self.noise_sigma < 0:
+            raise ValueError(f"noise_sigma must be non-negative, got {self.noise_sigma}")
+
+
+@dataclass(frozen=True)
 class AnomalyConfig:
     """
     Configuration for anomaly injection.
@@ -235,6 +260,9 @@ class GeneratorConfig:
     garch_params: GARCHParams = field(default_factory=GARCHParams)
     regime_params: RegimeParams = field(default_factory=RegimeParams)
     anomaly_config: AnomalyConfig = field(default_factory=AnomalyConfig)
+    innovation_nu: Optional[float] = None  # None => Gaussian; else Student-t df
+    seasonality_enabled: bool = True
+    volume_params: VolumeParams = field(default_factory=VolumeParams)
     output_dir: str = "./output"
     seed: Optional[int] = None
     timeframes: tuple[str, ...] = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
@@ -251,8 +279,13 @@ class GeneratorConfig:
                 f"end_timestamp ({self.end_timestamp})"
             )
         
+        if self.innovation_nu is not None and self.innovation_nu <= 2.0:
+            raise ValueError(
+                f"innovation_nu must be > 2 for finite variance, got {self.innovation_nu}"
+            )
+
         n_assets = len(self.assets)
-        
+
         if self.correlation_matrix is not None:
             if self.correlation_matrix.shape != (n_assets, n_assets):
                 raise ValueError(
