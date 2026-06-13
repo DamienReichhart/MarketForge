@@ -15,3 +15,7 @@ tqdm>=4.67.1
 # Type checking (development)
 mypy>=1.19.1
 
+# Validation / diagnostics
+arch>=6.3.0
+statsmodels>=0.14.0
+
