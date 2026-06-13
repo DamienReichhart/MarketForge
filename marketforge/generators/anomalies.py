@@ -233,42 +233,49 @@ class AnomalyInjector:
     ) -> list[AnomalyEvent]:
         """
         Inject price gaps.
-        
+
         Gaps are applied to the open price, creating a discontinuity
         from the previous close.
+
+        Vectorized: draws one uniform(size=n) array, selects candidate indices
+        >= 1, then applies gaps and OHLC bracket adjustments in bulk.
         """
         events = []
-        
+
         # Skip gaps for crypto (24/7 market)
         if self._market_type == MarketType.CRYPTO:
             return events
-        
+
         gap_prob = self._config.gap_probability
         min_mag, max_mag = self._config.gap_magnitude_range
-        
-        for i in range(1, n):
-            if rng.uniform() < gap_prob:
-                # Determine gap direction and magnitude
-                direction = rng.choice([-1, 1])
-                magnitude = rng.uniform(min_mag, max_mag)
-                
-                # Apply gap to open price
-                gap_amount = close_prices[i - 1] * magnitude * direction
-                open_prices[i] += gap_amount
-                
-                # Adjust high/low if needed
-                if direction > 0:
-                    high_prices[i] = max(high_prices[i], open_prices[i])
-                else:
-                    low_prices[i] = min(low_prices[i], open_prices[i])
-                
-                events.append(AnomalyEvent(
-                    type=AnomalyType.GAPS,
-                    index=i,
-                    magnitude=magnitude,
-                    direction=direction,
-                ))
-        
+
+        draws = rng.uniform(size=n)
+        # Only candles at index >= 1 can have a gap (need a previous close)
+        candidate_mask = (draws < gap_prob)
+        candidate_mask[0] = False
+        idxs = np.where(candidate_mask)[0]
+        if idxs.size == 0:
+            return events
+
+        directions = rng.choice(np.array([-1, 1]), size=idxs.size)
+        magnitudes = rng.uniform(min_mag, max_mag, size=idxs.size)
+
+        # Gap amount based on previous candle's close
+        gap_amounts = close_prices[idxs - 1] * magnitudes * directions
+        open_prices[idxs] += gap_amounts
+
+        # Clamp high/low to maintain OHLC invariants after open has moved:
+        # high >= max(open, close) and low <= min(open, close)
+        high_prices[idxs] = np.maximum(high_prices[idxs], open_prices[idxs])
+        low_prices[idxs] = np.minimum(low_prices[idxs], open_prices[idxs])
+
+        for k, i in enumerate(idxs):
+            events.append(AnomalyEvent(
+                type=AnomalyType.GAPS,
+                index=int(i),
+                magnitude=float(magnitudes[k]),
+                direction=int(directions[k]),
+            ))
         return events
     
     def _inject_spikes(
@@ -283,42 +290,42 @@ class AnomalyInjector:
     ) -> list[AnomalyEvent]:
         """
         Inject price spikes (fat tail events).
-        
+
         Spikes extend the high or low of a candle significantly,
         creating a long wick.
+
+        Vectorized: draws one uniform(size=n) array, then operates on the
+        selected indices in bulk — O(n) draws instead of O(n) Python iterations.
         """
         events = []
-        
+
         spike_prob = self._config.spike_probability
         min_mag, max_mag = self._config.spike_magnitude_range
-        
-        for i in range(n):
-            if rng.uniform() < spike_prob:
-                # Determine spike direction and magnitude
-                direction = rng.choice([-1, 1])
-                magnitude = rng.uniform(min_mag, max_mag)
-                
-                mid_price = (open_prices[i] + close_prices[i]) / 2
-                spike_amount = mid_price * magnitude
-                
-                if direction > 0:
-                    # Upward spike - extend high
-                    high_prices[i] += spike_amount
-                else:
-                    # Downward spike - extend low
-                    new_low = low_prices[i] - spike_amount
-                    low_prices[i] = max(new_low, mid_price * 0.5)  # Don't go below 50%
-                
-                # Increase volume on spike candle
-                volumes[i] *= 2.0
-                
-                events.append(AnomalyEvent(
-                    type=AnomalyType.SPIKES,
-                    index=i,
-                    magnitude=magnitude,
-                    direction=direction,
-                ))
-        
+
+        draws = rng.uniform(size=n)
+        idxs = np.where(draws < spike_prob)[0]
+        if idxs.size == 0:
+            return events
+
+        directions = rng.choice(np.array([-1, 1]), size=idxs.size)
+        magnitudes = rng.uniform(min_mag, max_mag, size=idxs.size)
+        mids = (open_prices[idxs] + close_prices[idxs]) / 2.0
+        amounts = mids * magnitudes
+
+        up = directions > 0
+        high_prices[idxs[up]] += amounts[up]
+        new_low = low_prices[idxs[~up]] - amounts[~up]
+        floor = mids[~up] * 0.5
+        low_prices[idxs[~up]] = np.maximum(new_low, floor)
+        volumes[idxs] *= 2.0
+
+        for k, i in enumerate(idxs):
+            events.append(AnomalyEvent(
+                type=AnomalyType.SPIKES,
+                index=int(i),
+                magnitude=float(magnitudes[k]),
+                direction=int(directions[k]),
+            ))
         return events
     
     def _inject_flash_crashes(
