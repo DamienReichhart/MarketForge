@@ -104,13 +104,11 @@ class GARCHModel:
         
         # Scale omega to match base volatility
         # We want long-run volatility = base_volatility
-        # Long-run variance = omega / (1 - alpha - beta)
-        # So omega = target_variance * (1 - alpha - beta)
+        # Long-run variance = omega / (1 - alpha - beta - gamma/2)
+        # So omega = target_variance * (1 - persistence)
         target_variance = (base_volatility ** 2) / (252 * 24 * 60)  # Per-minute
-        persistence = params.alpha + params.beta
+        persistence = params.persistence  # alpha + beta + gamma/2
         self._scaled_omega = target_variance * (1 - persistence)
-        
-        # Initialize state at unconditional variance
         self._initial_variance = self._scaled_omega / (1 - persistence)
         self._state: Optional[GARCHState] = None
     
@@ -177,31 +175,39 @@ class GARCHModel:
     
     def step(self, innovation: float) -> GARCHState:
         """
-        Advance the GARCH model by one step.
-        
+        Advance the GJR-GARCH model by one step.
+
+        Implements the asymmetric GJR-GARCH(1,1) update:
+            σ²_t = ω + (α + γ·1[ε_{t-1}<0])·ε²_{t-1} + β·σ²_{t-1}
+
+        The leverage indicator keys off the sign of the previous shock ε_{t-1}.
+        When γ=0 this reduces to the classic symmetric GARCH(1,1) update.
+
         Args:
             innovation: Standard normal innovation z_t.
-            
+
         Returns:
             Updated GARCHState with new variance.
-            
+
         Raises:
             RuntimeError: If model not initialized.
         """
         if self._state is None:
             self.initialize_state()
-        
-        # Compute new variance: σ²_t = ω + α·ε²_{t-1} + β·σ²_{t-1}
+
+        prev_shock = self._state.shock
+        # Leverage indicator on the sign of the previous shock ε_{t-1}
+        leverage = self._params.gamma if prev_shock < 0 else 0.0
+
         new_variance = (
             self._scaled_omega
-            + self._params.alpha * (self._state.shock ** 2)
+            + (self._params.alpha + leverage) * (prev_shock ** 2)
             + self._params.beta * self._state.variance
         )
-        
-        # Compute new shock: ε_t = σ_t · z_t
+
         new_volatility = np.sqrt(new_variance)
         new_shock = new_volatility * innovation
-        
+
         self._state = GARCHState(variance=new_variance, shock=new_shock)
         return self._state
     
