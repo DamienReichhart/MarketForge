@@ -250,6 +250,23 @@ class RandomState:
         """
         return self._generator.integers(low, high, size=size)
 
+    def chisquare(
+        self,
+        df: float,
+        size: Optional[int | tuple[int, ...]] = None
+    ) -> np.ndarray:
+        """
+        Generate samples from a chi-square distribution.
+
+        Args:
+            df: Degrees of freedom (> 0).
+            size: Output shape.
+
+        Returns:
+            Array of random samples.
+        """
+        return self._generator.chisquare(df, size)
+
 
 # Global random state instance for convenient access
 _global_random_state: Optional[RandomState] = None
