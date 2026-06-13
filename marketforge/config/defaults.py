@@ -33,6 +33,7 @@ from marketforge.config.settings import (
     AnomalyConfig,
     AnomalyType,
     RegimeType,
+    VolumeParams,
 )
 
 
@@ -65,6 +66,8 @@ class MarketDefaults:
     volume_volatility: float
     session_gaps: bool
     weekend_gaps: bool
+    innovation_nu: float
+    volume_params: VolumeParams
 
 
 # Crypto market defaults - 24/7 trading, high volatility
@@ -76,6 +79,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
         omega=0.00002,  # Higher baseline volatility
         alpha=0.08,     # Stronger reaction to shocks
         beta=0.88,      # High persistence
+        gamma=0.04,
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -102,6 +106,8 @@ CRYPTO_DEFAULTS = MarketDefaults(
     volume_volatility=0.6,
     session_gaps=False,
     weekend_gaps=False,
+    innovation_nu=3.5,
+    volume_params=VolumeParams(phi=0.72, lam=0.35, noise_sigma=0.5),
 )
 
 
@@ -114,6 +120,7 @@ FOREX_DEFAULTS = MarketDefaults(
         omega=0.000005,
         alpha=0.04,
         beta=0.92,  # Very high persistence
+        gamma=0.03,
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -141,6 +148,8 @@ FOREX_DEFAULTS = MarketDefaults(
     volume_volatility=0.4,
     session_gaps=True,
     weekend_gaps=True,
+    innovation_nu=6.0,
+    volume_params=VolumeParams(phi=0.6, lam=0.25, noise_sigma=0.35),
 )
 
 
@@ -153,6 +162,7 @@ STOCKS_DEFAULTS = MarketDefaults(
         omega=0.00001,
         alpha=0.05,
         beta=0.90,
+        gamma=0.06,
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -180,6 +190,8 @@ STOCKS_DEFAULTS = MarketDefaults(
     volume_volatility=0.5,
     session_gaps=True,
     weekend_gaps=True,
+    innovation_nu=4.5,
+    volume_params=VolumeParams(phi=0.7, lam=0.3, noise_sigma=0.45),
 )
 
 
