@@ -90,7 +90,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
             (0.08, 0.08, 0.12, 0.32, 0.40),
         ),
         drift_multipliers=(2.5, -2.5, 0.0, 0.0, -6.0),
-        volatility_multipliers=(0.9, 0.9, 0.7, 1.2, 1.4),
+        volatility_multipliers=(0.9, 0.9, 0.7, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
@@ -106,7 +106,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
     volume_volatility=0.6,
     session_gaps=False,
     weekend_gaps=False,
-    innovation_nu=3.5,
+    innovation_nu=5.0,  # Finite excess kurtosis (theoretical EK=6); stable across seeds
     volume_params=VolumeParams(phi=0.72, lam=0.35, noise_sigma=0.5),
 )
 
