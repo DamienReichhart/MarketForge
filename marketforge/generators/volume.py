@@ -29,7 +29,6 @@ from __future__ import annotations
 
 from typing import Optional
 import numpy as np
-from scipy.signal import lfilter
 
 from marketforge.config.settings import GeneratorConfig, MarketType, VolumeParams
 from marketforge.utils.random import RandomState
@@ -143,6 +142,7 @@ class VolumeGenerator:
         log_seasonal: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """log V_t = mu + phi*(log V_{t-1}-mu) + lam*|z_t| + log s(t) + eta_t."""
+        from scipy.signal import lfilter
         phi = self._volume_params.phi
         lam = self._volume_params.lam
         noise_sigma = self._volume_params.noise_sigma

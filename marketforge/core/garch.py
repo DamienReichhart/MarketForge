@@ -62,19 +62,21 @@ class GARCHModel:
     changes and small changes tend to follow small changes.
     
     Model Specification:
-        σ²_t = ω + α·ε²_{t-1} + β·σ²_{t-1}
-        
+        σ²_t = ω + (α + γ·1[ε_{t-1}<0])·ε²_{t-1} + β·σ²_{t-1}
+
     where:
         - σ²_t is the conditional variance at time t
         - ω is the constant term (omega)
         - α is the ARCH coefficient (reaction to shocks)
+        - γ is the leverage coefficient: negative shocks (ε_{t-1} < 0) raise
+          volatility more than positive shocks of the same magnitude
         - β is the GARCH coefficient (persistence)
         - ε_{t-1} is the previous shock
-    
+
     Properties:
-        - Stationarity requires: α + β < 1
-        - Unconditional variance: ω / (1 - α - β)
-        - Half-life of volatility shocks: log(0.5) / log(α + β)
+        - Stationarity requires: α + β + γ/2 < 1
+        - Unconditional variance: ω / (1 - α - β - γ/2)
+        - Half-life of volatility shocks: log(0.5) / log(α + β + γ/2)
     
     Attributes:
         params: GARCH parameters (omega, alpha, beta).
