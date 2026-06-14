@@ -88,24 +88,36 @@ marketforge --help
 
 ### Basic Example
 
-Generate data for all markets with default settings:
+Generate one full year of fully realistic EURUSD data across all timeframes
+(1 minute through 1 week), for the period 2024-01-01 → 2025-01-01 (UTC):
 
 ```bash
 marketforge \
     --output-dir ./data \
     --from 1704067200 \
-    --to 1704153600 \
+    --to 1735689600 \
+    --assets EURUSD \
     --seed 42
+```
+
+This produces `./data/forex/EURUSD_{m1,m5,m15,m30,H1,H4,D1,W1}.csv`. The output
+reproduces the documented stylized facts of real FX returns — heavy tails,
+volatility clustering, the leverage effect, intraday/weekly seasonality, and
+realistic intrabar ranges — and is fully reproducible from the `--seed`. Verify
+it with the validation harness:
+
+```bash
+marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 ```
 
 ### Generate Specific Markets
 
 ```bash
-# Generate only crypto market
+# Generate only crypto market (2 weeks, all timeframes)
 marketforge \
     --output-dir ./data \
     --from 1704067200 \
-    --to 1704153600 \
+    --to 1705276800 \
     --market crypto \
     --seed 42
 
@@ -113,19 +125,25 @@ marketforge \
 marketforge \
     --output-dir ./data \
     --from 1704067200 \
-    --to 1704153600 \
+    --to 1705276800 \
     --market forex,crypto \
     --seed 42
 ```
 
+> **Note:** generating the `W1` (weekly) timeframe requires at least one week of
+> data. For shorter windows, restrict `--timeframes` (e.g. `m1,m5,H1,D1`).
+
 ### With Anomalies
+
+Inject structural anomaly events on top of the base-realistic series:
 
 ```bash
 marketforge \
     --output-dir ./data \
     --from 1704067200 \
-    --to 1704153600 \
-    --anomalies gaps,spikes,flash_crash \
+    --to 1705276800 \
+    --market crypto \
+    --anomalies spikes,flash_crash \
     --seed 42
 ```
 
@@ -442,7 +460,7 @@ output_paths = generate_market_batched(
 To generate data for custom assets:
 
 ```python
-from marketforge.config.settings import GeneratorConfig, AssetConfig, GARCHParams
+from marketforge.config.settings import GeneratorConfig, AssetConfig, GARCHParams, MarketType
 from marketforge.generators.ohlcv import OHLCVBuilder
 from marketforge.utils.random import RandomState
 import numpy as np
@@ -516,7 +534,7 @@ marketforge \
 marketforge \
     --output-dir ./data/all_markets \
     --from 1704067200 \
-    --to 1704153600 \
+    --to 1705276800 \
     --market all \
     --seed 42 \
     --anomalies gaps,spikes \

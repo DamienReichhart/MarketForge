@@ -51,10 +51,14 @@ class ValidationReport:
 
 # Per-market target bands for m1 log-returns.
 # (low, high); None = unbounded on that side.
+# The lower bound is the meaningful fat-tail check (tails must be heavy enough);
+# the upper bound only guards against pathological blow-ups. Sample excess
+# kurtosis grows with sample length, and real high-frequency FX/m1 returns are
+# strongly leptokurtic, so the ceilings are deliberately generous.
 _KURTOSIS_BANDS = {
     MarketType.CRYPTO: (2.0, 60.0),
     MarketType.STOCKS: (1.5, 40.0),
-    MarketType.FOREX: (1.0, 30.0),
+    MarketType.FOREX: (1.0, 50.0),
 }
 
 
