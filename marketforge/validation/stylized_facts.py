@@ -62,12 +62,19 @@ def leverage_correlation(returns: np.ndarray) -> float:
 
 
 def range_efficiency(open_, high, low, close) -> float:
-    """Mean of (High-Low) / |Close-Open|, a measure of intrabar range richness."""
+    """Mean of (High-Low) / |Close-Open|, a measure of intrabar range richness.
+
+    Near-doji candles (body < 0.01% of mid-price) are excluded from the mean
+    because their body is effectively zero on a relative scale and would
+    produce arbitrarily large ratios that are not meaningful.
+    """
     o = np.asarray(open_, float); h = np.asarray(high, float)
     l = np.asarray(low, float); c = np.asarray(close, float)
     body = np.abs(c - o)
     rng_ = h - l
-    mask = body > 1e-12
+    mid = (h + l) * 0.5
+    # Relative threshold: exclude bars where body < 0.01% of mid-price
+    mask = body > mid * 1e-4
     if not np.any(mask):
         return float("inf")
     return float(np.mean(rng_[mask] / body[mask]))

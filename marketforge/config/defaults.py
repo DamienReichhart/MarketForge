@@ -90,7 +90,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
             (0.08, 0.08, 0.12, 0.32, 0.40),
         ),
         drift_multipliers=(2.5, -2.5, 0.0, 0.0, -6.0),
-        volatility_multipliers=(0.9, 0.9, 0.7, 2.5, 5.0),
+        volatility_multipliers=(0.9, 0.9, 0.7, 2.5, 2.5),
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
@@ -173,7 +173,7 @@ STOCKS_DEFAULTS = MarketDefaults(
             (0.05, 0.05, 0.10, 0.30, 0.50),
         ),
         drift_multipliers=(2.0, -2.0, 0.0, 0.0, -5.0),
-        volatility_multipliers=(0.8, 0.8, 0.6, 2.0, 4.0),
+        volatility_multipliers=(0.8, 0.8, 0.6, 2.0, 3.0),
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
@@ -190,7 +190,7 @@ STOCKS_DEFAULTS = MarketDefaults(
     volume_volatility=0.5,
     session_gaps=True,
     weekend_gaps=True,
-    innovation_nu=4.5,
+    innovation_nu=8.0,
     volume_params=VolumeParams(phi=0.7, lam=0.3, noise_sigma=0.45),
 )
 
