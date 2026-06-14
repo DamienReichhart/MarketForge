@@ -11,6 +11,7 @@ A professional-grade synthetic OHLCV (Open-High-Low-Close-Volume) data generator
 - [Architecture](#architecture)
 - [Configuration](#configuration)
 - [Output Format](#output-format)
+- [Validation](#validation)
 - [Performance](#performance)
 - [Advanced Features](#advanced-features)
 - [Examples](#examples)
@@ -22,15 +23,16 @@ A professional-grade synthetic OHLCV (Open-High-Low-Close-Volume) data generator
 ### Core Capabilities
 
 - **Multi-Market Support**: Generate data for Forex (81 pairs), Crypto (53 assets), and Stocks (74 symbols)
-- **Realistic Price Dynamics**: 
-  - GARCH(1,1) volatility clustering
-  - Regime-switching models (trend, range, high volatility, crash)
+- **Realistic Price Dynamics**:
+  - Multivariate Student-t innovations (heavy tails + tail dependence — assets co-move in extremes)
+  - GJR-GARCH(1,1) asymmetric volatility (leverage effect: down-moves raise volatility more)
+  - Regime-switching (trend, range, high-vol, crash) with smooth transitions
+  - Intraday & weekly volatility seasonality (variance-neutral)
   - Correlated multi-asset returns via Cholesky decomposition
-  - Geometric Brownian Motion with drift
 - **Realistic OHLCV Construction**:
-  - Proper intrabar high/low simulation with wicks
+  - Intrabar High/Low via a Brownian bridge from open to close scaled by conditional volatility (statistically consistent ranges, High≥max(O,C) and Low≤min(O,C) by construction)
   - Market-specific gap handling (overnight, weekend)
-  - Volume correlated with price movements and volatility
+  - Volume via a log-AR(1) process with volume clustering, volume-volatility coupling (Mixture-of-Distributions Hypothesis), and intraday seasonality
   - Time-of-day volume patterns (session-based markets)
 - **Anomaly Injection**:
   - Price gaps (overnight/weekend discontinuities)
@@ -222,26 +224,24 @@ marketforge ...
 #### 1. Return Generation (`core/returns.py`)
 
 Generates correlated log-returns using:
-- **Correlation Engine**: Cholesky decomposition for multi-asset correlation
-- **GARCH(1,1) Model**: Volatility clustering (σ²_t = ω + α·ε²_{t-1} + β·σ²_{t-1})
-- **Regime-Switching**: Markov chain for market state transitions
-- **Geometric Brownian Motion**: Price evolution with drift
+- **Correlation Engine**: Cholesky decomposition for multi-asset correlation with Student-t innovations
+- **GJR-GARCH(1,1) Model**: Asymmetric volatility clustering with leverage effect (σ²_t = ω + (α + γ·1_{ε<0})·ε²_{t-1} + β·σ²_{t-1})
+- **Regime-Switching**: Markov chain for smooth market state transitions (trend, range, high-vol, crash)
+- **Volatility Seasonality**: Intraday and weekly variance-neutral seasonality multipliers
 
 #### 2. OHLCV Construction (`generators/ohlcv.py`)
 
 Converts price series to OHLCV candles:
 - **Open Prices**: May include gaps for non-crypto markets
-- **High/Low**: Intrabar volatility model (Garman-Klass inspired)
-- **Wicks**: Realistic upper/lower shadows based on volatility
-- **Volume**: Correlated with price movements and volatility
+- **High/Low**: Brownian-bridge simulation from open to close scaled by conditional volatility (High≥max(O,C) and Low≤min(O,C) by construction)
+- **Volume**: Driven by the log-AR(1) MDH volume model
 
 #### 3. Volume Generation (`generators/volume.py`)
 
-Generates realistic trading volumes:
-- **Log-Normal Distribution**: Base volume distribution
-- **Volume Clustering**: Autoregressive component
-- **Return-Volume Correlation**: Higher volume on large moves
-- **Time-of-Day Patterns**: Session-based multipliers (stocks, forex)
+Generates realistic trading volumes via a log-AR(1) MDH model:
+- **Log-AR(1) Process**: Mean-reverting autoregressive log-volume for volume clustering
+- **Volume-Volatility Coupling**: Mixture-of-Distributions Hypothesis — latent information flow drives both returns and volume
+- **Intraday Seasonality**: Time-of-day volume multipliers (session-based for stocks and forex)
 
 #### 4. Anomaly Injection (`generators/anomalies.py`)
 
@@ -355,6 +355,31 @@ The generated data ensures:
 - `high >= low`
 - `volume >= 0`
 - No negative prices
+
+## Validation
+
+MarketForge ships a validation harness that measures generated data against the
+documented "stylized facts" of real financial returns.
+
+### Stylized facts checked
+
+- **Heavy tails** — excess kurtosis of m1 returns within a realistic per-market band.
+- **Volatility clustering** — significant, slowly-decaying autocorrelation of |returns|.
+- **Leverage effect** — negative correlation between returns and next-period volatility.
+- **Range efficiency** — realistic intrabar range relative to candle body.
+
+### Validate a CSV
+
+```bash
+marketforge validate --input ./data/crypto/BTCUSD_m1.csv --market crypto
+```
+
+This prints a per-metric report with target bands and exits non-zero if a band is
+violated. Run the bundled benchmark across all markets with:
+
+```bash
+python scripts/benchmark_realism.py
+```
 
 ## Performance
 
@@ -579,7 +604,7 @@ For issues, questions, or contributions:
 
 ---
 
-**Version**: 1.0.0  
+**Version**: 2.0.0  
 **Python**: 3.10+  
 **License**: AGPL-3.0
 
