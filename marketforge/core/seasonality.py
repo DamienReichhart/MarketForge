@@ -74,7 +74,7 @@ class SeasonalityModel:
         shape = np.maximum(shape, 1e-3)
         # variance-neutralize over the window
         norm = np.sqrt(np.mean(shape ** 2))
-        return shape / norm
+        return np.asarray(shape / norm)
 
     @staticmethod
     def _stock_shape(minutes: np.ndarray) -> np.ndarray:

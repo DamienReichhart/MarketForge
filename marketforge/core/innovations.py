@@ -64,7 +64,7 @@ class GaussianInnovations(InnovationGenerator):
         cholesky_lower: np.ndarray,
     ) -> np.ndarray:
         z = rng.standard_normal((n_steps, n_assets))
-        return z @ cholesky_lower.T
+        return np.asarray(z @ cholesky_lower.T)
 
 
 class StudentTInnovations(InnovationGenerator):
@@ -101,4 +101,4 @@ class StudentTInnovations(InnovationGenerator):
         correlated = z @ cholesky_lower.T
         mixing = rng.chisquare(self._nu, size=n_steps) / self._nu  # (n_steps,)
         t = correlated / np.sqrt(mixing)[:, None]
-        return t * np.sqrt((self._nu - 2.0) / self._nu)
+        return np.asarray(t * np.sqrt((self._nu - 2.0) / self._nu))

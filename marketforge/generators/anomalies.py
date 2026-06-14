@@ -357,8 +357,7 @@ class AnomalyInjector:
             return events  # Too short a period for crashes
         
         # Determine number of crashes
-        n_crashes = rng.poisson(expected_crashes)
-        n_crashes = min(n_crashes, 3)  # Cap at 3 crashes
+        n_crashes = min(int(rng.poisson(expected_crashes)), 3)  # Cap at 3 crashes
         
         if n_crashes == 0:
             return events
@@ -379,8 +378,8 @@ class AnomalyInjector:
         for _ in range(n_crashes):
             attempts = 0
             while attempts < 100:
-                start = rng.integers(100, available_range)
-                
+                start = int(rng.integers(100, available_range))
+
                 # Check spacing from existing crashes
                 if all(abs(start - s) >= min_spacing for s in crash_starts):
                     crash_starts.append(start)
