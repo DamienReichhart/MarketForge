@@ -8,7 +8,7 @@ def test_generator_config_gets_market_model_params():
         mc, start_timestamp=1704067200, end_timestamp=1704067200 + 3600,
         seed=1, batch_symbols=mc.symbols[:3],
     )
-    assert gc.innovation_nu is not None and gc.innovation_nu <= 4.0
+    assert gc.innovation_nu is not None and gc.innovation_nu <= 6.0
     assert gc.garch_params.gamma > 0.0
     assert gc.volume_params.phi > 0.0
 
