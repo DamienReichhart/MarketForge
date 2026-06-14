@@ -341,8 +341,35 @@ def create_cli(
         sys.exit(1)
 
 
+@click.command(name="validate")
+@click.option("--input", "input_path", required=True, type=click.Path(exists=True),
+              help="CSV file (with open/high/low/close columns) to validate.")
+@click.option("--market", "market", required=True,
+              type=click.Choice([m.value for m in MarketType]),
+              help="Market type whose target bands to apply.")
+def validate_command(input_path: str, market: str) -> None:
+    """Validate generated OHLCV data against real-market stylized facts."""
+    import pandas as pd
+    from marketforge.config.settings import MarketType as SettingsMarketType
+    from marketforge.validation.report import validate_ohlcv
+
+    df = pd.read_csv(input_path)
+    report = validate_ohlcv(
+        df["open"].to_numpy(), df["high"].to_numpy(),
+        df["low"].to_numpy(), df["close"].to_numpy(),
+        SettingsMarketType(market),
+    )
+    click.echo(report.summary())
+    raise SystemExit(0 if report.passed else 1)
+
+
 def main() -> None:
     """Entry point for CLI."""
+    import sys
+    argv = sys.argv[1:]
+    if argv and argv[0] == "validate":
+        validate_command(args=argv[1:])
+        return
     create_cli()
 
 
