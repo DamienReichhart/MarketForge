@@ -10,7 +10,7 @@
 
 **Reference spec:** `docs/superpowers/specs/2026-06-13-marketforge-realism-design.md`
 
-**Conventions for every new `.py` file:** prepend the existing AGPL license header block (copy it verbatim from any current module, e.g. `marketforge/core/garch.py` lines 1–15). Test files do not need the header.
+**Conventions for every new `.py` file:** prepend the existing MIT license header block (copy it verbatim from any current module, e.g. `marketforge/core/garch.py` lines 1–5). Test files do not need the header.
 
 ---
 
@@ -250,7 +250,7 @@ Expected: FAIL — `ModuleNotFoundError: marketforge.core.innovations`.
 
 - [ ] **Step 3: Implement `marketforge/core/innovations.py`**
 
-(Prepend the AGPL header.)
+(Prepend the MIT header.)
 
 ```python
 """
@@ -580,7 +580,7 @@ Expected: FAIL — module missing.
 
 - [ ] **Step 3: Implement `marketforge/core/seasonality.py`**
 
-(Prepend AGPL header.)
+(Prepend MIT header.)
 
 ```python
 """
@@ -1489,7 +1489,7 @@ Expected: FAIL — module missing.
 
 - [ ] **Step 3: Implement `marketforge/validation/stylized_facts.py`**
 
-(Prepend AGPL header. `__init__.py` is empty.)
+(Prepend MIT header. `__init__.py` is empty.)
 
 ```python
 """
@@ -1620,7 +1620,7 @@ Expected: FAIL — module missing.
 
 - [ ] **Step 3: Implement `marketforge/validation/report.py`**
 
-(Prepend AGPL header.)
+(Prepend MIT header.)
 
 ```python
 """
@@ -1916,7 +1916,7 @@ git commit -m "test: end-to-end stylized-facts and OHLC invariant suite"
 
 - [ ] **Step 1: Write the benchmark script**
 
-`scripts/benchmark_realism.py` (prepend AGPL header):
+`scripts/benchmark_realism.py` (prepend MIT header):
 
 ```python
 """
