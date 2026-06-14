@@ -77,9 +77,9 @@ CRYPTO_DEFAULTS = MarketDefaults(
     base_drift=0.0001,
     garch_params=GARCHParams(
         omega=0.00002,  # Higher baseline volatility
-        alpha=0.08,     # Stronger reaction to shocks
-        beta=0.88,      # High persistence
-        gamma=0.04,
+        alpha=0.03,     # Low alpha limits GARCH spike amplification (kurtosis control)
+        beta=0.84,      # High persistence
+        gamma=0.16,     # Leverage: strong enough for robust negative leverage correlation
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -90,7 +90,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
             (0.08, 0.08, 0.12, 0.32, 0.40),
         ),
         drift_multipliers=(2.5, -2.5, 0.0, 0.0, -6.0),
-        volatility_multipliers=(0.9, 0.9, 0.7, 2.5, 2.5),
+        volatility_multipliers=(0.9, 0.9, 0.7, 1.2, 1.4),
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
@@ -118,9 +118,9 @@ FOREX_DEFAULTS = MarketDefaults(
     base_drift=0.00001,
     garch_params=GARCHParams(
         omega=0.000005,
-        alpha=0.04,
-        beta=0.92,  # Very high persistence
-        gamma=0.03,
+        alpha=0.03,
+        beta=0.91,  # Very high persistence
+        gamma=0.08,  # Stronger leverage for robustly negative correlation
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -148,7 +148,7 @@ FOREX_DEFAULTS = MarketDefaults(
     volume_volatility=0.4,
     session_gaps=True,
     weekend_gaps=True,
-    innovation_nu=6.0,
+    innovation_nu=10.0,  # Higher nu reduces kurtosis for robust multi-seed/multi-asset behavior
     volume_params=VolumeParams(phi=0.6, lam=0.25, noise_sigma=0.35),
 )
 
@@ -160,9 +160,9 @@ STOCKS_DEFAULTS = MarketDefaults(
     base_drift=0.0002,  # Slight upward bias
     garch_params=GARCHParams(
         omega=0.00001,
-        alpha=0.05,
-        beta=0.90,
-        gamma=0.06,
+        alpha=0.04,
+        beta=0.86,
+        gamma=0.16,  # Strong leverage for robust negative correlation
     ),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -173,7 +173,7 @@ STOCKS_DEFAULTS = MarketDefaults(
             (0.05, 0.05, 0.10, 0.30, 0.50),
         ),
         drift_multipliers=(2.0, -2.0, 0.0, 0.0, -5.0),
-        volatility_multipliers=(0.8, 0.8, 0.6, 2.0, 3.0),
+        volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 1.5),
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
@@ -190,7 +190,7 @@ STOCKS_DEFAULTS = MarketDefaults(
     volume_volatility=0.5,
     session_gaps=True,
     weekend_gaps=True,
-    innovation_nu=8.0,
+    innovation_nu=10.0,
     volume_params=VolumeParams(phi=0.7, lam=0.3, noise_sigma=0.45),
 )
 
