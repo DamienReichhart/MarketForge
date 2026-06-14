@@ -593,7 +593,7 @@ mypy marketforge
 
 ## License
 
-AGPL-3.0 License - see LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 ## Support
 
@@ -606,5 +606,5 @@ For issues, questions, or contributions:
 
 **Version**: 2.0.0  
 **Python**: 3.10+  
-**License**: AGPL-3.0
+**License**: MIT
 
