@@ -321,7 +321,8 @@ jobs:
           cd "$RUNNER_TEMP"
           uv venv head --python "$DEFAULT_PYTHON"
           uv pip install --python head/bin/python "$wheel"
-          uv pip freeze --python head/bin/python | grep -v '^marketforge' > dependencies.txt
+          # --color never: FORCE_COLOR would put ANSI codes into the file.
+          uv pip freeze --color never --python head/bin/python | grep -v '^marketforge' > dependencies.txt
           uv venv base --python "$DEFAULT_PYTHON"
           uv pip install --python base/bin/python -r dependencies.txt
           uv pip install --python base/bin/python --no-deps "marketforge==${baseline}"
