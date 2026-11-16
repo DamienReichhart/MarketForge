@@ -5,12 +5,12 @@ description: "The stylized facts every MarketForge instrument is checked against
 
 Realism is not a claim in MarketForge, it is a test. The [validation bands are the realism contract](../../adr/0006-validation-bands-are-the-realism-contract/): a change that pushes any instrument outside them fails CI.
 
-```bash
+```bash check=static
 marketforge validate --input ./data/crypto/BTCUSD_m1.csv
 python scripts/benchmark_realism.py --seeds 123,7 --days 14   # every instrument (from a source checkout)
 ```
 
-```python
+```python check=static
 report = mf.validate(data["BTCUSD"]["m1"], "crypto")
 print(report.passed)
 print(report.summary())
@@ -57,7 +57,7 @@ With two-week windows and three seeds, all 624 instrument checks pass. Across 30
 
 The validator works on any CSV or Parquet file with `timestamp, open, high, low, close` columns, so you can check real data, another generator, or your own model's output against the same bands:
 
-```bash
+```bash check=static
 marketforge validate --input ./my_eurusd_m1.csv --market forex
 ```
 

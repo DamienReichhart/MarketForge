@@ -9,7 +9,7 @@ History happened once. A strategy that survived it may simply have been lucky wi
 
 Each seed is an independent history with the same statistical properties. Run the strategy across a range of seeds and collect the metrics you care about:
 
-```python
+```python check=static
 import numpy as np
 import marketforge as mf
 
@@ -32,7 +32,7 @@ The 99th percentile of drawdown across 200 histories says far more about risk th
 
 The base model already contains stress. The market moves between trend, range, **high volatility** and **crash** regimes, with heavy-tailed Student-t shocks whose tail risk is shared across a market, so sell-offs hit every instrument at once. With `include_regime=True`, you can break results down by regime and see where a strategy loses:
 
-```python
+```python check=static
 candles = data["SPXUSD"]["H1"]
 pnl = strategy_returns(candles)               # per-candle P&L of your strategy
 print(pnl.groupby(candles["regime"], observed=True).agg(["mean", "std", "count"]))

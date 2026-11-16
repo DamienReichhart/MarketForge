@@ -109,7 +109,7 @@ Every option is in the
 
 ### Python
 
-```python
+```python check=static
 import marketforge as mf
 
 # Disjoint seeds: train, validation and test never share a path

@@ -3,11 +3,11 @@ title: Extending a dataset
 description: "Continue a dataset forward in time with marketforge extend, byte-identical to generating the whole range at once."
 ---
 
-```bash
+```bash check=static
 marketforge extend ./data --to 2025-03-01     # or --days 30
 ```
 
-```python
+```python check=static
 mf.extend("./data", "2025-03-01")
 ```
 

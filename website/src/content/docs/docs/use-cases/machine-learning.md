@@ -109,7 +109,7 @@ In both cases, the only score that matters is the one on real, untouched data.
 
 For datasets larger than memory, write Parquet to disk and stream it:
 
-```bash
+```bash check=static
 for seed in $(seq 0 63); do
   marketforge generate -o ./train/seed-$seed --from 2020-01-01 --to 2024-01-01 \
       --market crypto -t m5,H1 --format parquet --with-regime --with-spread --seed $seed --no-progress

@@ -5,7 +5,7 @@ description: "generate(), generate_to_disk(), extend(), instruments(), validate(
 
 Everything the command line does is available from Python. The supported API is what `import marketforge` exposes; module paths below it can change between releases.
 
-```python
+```python check=static
 import marketforge as mf
 
 data = mf.generate(
@@ -44,7 +44,7 @@ print(report.passed, report.summary())
 
 ## generate()
 
-```python
+```python check=signature
 mf.generate(
     instruments=None, *, start, end, markets=None, seed=None,
     timeframes=("m1",), anomalies=(), include_regime=False, include_spread=False,

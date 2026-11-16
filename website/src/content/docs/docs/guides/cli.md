@@ -3,7 +3,7 @@ title: Command line
 description: "Every marketforge command and option: generate, extend, validate and list-instruments."
 ---
 
-```bash
+```text
 marketforge [--debug] COMMAND [OPTIONS]
 ```
 
@@ -82,7 +82,7 @@ Prints a report and exits with code 1 if any statistic is outside its band. Work
 
 ## list-instruments
 
-```bash
+```bash check=static
 marketforge list-instruments --market forex
 marketforge list-instruments --config my_instruments.toml
 ```

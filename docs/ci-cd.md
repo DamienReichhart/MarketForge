@@ -30,6 +30,7 @@ explicitly.
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Seed reproducibility | On Linux, macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
 | Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
+| Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Uploads the `dist` and `sbom` artifacts |
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
@@ -50,6 +51,7 @@ ruff check . && ruff format --check . && lint-imports
 mypy marketforge
 pytest --cov
 uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
+pip install . --group docs && python -I .github/scripts/doc_examples.py   # in a fresh venv
 ```
 
 ### Performance gate
@@ -73,6 +75,32 @@ To measure locally, make two virtual environments with the same dependencies
 (one with the wheel, one with the release) as the CI job does, then run
 `perf.py run perf.json --head HEAD_VENV/bin/python --base BASE_VENV/bin/python`
 and `perf.py compare perf.json`.
+
+### Documentation examples
+
+`.github/scripts/doc_examples.py` reads the fenced code blocks of `README.md`
+and of the website's pages (`website/src/content/docs/`) and, page by page in
+an empty directory, so an example can write `./data` and a later one read it:
+
+- **python**: every `mf.NAME(...)` must be in the public API and bind to its
+  real signature; then the block runs. The blocks of a page share one
+  namespace where `import marketforge as mf` is done.
+- **bash**: only `marketforge` commands count (`pip`, `git`, `npm` are not
+  run). `generate` is planned with `--dry-run`, which checks instruments,
+  dates and override files without simulating; the other commands go through
+  the real command-line parser. Then the commands run.
+- **toml**: loaded as an override file. A block whose first line is
+  `# NAME.toml` is also saved as `NAME.toml` for the page's next examples.
+
+A flag after the language opts a block out of running:
+
+| Fence | Use it for |
+| --- | --- |
+| ` ```python check=static ` | Too long to run in CI (years of data, dozens of seeds), or it uses data or functions the reader provides. Still checked against the API and the command-line parser |
+| ` ```python check=signature ` | A displayed signature, `mf.NAME(...) -> TYPE`: it must match the real one exactly |
+| ` ```bash check=none ` | Not checked at all. Prefer `text` as the language for something that is not a command, such as a usage synopsis |
+
+Errors are annotated on the page's line in the pull request.
 
 ## CD: how a release happens
 

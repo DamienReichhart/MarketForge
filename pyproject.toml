@@ -98,6 +98,11 @@ release = [
 audit = [
     "pip-audit>=2.9",
 ]
+# What the documentation's examples import besides marketforge, so CI can run
+# them (.github/scripts/doc_examples.py).
+docs = [
+    "scikit-learn>=1.5",
+]
 workflow-lint = [
     "actionlint-py>=1.7.7",
     "zizmor>=1.20",
