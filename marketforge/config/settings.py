@@ -5,36 +5,36 @@
 # root for full license information.
 
 """
-Configuration dataclasses for MarketForge.
+Model parameter types shared by every market.
 
-Defines all configuration parameters using dataclasses for type safety,
-validation, and easy serialization.
+Per-market values live in :mod:`marketforge.config.defaults`; per-instrument
+values (start price, volatility, drift, volume) live in the catalogs.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
-import numpy as np
 
 
 class MarketType(str, Enum):
-    """Supported market types with different session behaviors."""
+    """A market: a family of instruments sharing one calendar and one regime path."""
+
     CRYPTO = "crypto"
     FOREX = "forex"
     STOCKS = "stocks"
 
 
 class AnomalyType(str, Enum):
-    """Types of market anomalies that can be injected."""
-    GAPS = "gaps"
+    """Optional, deliberately unrealistic events layered on the simulation."""
+
     SPIKES = "spikes"
     FLASH_CRASH = "flash_crash"
 
 
 class RegimeType(str, Enum):
-    """Market regime states for regime-switching model."""
+    """Market-wide regimes, in the order used by regime parameters and labels."""
+
     TREND_UP = "trend_up"
     TREND_DOWN = "trend_down"
     RANGE = "range"
@@ -42,122 +42,89 @@ class RegimeType(str, Enum):
     CRASH = "crash"
 
 
+_REGIME_ORDER = list(RegimeType)
+
+
 @dataclass(frozen=True)
 class GARCHParams:
     """
-    GJR-GARCH(1,1) model parameters for conditional volatility with leverage effect.
+    GJR-GARCH(1,1) parameters of the per-minute volatility multiplier.
 
-    The GJR-GARCH(1,1) model is:
-        σ²_t = ω + (α + γ·1[ε_{t-1}<0])·ε²_{t-1} + β·σ²_{t-1}
+        h_t = (1 - p) + (alpha + gamma * 1[e_{t-1} < 0]) * e_{t-1}^2 + beta * h_{t-1}
 
-    When γ=0 this reduces to the classic symmetric GARCH(1,1) model.
-    The leverage term γ captures the asymmetric response of volatility to
-    negative shocks (bad news raises volatility more than good news).
-
-    Constraints:
-        - ω > 0 (ensures positive variance)
-        - α ≥ 0, β ≥ 0, γ ≥ 0
-        - α + β + γ/2 < 1 (stationarity condition; γ/2 is the expected leverage contribution)
-
-    Attributes:
-        omega: Long-term variance weight (constant term).
-        alpha: Weight of lagged squared shock (ARCH term).
-        beta: Weight of lagged variance (GARCH term).
-        gamma: Leverage coefficient for negative shocks (GJR asymmetry term).
+    with persistence p = alpha + beta + gamma / 2 < 1, so h has mean 1 and
+    the configured annual volatility is preserved. ``gamma`` is the leverage
+    effect: down-moves raise volatility more than up-moves.
     """
-    omega: float = 0.00001
+
     alpha: float = 0.05
     beta: float = 0.90
     gamma: float = 0.0
 
     def __post_init__(self) -> None:
-        if self.omega <= 0:
-            raise ValueError(f"omega must be positive, got {self.omega}")
-        if self.alpha < 0:
-            raise ValueError(f"alpha must be non-negative, got {self.alpha}")
-        if self.beta < 0:
-            raise ValueError(f"beta must be non-negative, got {self.beta}")
-        if self.gamma < 0:
-            raise ValueError(f"gamma must be non-negative, got {self.gamma}")
+        for name in ("alpha", "beta", "gamma"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be non-negative, got {getattr(self, name)}")
         if self.persistence >= 1:
-            raise ValueError(
-                f"alpha + beta + gamma/2 must be < 1 for stationarity, "
-                f"got {self.persistence}"
-            )
+            raise ValueError(f"alpha + beta + gamma/2 must be < 1 for stationarity, got {self.persistence}")
 
     @property
     def persistence(self) -> float:
-        """Volatility persistence α + β + γ/2 (γ/2 = expected leverage contribution)."""
         return self.alpha + self.beta + self.gamma / 2.0
-
-    @property
-    def long_run_variance(self) -> float:
-        return self.omega / (1 - self.persistence)
 
 
 @dataclass(frozen=True)
 class RegimeParams:
     """
-    Regime-switching model parameters.
-    
-    Controls transition probabilities between market regimes and
-    the drift/volatility multipliers for each regime state.
-    
+    Markov regime-switching parameters (one step per open minute).
+
+    Multipliers are rescaled by the engine so that, over the long run, the
+    mean drift multiplier is 1 and the mean squared volatility multiplier is
+    1: regimes reshape *when* drift and volatility happen, not how much.
+
     Attributes:
-        transition_matrix: Markov transition probabilities between regimes.
-        drift_multipliers: Drift adjustment per regime.
+        transition_matrix: Rows = current regime, columns = next regime, in
+            :class:`RegimeType` order.
+        drift_multipliers: Drift scaling per regime.
         volatility_multipliers: Volatility scaling per regime.
-        initial_regime: Starting regime state.
+        initial_regime: Regime at the first simulated minute.
     """
-    # Transition probabilities: rows are current state, cols are next state
-    # Order: trend_up, trend_down, range, high_vol, crash
+
     transition_matrix: tuple[tuple[float, ...], ...] = (
-        (0.85, 0.03, 0.08, 0.03, 0.01),  # from trend_up
-        (0.03, 0.85, 0.08, 0.03, 0.01),  # from trend_down
-        (0.10, 0.10, 0.70, 0.08, 0.02),  # from range
-        (0.05, 0.10, 0.15, 0.65, 0.05),  # from high_vol
-        (0.05, 0.05, 0.10, 0.30, 0.50),  # from crash
+        (0.85, 0.03, 0.08, 0.03, 0.01),
+        (0.03, 0.85, 0.08, 0.03, 0.01),
+        (0.10, 0.10, 0.70, 0.08, 0.02),
+        (0.05, 0.10, 0.15, 0.65, 0.05),
+        (0.05, 0.05, 0.10, 0.30, 0.50),
     )
-    
-    # Drift multipliers per regime
     drift_multipliers: tuple[float, ...] = (2.0, -2.0, 0.0, 0.0, -5.0)
-    
-    # Volatility multipliers per regime
     volatility_multipliers: tuple[float, ...] = (0.8, 0.8, 0.6, 2.0, 4.0)
-    
-    # Initial regime
     initial_regime: RegimeType = RegimeType.RANGE
-    
+
     def get_regime_index(self, regime: RegimeType) -> int:
-        """Get numeric index for a regime type."""
-        regime_order = [
-            RegimeType.TREND_UP,
-            RegimeType.TREND_DOWN,
-            RegimeType.RANGE,
-            RegimeType.HIGH_VOLATILITY,
-            RegimeType.CRASH,
-        ]
-        return regime_order.index(regime)
+        return _REGIME_ORDER.index(regime)
 
 
 @dataclass(frozen=True)
 class VolumeParams:
     """
-    Parameters for the log-AR(1) volume model.
+    Log-volume AR(1) parameters:
 
-    log V_t = μ + φ·(log V_{t-1} − μ) + λ·|z_t| + log s(t) + η_t
+        log V_t = log base + phi * y_{t-1} + lam * (|z_t| - E|z|)
+                  + kappa * log(turbulence_t) + log s(t) + sigma_eta * eta_t
+
+    where sigma_eta = volume_volatility * sqrt(1 - phi^2) uses each instrument's
+    catalog ``volume_volatility`` (the lognormal sigma of its volume noise).
 
     Attributes:
-        phi: AR(1) persistence of log-volume (volume clustering), 0 ≤ φ < 1.
-        lam: Sensitivity to absolute standardized returns (MDH coupling).
-        noise_sigma: Std of the idiosyncratic log-volume noise η.
-        kappa: Elasticity of volume to the volatility level (GARCH x regime):
-            volume rises when the market is turbulent, not only on the minute
-            of a large move.
+        phi: Persistence of log-volume (volume clustering), 0 <= phi < 1.
+        lam: Response to the size of the current standardized move.
+        kappa: Elasticity to the volatility level (GARCH x regime): volume
+            rises while the market is turbulent, not only on the big minute.
     """
+
     phi: float = 0.7
     lam: float = 0.3
-    noise_sigma: float = 0.4
     kappa: float = 0.5
 
     def __post_init__(self) -> None:
@@ -165,157 +132,27 @@ class VolumeParams:
             raise ValueError(f"phi must be in [0, 1), got {self.phi}")
         if self.lam < 0:
             raise ValueError(f"lam must be non-negative, got {self.lam}")
-        if self.noise_sigma < 0:
-            raise ValueError(f"noise_sigma must be non-negative, got {self.noise_sigma}")
+        if self.kappa < 0:
+            raise ValueError(f"kappa must be non-negative, got {self.kappa}")
 
 
 @dataclass(frozen=True)
 class AnomalyConfig:
     """
-    Configuration for anomaly injection.
-    
+    Anomaly settings for a market.
+
     Attributes:
-        types: Set of anomaly types to inject.
-        gap_probability: Probability of a gap per candle (for non-crypto).
-        gap_magnitude_range: Range of gap size as fraction of price.
-        spike_probability: Probability of a spike per candle.
-        spike_magnitude_range: Range of spike size as fraction of price.
-        flash_crash_probability: Probability of flash crash per day.
-        flash_crash_magnitude: Typical flash crash drop percentage.
-        flash_crash_recovery_candles: Candles for V-shaped recovery.
+        types: Anomalies to inject (none by default).
+        spike_probability: Chance per candle and instrument of a long wick.
+        spike_magnitude_range: Wick length as a fraction of price.
+        flash_crash_probability: Chance per day and instrument of a flash crash.
+        flash_crash_magnitude: Depth of the crash as a fraction of price.
+        flash_crash_recovery_candles: Duration of drop + floor + recovery.
     """
-    types: frozenset[AnomalyType] = field(
-        default_factory=lambda: frozenset({AnomalyType.GAPS, AnomalyType.SPIKES})
-    )
-    gap_probability: float = 0.001
-    gap_magnitude_range: tuple[float, float] = (0.001, 0.02)
+
+    types: frozenset[AnomalyType] = field(default_factory=frozenset)
     spike_probability: float = 0.0005
     spike_magnitude_range: tuple[float, float] = (0.02, 0.10)
     flash_crash_probability: float = 0.001
     flash_crash_magnitude: float = 0.15
     flash_crash_recovery_candles: int = 30
-
-
-@dataclass
-class AssetConfig:
-    """
-    Configuration for a single asset.
-    
-    Attributes:
-        symbol: Asset symbol (e.g., 'BTC', 'ETH').
-        start_price: Initial price for the asset.
-        volatility: Base annualized volatility (e.g., 0.02 for 2%).
-        drift: Annualized drift/trend (e.g., 0.0001).
-        volume_base: Base volume level.
-        volume_volatility: Volatility of volume (log-normal sigma).
-    """
-    symbol: str
-    start_price: float
-    volatility: float = 0.02
-    drift: float = 0.0001
-    volume_base: float = 1000.0
-    volume_volatility: float = 0.5
-    
-    def __post_init__(self) -> None:
-        """Validate asset configuration."""
-        if self.start_price <= 0:
-            raise ValueError(f"start_price must be positive, got {self.start_price}")
-        if self.volatility <= 0:
-            raise ValueError(f"volatility must be positive, got {self.volatility}")
-        if self.volume_base <= 0:
-            raise ValueError(f"volume_base must be positive, got {self.volume_base}")
-
-
-@dataclass
-class GeneratorConfig:
-    """
-    Master configuration for MarketForge.
-    
-    Combines all sub-configurations and provides the complete
-    specification for data generation.
-    
-    Attributes:
-        assets: List of asset configurations.
-        market_type: Type of market (crypto, forex, stocks).
-        start_timestamp: Start of generation period (Unix timestamp).
-        end_timestamp: End of generation period (Unix timestamp).
-        correlation_matrix: Correlation matrix for multi-asset generation.
-        garch_params: GARCH model parameters.
-        regime_params: Regime-switching model parameters.
-        anomaly_config: Anomaly injection configuration.
-        output_dir: Directory for output files.
-        seed: Random seed for reproducibility.
-        timeframes: List of timeframes to generate.
-        show_progress: Whether to show progress bar.
-    """
-    assets: list[AssetConfig]
-    market_type: MarketType
-    start_timestamp: int
-    end_timestamp: int
-    correlation_matrix: Optional[np.ndarray] = None
-    garch_params: GARCHParams = field(default_factory=GARCHParams)
-    regime_params: RegimeParams = field(default_factory=RegimeParams)
-    anomaly_config: AnomalyConfig = field(default_factory=AnomalyConfig)
-    innovation_nu: Optional[float] = None  # None => Gaussian; else Student-t df
-    seasonality_enabled: bool = True
-    volume_params: VolumeParams = field(default_factory=VolumeParams)
-    output_dir: str = "./output"
-    seed: Optional[int] = None
-    timeframes: tuple[str, ...] = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
-    show_progress: bool = True
-    
-    def __post_init__(self) -> None:
-        """Validate configuration."""
-        if not self.assets:
-            raise ValueError("At least one asset must be configured")
-        
-        if self.start_timestamp >= self.end_timestamp:
-            raise ValueError(
-                f"start_timestamp ({self.start_timestamp}) must be less than "
-                f"end_timestamp ({self.end_timestamp})"
-            )
-        
-        if self.innovation_nu is not None and self.innovation_nu <= 2.0:
-            raise ValueError(
-                f"innovation_nu must be > 2 for finite variance, got {self.innovation_nu}"
-            )
-
-        n_assets = len(self.assets)
-
-        if self.correlation_matrix is not None:
-            if self.correlation_matrix.shape != (n_assets, n_assets):
-                raise ValueError(
-                    f"correlation_matrix shape {self.correlation_matrix.shape} "
-                    f"doesn't match number of assets ({n_assets})"
-                )
-            # Verify positive semi-definite
-            eigenvalues = np.linalg.eigvalsh(self.correlation_matrix)
-            if np.any(eigenvalues < -1e-10):
-                raise ValueError("correlation_matrix must be positive semi-definite")
-    
-    @property
-    def n_assets(self) -> int:
-        """Return number of assets."""
-        return len(self.assets)
-    
-    @property
-    def asset_symbols(self) -> list[str]:
-        """Return list of asset symbols."""
-        return [a.symbol for a in self.assets]
-    
-    @property
-    def duration_minutes(self) -> int:
-        """Return total duration in minutes."""
-        return (self.end_timestamp - self.start_timestamp) // 60
-    
-    def get_correlation_matrix(self) -> np.ndarray:
-        """
-        Get the correlation matrix, creating identity if not specified.
-        
-        Returns:
-            Correlation matrix as numpy array.
-        """
-        if self.correlation_matrix is not None:
-            return self.correlation_matrix
-        return np.eye(self.n_assets)
-
