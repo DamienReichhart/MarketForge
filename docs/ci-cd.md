@@ -58,7 +58,11 @@ guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► git
    - a tag for it already exists, in any spelling (`v3.0.0`, `V3.0`, `3.0.0`);
    - it is not newer than every existing version tag;
    - PyPI already has it (PyPI never accepts the same version twice);
-   - `CHANGELOG.md` has no non-empty `## <version>` section.
+   - `CHANGELOG.md` has no non-empty `## <version>` section;
+   - a commit since the latest tag is marked breaking (`feat!:`,
+     `refactor(api)!:`, or a `BREAKING CHANGE:` footer) and the version is not
+     a major bump (a minor bump below 1.0). The `!` is a promise to users:
+     either bump the major version or reword the commit.
 2. **ci** runs the full CI workflow on the commit. Nothing is published unless
    all of it passes.
 3. **publish** downloads the exact `dist` artifact CI built and tested, checks

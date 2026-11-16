@@ -4,8 +4,10 @@ Subcommands:
 
     guard        Resolve the version from pyproject.toml and refuse to release
                  it if it is invalid, already tagged, not newer than the latest
-                 tag, already on PyPI, or missing from CHANGELOG.md. Writes
-                 `version`, `tag` and `prerelease` to $GITHUB_OUTPUT.
+                 tag, already on PyPI, missing from CHANGELOG.md, or not a
+                 major bump although a commit since the latest tag is marked
+                 breaking. Writes `name`, `version`, `tag` and `prerelease` to
+                 $GITHUB_OUTPUT.
     check-dist   Check that dist/ holds exactly the sdist and wheel of a version.
     notes        Print the CHANGELOG.md section of a version (release notes).
 
@@ -115,6 +117,40 @@ def check_newer_than_tags(version: Version, tags: Iterable[str]) -> None:
             )
 
 
+# Conventional Commits: `feat!: ...`, `refactor(api)!: ...`, or a footer.
+_BREAKING_SUBJECT = re.compile(r"^[A-Za-z]+(?:\([^)]*\))?!:")
+_BREAKING_FOOTER = re.compile(r"^BREAKING[ -]CHANGE:", re.MULTILINE)
+
+
+def breaking_commits(messages: Iterable[str]) -> list[str]:
+    """Subjects of the commit messages marked as breaking changes."""
+    out = []
+    for message in messages:
+        subject = message.strip().splitlines()[0] if message.strip() else ""
+        if _BREAKING_SUBJECT.match(subject) or _BREAKING_FOOTER.search(message):
+            out.append(subject)
+    return out
+
+
+def check_breaking_bump(version: Version, latest: Version | None, breaking: list[str]) -> None:
+    """Fail if breaking commits are released without a major bump (minor below 1.0)."""
+    if not breaking or latest is None:
+        return
+    if latest.major == 0:
+        bumped = version.major > 0 or version.minor > latest.minor
+    else:
+        bumped = version.major > latest.major
+    if not bumped:
+        listed = "; ".join(breaking[:5]) + (
+            f" (+{len(breaking) - 5} more)" if len(breaking) > 5 else ""
+        )
+        raise ReleaseError(
+            f"{len(breaking)} commit(s) since {latest} are marked breaking ({listed}), "
+            f"but {version} is not a major release. Bump the major version, or reword "
+            "the commits if they do not break users"
+        )
+
+
 def changelog_section(text: str, version: str) -> str:
     """Return the body of the `## <version>` section of a changelog.
 
@@ -180,6 +216,23 @@ def git_tags() -> list[str]:
     return sorted(tags)
 
 
+def commit_messages_since(tag: str) -> list[str]:
+    """Full messages of the commits reachable from HEAD but not from `tag`."""
+    result = subprocess.run(
+        ["git", "log", "--format=%B%x1e", f"refs/tags/{tag}..HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ReleaseError(
+            f"cannot list the commits since tag '{tag}' ({result.stderr.strip()}); "
+            "check out the full history (fetch-depth: 0)"
+        )
+    return [m for m in result.stdout.split("\x1e") if m.strip()]
+
+
 def pypi_has_version(name: str, version: str, attempts: int = 4) -> bool:
     """True if PyPI already serves name==version. Retries transient errors."""
     url = f"https://pypi.org/pypi/{name}/{version}/json"
@@ -233,8 +286,14 @@ def cmd_guard(args: argparse.Namespace) -> None:
     print(f"Candidate release: {name} {version} (tag {tag})")
 
     tags = git_tags()
+    existing = tag_versions(tags)
     check_not_tagged(version, tags)
     check_newer_than_tags(version, tags)
+    latest = max(existing, default=None)
+    if latest is not None:
+        check_breaking_bump(
+            version, latest, breaking_commits(commit_messages_since(existing[latest]))
+        )
     changelog_section((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"), str(version))
     if not args.skip_pypi and pypi_has_version(name, str(version)):
         raise ReleaseError(
