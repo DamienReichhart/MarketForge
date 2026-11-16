@@ -98,9 +98,6 @@ marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 | `--no-progress` | Hide the progress bar. |
 | `--debug` (before the command) | Show full tracebacks. Errors are a single line otherwise. |
 
-The pre-3.0 form `marketforge -o ... --from ... --to ...` still works for one
-release and prints a deprecation note.
-
 ## Python API
 
 ```python

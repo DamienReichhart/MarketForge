@@ -39,27 +39,6 @@ def test_generate_writes_files_and_reports_seed(tmp_path):
     assert (tmp_path / "forex" / "EURUSD_m1.csv").exists()
 
 
-def test_legacy_flag_only_invocation_still_works(tmp_path):
-    res = _run(
-        "-o",
-        str(tmp_path),
-        "--from",
-        "1704153600",
-        "--to",
-        "1704240000",
-        "--assets",
-        "BTCUSD",
-        "-t",
-        "m1",
-        "--batch-size",
-        "10",
-        "--no-progress",
-    )
-    assert res.exit_code == 0, res.output
-    assert "deprecated" in res.output
-    assert (tmp_path / "crypto" / "BTCUSD_m1.csv").exists()
-
-
 def test_dry_run_writes_nothing(tmp_path):
     res = _run(
         "generate",

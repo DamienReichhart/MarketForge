@@ -10,9 +10,6 @@ Command-line interface.
     marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD --seed 42
     marketforge list-assets --market forex
     marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
-
-The pre-3.0 form ``marketforge -o ./data --from ... --to ...`` still works for
-one release and is routed to ``generate`` with a deprecation notice.
 """
 
 from __future__ import annotations
@@ -28,28 +25,13 @@ import click
 from marketforge import __version__
 from marketforge.config.settings import MarketType
 
-_LEGACY_IGNORED = ("--batch-size",)
-
 
 def _split(value: str | None) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()] if value else []
 
 
 class _Group(click.Group):
-    """Routes the pre-3.0 flag-only invocation to ``generate``."""
-
-    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
-        rest = [a for a in args if a != "--debug"]
-        if rest and rest[0].startswith("-") and rest[0] not in ("--help", "-h", "--version"):
-            click.secho(
-                "Note: 'marketforge --from ...' is deprecated; use 'marketforge generate --from ...'.",
-                fg="yellow",
-                err=True,
-            )
-            i = args.index(rest[0])
-            args = [*args[:i], "generate", *args[i:]]
-        rest_args: list[str] = super().parse_args(ctx, args)
-        return rest_args
+    """Prints unexpected errors as one line unless ``--debug`` is given."""
 
     def invoke(self, ctx: click.Context) -> Any:
         try:
@@ -144,8 +126,6 @@ def cli(debug: bool) -> None:
     default=None,
     help="Markets simulated in parallel. Default: one per market, up to the CPU count.",
 )
-@click.option("--threads", "--thread-count", "legacy_threads", type=int, hidden=True)
-@click.option("--batch-size", "legacy_batch", type=int, hidden=True)
 @click.option(
     "--dry-run",
     is_flag=True,
@@ -167,8 +147,6 @@ def generate(
     overrides: str | None,
     with_regime: bool,
     jobs: int | None,
-    legacy_threads: int | None,
-    legacy_batch: int | None,
     dry_run: bool,
     progress: bool,
 ) -> None:
@@ -177,15 +155,6 @@ def generate(
 
     from marketforge.api import generate_to_disk, plan_request
 
-    if legacy_batch is not None:
-        click.secho(
-            "Note: --batch-size is ignored since 3.0 (markets are simulated whole, day by day).",
-            fg="yellow",
-            err=True,
-        )
-    if legacy_threads is not None:
-        click.secho("Note: --threads is deprecated; use --jobs.", fg="yellow", err=True)
-        jobs = jobs or max(1, legacy_threads)
     market_list = _split(markets)
     if [m.lower() for m in market_list] == ["all"]:
         market_list = []
