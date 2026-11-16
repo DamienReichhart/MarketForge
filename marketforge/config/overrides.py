@@ -33,6 +33,7 @@ from __future__ import annotations
 import os
 import tomllib
 import warnings
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -51,8 +52,21 @@ class OverrideError(ValueError):
     """An override file is malformed or inconsistent with the catalog."""
 
 
-def read_overrides(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
-    """Parse an override file into {SYMBOL: {key: value}}."""
+# What users may pass as overrides: an override file, or the content of its
+# [instruments] table as a mapping {SYMBOL: {key: value}}.
+Overrides = str | os.PathLike[str] | Mapping[str, Mapping[str, Any]]
+
+
+def resolve_overrides(overrides: Overrides | None) -> dict[str, dict[str, Any]]:
+    """Checked overrides as {SYMBOL: {key: value}}, from a file or a mapping; {} for None."""
+    if overrides is None:
+        return {}
+    if isinstance(overrides, Mapping):
+        return _checked(overrides, "overrides")
+    return _read(overrides)
+
+
+def _read(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
     p = Path(path)
     try:
         with open(p, "rb") as fh:
@@ -66,17 +80,21 @@ def read_overrides(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
         raise OverrideError(
             f"{p}: unknown top-level table(s) {sorted(unknown_top)}; expected [instruments.SYMBOL]"
         )
-    entries = doc.get("instruments", {})
+    return _checked(doc.get("instruments", {}), str(p))
+
+
+def _checked(entries: Mapping[str, Any], where: str) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for symbol, body in entries.items():
-        if not isinstance(body, dict):
-            raise OverrideError(f"{p}: [instruments.{symbol}] must be a table")
+        if not isinstance(body, Mapping):
+            raise OverrideError(f"{where}: [instruments.{symbol}] must be a table")
         bad = set(body) - _KEYS
         if bad:
             raise OverrideError(
-                f"{p}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; valid: {sorted(_KEYS)}"
+                f"{where}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; "
+                f"valid: {sorted(_KEYS)}"
             )
-        out[symbol.upper()] = body
+        out[str(symbol).upper()] = dict(body)
     return out
 
 

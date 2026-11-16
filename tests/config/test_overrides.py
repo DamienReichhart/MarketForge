@@ -57,3 +57,22 @@ correlations = { BTCUSD = 0.6 }
 def test_invalid_overrides_are_explained(tmp_path, text, match):
     with pytest.raises(OverrideError, match=match):
         load_catalog(_write(tmp_path, text))
+
+
+def test_overrides_can_be_a_mapping():
+    cat = load_catalog(
+        {
+            "btcusd": {"start_price": 42000},
+            "MYCOIN": {
+                "market": "crypto",
+                "start_price": 1.5,
+                "volatility": 0.9,
+                "correlations": {"BTCUSD": 0.6},
+            },
+        }
+    )
+    crypto = cat[MarketType.CRYPTO]
+    assert crypto.get_instrument("BTCUSD").start_price == 42000
+    assert "MYCOIN" in crypto.symbols
+    with pytest.raises(OverrideError, match=r"overrides: \[instruments.BTCUSD\] has unknown key"):
+        load_catalog({"BTCUSD": {"price": 1}})

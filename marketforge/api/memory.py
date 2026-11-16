@@ -8,14 +8,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
 from marketforge.api.execution import execute, warn_about_empty
 from marketforge.api.parsing import Names, TimeLike
 from marketforge.api.planning import MarketPlan, plan_request
+from marketforge.config.overrides import Overrides
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
@@ -38,7 +37,7 @@ def generate(
     timeframes: Names = ("m1",),
     anomalies: Names = (),
     include_regime: bool = False,
-    overrides: str | Path | None = None,
+    overrides: Overrides | None = None,
 ) -> GeneratedData:
     """
     Generate candles in memory.
@@ -54,7 +53,8 @@ def generate(
         timeframes: Any of m1, m5, m15, m30, H1, H4, D1, W1.
         anomalies: Optional ``spikes`` and/or ``flash_crash``.
         include_regime: Add a ``regime`` column (market regime name at candle close).
-        overrides: Path to a TOML override file (custom prices, new instruments).
+        overrides: Path to a TOML override file, or the same content as
+            ``{SYMBOL: {key: value}}`` (custom prices, new instruments).
 
     Returns:
         :class:`GeneratedData` mapping symbol -> timeframe -> DataFrame with a

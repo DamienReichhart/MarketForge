@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import difflib
 from dataclasses import dataclass
-from pathlib import Path
 
 from marketforge.api.parsing import (
     Names,
@@ -23,6 +22,7 @@ from marketforge.api.parsing import (
     parse_timeframes,
 )
 from marketforge.config.loader import load_catalog
+from marketforge.config.overrides import Overrides
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
@@ -69,7 +69,7 @@ def plan_request(
     timeframes: Names = DEFAULT_TIMEFRAMES,
     anomalies: Names = (),
     include_regime: bool = False,
-    overrides: str | Path | None = None,
+    overrides: Overrides | None = None,
 ) -> Request:
     """
     Resolve user input into a :class:`Request`.

@@ -15,6 +15,7 @@ from pathlib import Path
 from marketforge.api.execution import execute, warn_about_empty
 from marketforge.api.parsing import Names, TimeLike
 from marketforge.api.planning import DEFAULT_TIMEFRAMES, MarketPlan, Request, plan_request
+from marketforge.config.overrides import Overrides
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
@@ -48,7 +49,7 @@ def generate_to_disk(
     timeframes: Names = DEFAULT_TIMEFRAMES,
     anomalies: Names = (),
     include_regime: bool = False,
-    overrides: str | Path | None = None,
+    overrides: Overrides | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,

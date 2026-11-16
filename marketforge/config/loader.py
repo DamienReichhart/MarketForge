@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import os
 from functools import cache
 
 from marketforge.config.catalog.crypto import correlations as crypto_correlations
@@ -18,6 +17,7 @@ from marketforge.config.catalog.forex import instruments as forex_instruments
 from marketforge.config.catalog.schema import MarketConfig
 from marketforge.config.catalog.stocks import correlations as stocks_correlations
 from marketforge.config.catalog.stocks import instruments as stocks_instruments
+from marketforge.config.overrides import Overrides, apply_overrides, resolve_overrides
 from marketforge.domain.markets import MarketType
 
 _BUILTIN = {
@@ -49,21 +49,18 @@ def load_market_config(market_type: MarketType | str) -> MarketConfig:
     )
 
 
-def load_catalog(
-    overrides: str | os.PathLike[str] | None = None,
-) -> dict[MarketType, MarketConfig]:
+def load_catalog(overrides: Overrides | None = None) -> dict[MarketType, MarketConfig]:
     """
-    Built-in catalog for every market, with an optional TOML override file applied.
+    Built-in catalog for every market, with optional overrides applied.
 
     Args:
-        overrides: Path to an override file (see :mod:`marketforge.config.overrides`).
+        overrides: Path to a TOML override file, or the content of its
+            ``[instruments]`` table as ``{SYMBOL: {key: value}}`` (see
+            :mod:`marketforge.config.overrides`).
 
     Returns:
         {MarketType: MarketConfig}; cached catalog objects are never mutated.
     """
     catalog = {m: load_market_config(m) for m in MarketType}
-    if overrides is None:
-        return catalog
-    from marketforge.config.overrides import apply_overrides, read_overrides
-
-    return apply_overrides(catalog, read_overrides(overrides))
+    resolved = resolve_overrides(overrides)
+    return apply_overrides(catalog, resolved) if resolved else catalog
