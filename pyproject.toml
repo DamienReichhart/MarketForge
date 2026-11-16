@@ -33,15 +33,14 @@ dependencies = [
     "pandas>=2.1",
     "click>=8.1",
     "tqdm>=4.66",
+    "pyarrow>=15",
     "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
-parquet = ["pyarrow>=15"]
 dev = [
     "mypy>=1.10",
     "pytest>=8.0",
-    "pyarrow>=15",
     "arch>=6.3",
     "statsmodels>=0.14",
 ]

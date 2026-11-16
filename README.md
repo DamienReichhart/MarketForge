@@ -75,8 +75,6 @@ cd marketforge
 pip install -e ".[dev]"
 ```
 
-Parquet output needs the optional `parquet` extra: `pip install "marketforge[parquet]"`.
-
 ### Verify Installation
 
 ```bash
