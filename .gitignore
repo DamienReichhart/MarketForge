@@ -16,4 +16,6 @@ __pycache__/
 *.pywp
 *.pyzw
 data/
-.venv/
+.venv/.coverage
+coverage.xml
+htmlcov/

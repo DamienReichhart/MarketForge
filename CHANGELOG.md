@@ -32,6 +32,18 @@ than 2.x**: every change below alters output, so the major version moves.
 - Volume has defined units: base-asset units for crypto (BTC was 50,000/min,
   now ~19/min like Binance), integer tick volume for forex, shares for stocks.
 
+### Packaging
+- Dependency floors raised to versions that actually work together:
+  `numpy>=2.2`, `numba>=0.61.2`, `scipy>=1.13`, `pandas>=2.2.2`,
+  `pyarrow>=16`. The previous floors could not be installed together, and
+  numpy < 2.2 broke the "extending the range never changes earlier candles"
+  guarantee. CI now tests the floors.
+- Python 3.14 is supported and tested.
+- The `dev` extra is replaced by PEP 735 dependency groups
+  (`pip install -e . --group dev`), so test tools are no longer published in
+  the package metadata.
+- The package ships a `py.typed` marker.
+
 ### Reproducibility
 - A seed now reproduces identical candles whatever instruments, timeframes,
   format or parallelism are chosen, and extending the end date never changes
