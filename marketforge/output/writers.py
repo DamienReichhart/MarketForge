@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import numpy as np
@@ -46,7 +46,7 @@ _FD_HEADROOM = 64
 _PRICE_FIELDS = ("open", "high", "low", "close")
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """On-disk format of generated candles."""
 
     CSV = "csv"

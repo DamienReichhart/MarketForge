@@ -2,7 +2,14 @@ import numpy as np
 import pytest
 
 from marketforge.config.defaults import get_market_defaults
-from marketforge.config.settings import GARCHParams, MarketType, RegimeParams
+from marketforge.config.settings import (
+    AnomalyType,
+    GARCHParams,
+    MarketType,
+    RegimeParams,
+    RegimeType,
+)
+from marketforge.output.writers import OutputFormat
 
 
 def test_garch_requires_stationarity():
@@ -26,3 +33,13 @@ def test_regime_time_scale_stretches_durations_not_destinations():
 def test_market_regimes_last_hours_not_minutes(market):
     durations = get_market_defaults(market).regime_params.expected_durations()
     assert min(durations) >= 120  # even crashes last a couple of hours
+
+
+@pytest.mark.parametrize(
+    "member", [MarketType.FOREX, AnomalyType.SPIKES, RegimeType.RANGE, OutputFormat.CSV]
+)
+def test_public_enums_format_as_their_value(member):
+    # StrEnum contract (3.1.0): str() and f-strings give the value, not "Class.MEMBER".
+    assert str(member) == member.value
+    assert f"{member}" == member.value
+    assert member == member.value

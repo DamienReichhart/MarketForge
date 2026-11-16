@@ -14,10 +14,10 @@ values (start price, volatility, drift, volume) live in the catalogs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class MarketType(str, Enum):
+class MarketType(StrEnum):
     """A market: a family of instruments sharing one calendar and one regime path."""
 
     CRYPTO = "crypto"
@@ -25,14 +25,14 @@ class MarketType(str, Enum):
     STOCKS = "stocks"
 
 
-class AnomalyType(str, Enum):
+class AnomalyType(StrEnum):
     """Optional, deliberately unrealistic events layered on the simulation."""
 
     SPIKES = "spikes"
     FLASH_CRASH = "flash_crash"
 
 
-class RegimeType(str, Enum):
+class RegimeType(StrEnum):
     """Market-wide regimes, in the order used by regime parameters and labels."""
 
     TREND_UP = "trend_up"
