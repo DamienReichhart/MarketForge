@@ -82,6 +82,7 @@ release = [
     "twine>=6.1",
     "check-wheel-contents>=0.6",
     "validate-pyproject[all]>=0.23",
+    "cyclonedx-bom>=7.0",
 ]
 audit = [
     "pip-audit>=2.9",
