@@ -253,3 +253,18 @@ def test_flash_crash_dips_and_recovers():
     assert 0 < hit.size <= spec_crash.anomaly.flash_crash_recovery_candles
     assert ratio.min() == pytest.approx(1.0 - spec_crash.anomaly.flash_crash_magnitude)
     assert np.all(np.diff(hit) == 1)  # one contiguous episode, back to the base path after
+
+
+@pytest.mark.parametrize("cut_hours", [3, 9, 15, 21])
+def test_a_flash_crash_does_not_move_with_the_end_of_the_range(cut_hours):
+    # Seed 0 crashes XRPUSD on 2024-01-03; where it starts must not depend on
+    # how much of that day the range covers.
+    spec = build_market_spec(load_market_config("crypto"), frozenset({AnomalyType.FLASH_CRASH}))
+    start, crash_day = JAN_1_2024 + DAY, JAN_1_2024 + 2 * DAY
+    cut = Bars.concat(
+        simulate_days(MarketSimulator(spec, 0, ["XRPUSD"]), start, crash_day + cut_hours * 3600)
+    )
+    whole = Bars.concat(simulate_days(MarketSimulator(spec, 0, ["XRPUSD"]), start, crash_day + DAY))
+    n = len(cut)
+    for field in ("open", "high", "low", "close", "volume"):
+        np.testing.assert_array_equal(getattr(cut, field), getattr(whole, field)[:n])

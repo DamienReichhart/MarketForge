@@ -26,9 +26,16 @@ def inject_anomalies(
     n_market_instruments: int,
     selected: np.ndarray,
     select: Callable[[np.ndarray], np.ndarray],
+    session_size: int,
+    positions: np.ndarray,
 ) -> None:
     """
     Add the configured anomalies to one day of m1 candles, in place.
+
+    ``session_size`` is the number of open minutes of the whole day and
+    ``positions`` the place of each candle among them: a flash crash is placed
+    in the day's session, so it stays where it is when the requested range
+    covers only part of the day.
 
     Draws cover the whole market in a fixed order (reproducibility contract);
     ``select`` keeps the simulated minutes and the selected instruments of a
@@ -56,12 +63,11 @@ def inject_anomalies(
 
     if AnomalyType.FLASH_CRASH in cfg.types:
         length = int(cfg.flash_crash_recovery_candles)
-        n = len(res)
-        if n > length + 1:
+        if session_size > length + 1:
             envelope = flash_crash_envelope(length, cfg.flash_crash_magnitude)
             for i in np.nonzero(u_crash < cfg.flash_crash_probability)[0]:
-                s = int(u_start[i] * (n - length - 1))
-                _apply_envelope(res, int(i), s, envelope)
+                s = int(u_start[i] * (session_size - length - 1))
+                _apply_envelope(res, int(i), positions - s, envelope)
 
 
 def flash_crash_envelope(length: int, magnitude: float) -> np.ndarray:
@@ -76,12 +82,19 @@ def flash_crash_envelope(length: int, magnitude: float) -> np.ndarray:
     return np.asarray(1.0 - depth)
 
 
-def _apply_envelope(res: Bars, i: int, start: int, env: np.ndarray) -> None:
-    """Scale candles [start, start+len) of instrument i so prices dip and recover."""
-    k = env.size
-    sl = slice(start, start + k)
-    e_close = env
-    e_open = np.concatenate(([1.0], env[:-1]))
+def _apply_envelope(res: Bars, i: int, step: np.ndarray, env: np.ndarray) -> None:
+    """
+    Scale the candles of instrument i so prices dip and recover.
+
+    ``step`` is each candle's index into the envelope; candles outside
+    [0, len(env)) are left alone.
+    """
+    sl = np.nonzero((step >= 0) & (step < env.size))[0]
+    if sl.size == 0:
+        return
+    at = step[sl]
+    e_close = env[at]
+    e_open = np.where(at > 0, env[at - 1], 1.0)
     o = res.open[sl, i] * e_open
     c = res.close[sl, i] * e_close
     h = res.high[sl, i] * np.maximum(e_open, e_close)

@@ -332,6 +332,10 @@ class MarketSimulator:
                 n_market_instruments=self._n_instruments,
                 selected=self._inst,
                 select=lambda draws: self._select(draws, rows),
+                session_size=session.rows.size,
+                positions=(
+                    np.arange(rows.size) if session.positions is None else session.positions
+                ),
             )
         if self.spec.defaults.integer_volume:
             result.volume = np.maximum(np.rint(result.volume), 1.0)
