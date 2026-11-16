@@ -25,7 +25,7 @@ from marketforge.domain.markets import MarketType
 from marketforge.domain.time import REFERENCE_YEAR, SECONDS_PER_DAY
 
 if TYPE_CHECKING:
-    from marketforge.trading_calendar import TradingCalendar
+    from marketforge.calendars.trading_calendar import TradingCalendar
 
 # FX activity windows (UTC minutes-of-day).
 _FX_ASIAN = (0, 420)  # 00:00-07:00

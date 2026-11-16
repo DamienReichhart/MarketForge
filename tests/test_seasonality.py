@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
+from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.core.seasonality import SessionSeasonality
 from marketforge.domain.markets import MarketType
-from marketforge.trading_calendar import get_calendar
 
 JAN_1_2024 = 1704067200
 

@@ -208,7 +208,7 @@ def generate(
 def _print_plan(request: Any, fmt: str, output_dir: str | None, random_seed: bool) -> None:
     import datetime as dt
 
-    from marketforge.trading_calendar import get_calendar
+    from marketforge.calendars.trading_calendar import get_calendar
 
     def iso(t: int) -> str:
         return dt.datetime.fromtimestamp(t, dt.UTC).strftime("%Y-%m-%d %H:%M UTC")

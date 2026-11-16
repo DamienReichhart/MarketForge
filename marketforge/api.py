@@ -32,6 +32,7 @@ import pandas as pd
 from threadpoolctl import threadpool_limits
 
 from marketforge.aggregation.streaming import SUPPORTED_TIMEFRAMES, BarAggregator
+from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.config.loader import load_catalog
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.bars import Bars
@@ -40,7 +41,6 @@ from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
 from marketforge.engine import MarketSimulator, MarketSpec, build_market_spec
 from marketforge.output.writers import CandleWriter, OutputFormat, ensure_open_file_capacity
-from marketforge.trading_calendar import get_calendar
 
 TimeLike = int | float | str | dt.datetime | dt.date
 DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")

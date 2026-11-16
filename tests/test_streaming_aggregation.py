@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 
 from marketforge.aggregation.streaming import BarAggregator
+from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.config.loader import load_market_config
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 from marketforge.engine import MarketSimulator, build_market_spec
-from marketforge.trading_calendar import get_calendar
 
 
 def _ts(s: str) -> int:

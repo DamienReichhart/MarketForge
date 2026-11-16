@@ -20,10 +20,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from marketforge.calendars.trading_calendar import TradingCalendar
 from marketforge.domain.bars import Bars
 from marketforge.domain.time import MINUTES_PER_DAY
 from marketforge.domain.timeframes import Timeframe
-from marketforge.trading_calendar import TradingCalendar
 
 SUPPORTED_TIMEFRAMES = (
     Timeframe.m1,

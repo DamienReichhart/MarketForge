@@ -42,6 +42,7 @@ from functools import cache, lru_cache
 
 import numpy as np
 
+from marketforge.calendars.trading_calendar import TradingCalendar, get_calendar
 from marketforge.config.catalog.base import AssetParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
 from marketforge.config.settings import AnomalyConfig
@@ -59,7 +60,6 @@ from marketforge.core.seasonality import SessionSeasonality
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import MINUTES_PER_DAY, REFERENCE_YEAR, SECONDS_PER_DAY
-from marketforge.trading_calendar import TradingCalendar, get_calendar
 
 # Stable per-market stream identifiers (part of the reproducibility contract).
 _MARKET_STREAM = {MarketType.CRYPTO: 1, MarketType.FOREX: 2, MarketType.STOCKS: 3}
