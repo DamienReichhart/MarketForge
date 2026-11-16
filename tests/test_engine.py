@@ -116,3 +116,14 @@ def test_regimes_persist_for_hours():
     r = _run("crypto", 8, JAN_1_2024, JAN_1_2024 + 14 * DAY)
     switches = np.count_nonzero(np.diff(r.regime))
     assert r.regime.size / max(switches, 1) > 120  # mean regime length > 2 h
+
+
+def test_volume_units_per_market():
+    fx = _run("forex", 1, JAN_1_2024 + DAY, JAN_1_2024 + 2 * DAY)
+    assert np.all(fx.volume == np.rint(fx.volume)) and fx.volume.min() >= 1
+    syms = build_market_spec(load_market_config("forex")).symbols
+    eurusd = fx.volume[:, syms.index("EURUSD")]
+    assert 20 < eurusd.mean() < 150  # ticks per minute
+    btc = _run("crypto", 1, JAN_1_2024, JAN_1_2024 + DAY)
+    i = build_market_spec(load_market_config("crypto")).symbols.index("BTCUSD")
+    assert 5 < btc.volume[:, i].mean() < 80  # BTC per minute
