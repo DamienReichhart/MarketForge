@@ -1,6 +1,6 @@
 ---
 title: What it is not
-description: The honest limits of synthetic market data, and of MarketForge's model in particular.
+description: "The honest limits of synthetic market data, and of MarketForge's model in particular."
 ---
 
 MarketForge is useful precisely because it is honest about what synthetic data can and cannot do. Read this page before you draw conclusions from anything trained or tested on it.

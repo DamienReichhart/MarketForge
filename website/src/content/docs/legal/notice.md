@@ -1,6 +1,6 @@
 ---
 title: Legal notice
-description: Publisher, publication director and hosting provider of this website, under French law (LCEN).
+description: "Publisher, publication director and hosting provider of this website, under French law (LCEN)."
 tableOfContents: false
 editUrl: false
 ---

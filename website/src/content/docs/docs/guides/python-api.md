@@ -1,6 +1,6 @@
 ---
 title: Python API
-description: generate(), generate_to_disk(), extend(), instruments(), validate() and parse_time().
+description: "generate(), generate_to_disk(), extend(), instruments(), validate() and parse_time()."
 ---
 
 Everything the command line does is available from Python. The supported API is what `import marketforge` exposes; module paths below it can change between releases.

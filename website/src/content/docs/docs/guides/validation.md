@@ -1,6 +1,6 @@
 ---
 title: Validation
-description: The stylized facts every MarketForge instrument is checked against, the bands measured on real data, and how to validate your own files.
+description: "The stylized facts every MarketForge instrument is checked against, the bands measured on real data, and how to validate your own files."
 ---
 
 Realism is not a claim in MarketForge, it is a test. The [validation bands are the realism contract](../../adr/0006-validation-bands-are-the-realism-contract/): a change that pushes any instrument outside them fails CI.

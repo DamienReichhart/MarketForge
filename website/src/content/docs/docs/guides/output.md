@@ -1,6 +1,6 @@
 ---
 title: Output format
-description: Files, columns, rounding, timestamps and the manifest that MarketForge writes.
+description: "Files, columns, rounding, timestamps and the manifest that MarketForge writes."
 ---
 
 ## Layout

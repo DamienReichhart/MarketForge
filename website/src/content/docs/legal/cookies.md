@@ -1,6 +1,6 @@
 ---
 title: Cookie policy
-description: This website sets no cookies. The only thing it stores in your browser is your theme choice.
+description: "This website sets no cookies. The only thing it stores in your browser is your theme choice."
 tableOfContents: false
 editUrl: false
 ---

@@ -1,6 +1,6 @@
 ---
 title: Stress testing
-description: Run a strategy through hundreds of alternative histories, crashes and flash crashes included, and look at the distribution of outcomes instead of one equity curve.
+description: "Run a strategy through hundreds of alternative histories, crashes and flash crashes included, and look at the distribution of outcomes instead of one equity curve."
 ---
 
 History happened once. A strategy that survived it may simply have been lucky with the order of events. MarketForge lets you replay the same market structure many times over, with a different sequence of regimes, shocks and crashes each time.

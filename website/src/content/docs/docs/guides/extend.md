@@ -1,6 +1,6 @@
 ---
 title: Extending a dataset
-description: Continue a dataset forward in time with marketforge extend, byte-identical to generating the whole range at once.
+description: "Continue a dataset forward in time with marketforge extend, byte-identical to generating the whole range at once."
 ---
 
 ```bash

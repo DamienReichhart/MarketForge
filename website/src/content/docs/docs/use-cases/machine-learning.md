@@ -1,6 +1,6 @@
 ---
 title: Training ML models
-description: Use MarketForge to pre-train, augment and debug AI trading models, with ground-truth regime labels and leak-free splits.
+description: "Use MarketForge to pre-train, augment and debug AI trading models, with ground-truth regime labels and leak-free splits."
 ---
 
 Real market history is the scarcest input of a trading model: there is only one of it, it is unlabelled, and every model you fit on it leaks a little of it into the next one. MarketForge gives you as much realistic data as you need, with labels real data can never provide.

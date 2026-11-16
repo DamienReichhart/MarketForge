@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install MarketForge from PyPI or from source. Python 3.12 or newer.
+description: "Install MarketForge from PyPI or from source. Python 3.12 or newer."
 ---
 
 MarketForge is a pure-Python package with compiled [Numba](https://numba.pydata.org/) kernels. It needs **Python 3.12 or newer** and runs on Linux, macOS and Windows.

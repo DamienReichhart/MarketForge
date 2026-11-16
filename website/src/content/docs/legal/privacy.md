@@ -1,6 +1,6 @@
 ---
 title: Privacy policy
-description: What personal data this website processes (almost none), why, and your rights under the GDPR.
+description: "What personal data this website processes (almost none), why, and your rights under the GDPR."
 editUrl: false
 ---
 
