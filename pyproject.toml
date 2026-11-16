@@ -79,6 +79,20 @@ dev = [
     {include-group = "typecheck"},
     {include-group = "lint"},
 ]
+# Used by CI/CD only (.github/workflows).
+release = [
+    "packaging>=24.2",
+    "twine>=6.1",
+    "check-wheel-contents>=0.6",
+    "validate-pyproject[all]>=0.23",
+]
+audit = [
+    "pip-audit>=2.9",
+]
+workflow-lint = [
+    "actionlint-py>=1.7.7",
+    "zizmor>=1.20",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
