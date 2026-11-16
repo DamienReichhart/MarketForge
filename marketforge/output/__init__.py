@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
 
-"""Output module for CSV export."""
+"""Writing candles to CSV and Parquet."""
 
-from marketforge.output.csv_writer import CSVWriter
+from marketforge.output.writers import CandleWriter, OutputFormat
 
-__all__ = ["CSVWriter"]
-
+__all__ = ["CandleWriter", "OutputFormat"]

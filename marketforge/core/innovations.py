@@ -5,90 +5,47 @@
 # root for full license information.
 
 """
-Pluggable innovation generators for correlated return shocks.
+Correlated, unit-variance shocks.
 
-Provides the standardized (unit-variance) correlated innovations z_t that drive
-the GARCH/return recursion. Two implementations:
+Multivariate Student-t via a normal-variance mixture:
 
-- GaussianInnovations: classic multivariate normal (thin tails).
-- StudentTInnovations: multivariate Student-t via a normal-variance mixture,
-  giving heavy tails AND tail dependence (assets get extreme draws together).
+    Y = Z @ L^T             correlated normals (L = Cholesky factor)
+    W = chi2(nu) / nu       ONE mixing variable per minute, shared by all series
+    z = Y / sqrt(W) * sqrt((nu - 2) / nu)
+
+Sharing W across series gives tail dependence: extreme minutes hit every
+instrument of a market together, as in real sell-offs. With ``nu=None`` the
+shocks are Gaussian.
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from typing import Optional
+
 import numpy as np
 
-from marketforge.utils.random import RandomState
 
-
-class InnovationGenerator(ABC):
-    """Abstract base for correlated, unit-variance innovation generators."""
-
-    @abstractmethod
-    def generate(
-        self,
-        rng: RandomState,
-        n_steps: int,
-        n_assets: int,
-        cholesky_lower: np.ndarray,
-    ) -> np.ndarray:
-        """
-        Generate correlated innovations of shape (n_steps, n_assets).
-
-        The result has (approximately) unit marginal variance per asset and a
-        correlation matrix equal to ``cholesky_lower @ cholesky_lower.T``.
-        """
-        ...
-
-
-class GaussianInnovations(InnovationGenerator):
-    """Multivariate standard-normal innovations (thin tails)."""
-
-    def generate(
-        self,
-        rng: RandomState,
-        n_steps: int,
-        n_assets: int,
-        cholesky_lower: np.ndarray,
-    ) -> np.ndarray:
-        z = rng.standard_normal((n_steps, n_assets))
-        return np.asarray(z @ cholesky_lower.T)
-
-
-class StudentTInnovations(InnovationGenerator):
+def correlated_shocks(
+    normals: np.ndarray,
+    chi2: np.ndarray,
+    cholesky_lower: np.ndarray,
+    nu: Optional[float],
+) -> np.ndarray:
     """
-    Multivariate Student-t innovations via normal-variance mixture.
+    Turn independent draws into correlated unit-variance shocks.
 
-    Construction:
-        Y = Z @ Lᵀ              correlated normals
-        W = chi2(nu) / nu       shared mixing variable per time step
-        T = Y / sqrt(W)         multivariate-t (E[T Tᵀ] = nu/(nu-2) · Σ)
-        z = T * sqrt((nu-2)/nu) standardized to unit variance
+    Args:
+        normals: (n, F) independent standard normals.
+        chi2: (n,) chi-square(nu) draws (ignored when ``nu`` is None).
+        cholesky_lower: (F, F) lower Cholesky factor of the correlation matrix.
+        nu: Student-t degrees of freedom (> 2), or None for Gaussian shocks.
 
-    A single shared W per row yields joint tail dependence (simultaneous
-    extreme moves across assets), a documented feature of real markets.
+    Returns:
+        (n, F) shocks with unit variance and the requested correlation.
     """
-
-    def __init__(self, nu: float) -> None:
-        if nu <= 2.0:
-            raise ValueError(f"nu must be > 2 for finite variance, got {nu}")
-        self._nu = float(nu)
-
-    @property
-    def nu(self) -> float:
-        return self._nu
-
-    def generate(
-        self,
-        rng: RandomState,
-        n_steps: int,
-        n_assets: int,
-        cholesky_lower: np.ndarray,
-    ) -> np.ndarray:
-        z = rng.standard_normal((n_steps, n_assets))
-        correlated = z @ cholesky_lower.T
-        mixing = rng.chisquare(self._nu, size=n_steps) / self._nu  # (n_steps,)
-        t = correlated / np.sqrt(mixing)[:, None]
-        return np.asarray(t * np.sqrt((self._nu - 2.0) / self._nu))
+    y = normals @ cholesky_lower.T
+    if nu is None:
+        return np.asarray(y)
+    if nu <= 2.0:
+        raise ValueError(f"nu must be > 2 for finite variance, got {nu}")
+    return np.asarray(y / np.sqrt(chi2 / nu)[:, None] * np.sqrt((nu - 2.0) / nu))

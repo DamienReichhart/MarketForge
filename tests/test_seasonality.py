@@ -1,53 +1,44 @@
 import numpy as np
+import pytest
+
 from marketforge.config.settings import MarketType
-from marketforge.core.seasonality import SeasonalityModel
+from marketforge.core.seasonality import SessionSeasonality
+from marketforge.trading_calendar import get_calendar
+
+JAN_1_2024 = 1704067200
 
 
-def _one_day_minutely():
-    # 1440 one-minute timestamps starting at a Monday 00:00 UTC (2024-01-01 is Monday)
-    start = 1704067200
-    return np.arange(start, start + 1440 * 60, 60, dtype=np.int64)
+@pytest.mark.parametrize("market", list(MarketType))
+def test_factor_is_positive_and_variance_neutral_over_a_year(market):
+    cal = get_calendar(market)
+    ts = cal.open_minutes(JAN_1_2024, JAN_1_2024 + 365 * 86400)
+    f = SessionSeasonality(cal).factor(ts)
+    assert np.all(f > 0)
+    assert abs(np.mean(f ** 2) - 1.0) < 0.02
 
 
-def test_multiplier_is_positive_and_variance_neutral():
-    ts = _one_day_minutely()
-    for mt in (MarketType.STOCKS, MarketType.FOREX, MarketType.CRYPTO):
-        s = SeasonalityModel(mt).multiplier_series(ts)
-        assert s.shape == ts.shape
-        assert np.all(s > 0)
-        assert abs(np.mean(s ** 2) - 1.0) < 1e-6
-
-
-def test_stocks_open_close_exceed_midday():
-    ts = _one_day_minutely()
-    s = SeasonalityModel(MarketType.STOCKS).multiplier_series(ts)
-    minutes = (ts % 86400) // 60
-    open_v = s[np.argmin(np.abs(minutes - 870))]
-    close_v = s[np.argmin(np.abs(minutes - 1260))]
-    midday = s[np.argmin(np.abs(minutes - 1065))]
-    assert open_v > midday
-    assert close_v > midday
-
-
-def test_crypto_weekend_below_weekday():
-    sat = np.array([1704542400], dtype=np.int64)   # 2024-01-06 Saturday 12:00 UTC (dow=5)
-    wed = np.array([1704283200], dtype=np.int64)   # 2024-01-03 Wednesday 12:00 UTC (dow=2)
-    model = SeasonalityModel(MarketType.CRYPTO)
-    combo = np.concatenate([sat, wed])
-    s = model.multiplier_series(combo)
-    assert s[0] < s[1]
-
-
-def test_session_seasonality_is_window_independent_and_u_shaped():
-    from marketforge.core.seasonality import SessionSeasonality
-    from marketforge.trading_calendar import get_calendar
-
+def test_stocks_are_u_shaped_and_window_independent():
     cal = get_calendar(MarketType.STOCKS)
     model = SessionSeasonality(cal)
     day = cal.open_minutes(1704240000, 1704326400)  # 2024-01-03, one session
-    week = cal.open_minutes(1704067200, 1704067200 + 7 * 86400)
-    # Same minute, same factor, whatever window it was requested in.
+    week = cal.open_minutes(JAN_1_2024, JAN_1_2024 + 7 * 86400)
     np.testing.assert_allclose(model.factor(day), model.factor(week[np.isin(week, day)]))
     f = model.factor(day)
     mid = f[len(f) // 2]
     assert f[0] > 1.3 * mid and f[-1] > 1.2 * mid
+
+
+def test_crypto_weekend_is_quieter_than_weekdays():
+    cal = get_calendar(MarketType.CRYPTO)
+    ts = cal.open_minutes(JAN_1_2024, JAN_1_2024 + 7 * 86400)  # Monday..Sunday
+    f = SessionSeasonality(cal).factor(ts)
+    weekday = ((ts // 86400) + 3) % 7
+    assert f[weekday >= 5].mean() < f[weekday < 5].mean()
+
+
+def test_forex_london_new_york_overlap_is_most_active():
+    cal = get_calendar(MarketType.FOREX)
+    ts = cal.open_minutes(JAN_1_2024, JAN_1_2024 + 86400)
+    f = SessionSeasonality(cal).factor(ts)
+    hour = (ts % 86400) // 3600
+    assert f[(hour >= 13) & (hour < 16)].mean() > f[(hour >= 0) & (hour < 7)].mean()
