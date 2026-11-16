@@ -295,10 +295,45 @@ jobs:
         with:
           fail-on-severity: moderate
 
+  release-readiness:
+    # A merge into main releases (cd.yml). Run the release guard before the
+    # merge, so a missing version bump, CHANGELOG section or major bump for
+    # breaking commits blocks the PR instead of failing CD after the merge.
+    name: Release readiness
+    if: >-
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          activate-environment: "true"
+          enable-cache: "false"
+      - name: Install release tools
+        run: uv pip install --group release
+      - name: Check that merging this releases a valid new version
+        run: python .github/scripts/release.py guard
+
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, typecheck, test, min-deps, build, audit, workflows, dependency-review]
+    needs:
+      - lint
+      - typecheck
+      - test
+      - min-deps
+      - build
+      - audit
+      - workflows
+      - dependency-review
+      - release-readiness
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
