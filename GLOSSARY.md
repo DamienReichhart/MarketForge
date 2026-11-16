@@ -87,6 +87,14 @@ _Avoid_: phase, mode, state
 An optional, deliberately unrealistic event layered on top of the base simulation: a spike or a flash crash.
 _Avoid_: event, glitch, gap (gaps are not anomalies)
 
+**Turbulence**:
+The market's current volatility level relative to normal (GARCH multiplier times regime multiplier, excluding intraday seasonality); volume rises with it.
+_Avoid_: stress, heat
+
+**Validation band**:
+The range a stylized-fact statistic of generated data must fall in for a market, anchored to the same statistic measured on real data.
+_Avoid_: threshold, target, KPI
+
 **Stylized fact**:
 A statistical property documented for real returns (heavy tails, volatility clustering, leverage effect, realistic range) that generated data is validated against.
 _Avoid_: realism metric, KPI
