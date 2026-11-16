@@ -95,6 +95,10 @@ _Avoid_: event, glitch, gap (gaps are not anomalies)
 The market's current volatility level relative to normal (GARCH multiplier times regime multiplier, excluding intraday seasonality); volume rises with it.
 _Avoid_: stress, heat
 
+**Spread**:
+The quoted bid-ask difference around a candle's mid price, in price units; candle prices are mid prices.
+_Avoid_: commission, slippage, cost
+
 **Validation band**:
 The range a stylized-fact statistic of generated data must fall in for a market, anchored to the same statistic measured on real data.
 _Avoid_: threshold, target, KPI
@@ -102,3 +106,17 @@ _Avoid_: threshold, target, KPI
 **Stylized fact**:
 A statistical property documented for real returns (heavy tails, volatility clustering, leverage effect, realistic range) that generated data is validated against.
 _Avoid_: realism metric, KPI
+
+### Datasets
+
+**Dataset**:
+The directory of candle files one generation produces, together with its manifest.
+_Avoid_: output directory (in prose), dump, export
+
+**Manifest**:
+The record kept inside a dataset of how it was produced: version, seed, range, instruments, timeframes, format and overrides.
+_Avoid_: metadata, run log, config
+
+**Extension**:
+Continuing a dataset forward in time so that it equals the dataset a single longer generation would have produced.
+_Avoid_: append, resume, update
