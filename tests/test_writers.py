@@ -11,12 +11,16 @@ from marketforge.output.writers import CandleWriter, OutputFormat
 def _bars(t0: int, n: int) -> Bars:
     ts = t0 + 60 * np.arange(n, dtype=np.int64)
     p = np.column_stack([np.linspace(1.0851234567891, 1.09, n), np.linspace(150.0, 151.0, n)])
-    return Bars(ts, p, p * 1.001, p * 0.999, p, np.full((n, 2), 1234.567891), np.zeros(n, dtype=np.int8))
+    return Bars(
+        ts, p, p * 1.001, p * 0.999, p, np.full((n, 2), 1234.567891), np.zeros(n, dtype=np.int8)
+    )
 
 
 @pytest.mark.parametrize("fmt", list(OutputFormat))
 def test_appends_are_equivalent_to_one_write(tmp_path, fmt):
-    w = CandleWriter(tmp_path, "forex", ["EURUSD", "USDJPY"], [0, 1], [Timeframe.m1, Timeframe.D1], fmt, True)
+    w = CandleWriter(
+        tmp_path, "forex", ["EURUSD", "USDJPY"], [0, 1], [Timeframe.m1, Timeframe.D1], fmt, True
+    )
     w.write(Timeframe.m1, _bars(0, 3))
     w.write(Timeframe.m1, _bars(180, 2))
     paths = w.close()

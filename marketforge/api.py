@@ -44,7 +44,10 @@ DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
 REGIME_NAMES = ("trend_up", "trend_down", "range", "high_volatility", "crash")
 
 _ANOMALY_ALIASES = {
-    "spike": "spikes", "flash": "flash_crash", "crash": "flash_crash", "flashcrash": "flash_crash",
+    "spike": "spikes",
+    "flash": "flash_crash",
+    "crash": "flash_crash",
+    "flashcrash": "flash_crash",
 }
 
 
@@ -90,7 +93,9 @@ def parse_timeframes(values: Iterable[str]) -> list[Timeframe]:
     for v in values:
         tf = Timeframe.from_string(v.strip())
         if tf not in SUPPORTED_TIMEFRAMES:
-            raise ValueError(f"Unsupported timeframe {v!r}; choose from {[t.name for t in SUPPORTED_TIMEFRAMES]}")
+            raise ValueError(
+                f"Unsupported timeframe {v!r}; choose from {[t.name for t in SUPPORTED_TIMEFRAMES]}"
+            )
         if tf not in out:
             out.append(tf)
     if not out:
@@ -184,7 +189,8 @@ def plan_request(
 
     wanted_markets = (
         [m if isinstance(m, MarketType) else MarketType(str(m).strip().lower()) for m in markets]
-        if markets else None
+        if markets
+        else None
     )
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
     by_market: dict[MarketType, list[str]] = {}
@@ -192,7 +198,9 @@ def plan_request(
         requested = list(dict.fromkeys(a.strip().upper() for a in assets if a.strip()))
         unknown = [a for a in requested if a not in symbol_market]
         if unknown:
-            raise ValueError(f"Unknown instrument(s): {', '.join(unknown)}. Run 'marketforge list-assets'.")
+            raise ValueError(
+                f"Unknown instrument(s): {', '.join(unknown)}. Run 'marketforge list-assets'."
+            )
         for a in requested:
             m = symbol_market[a]
             if wanted_markets is None or m in wanted_markets:
@@ -232,8 +240,15 @@ def _run_market(
         if res is not None:
             # Only the selected instruments are aggregated and written.
             c = cols
-            m1 = Bars(res.timestamps, res.open[:, c], res.high[:, c], res.low[:, c],
-                      res.close[:, c], res.volume[:, c], res.regime)
+            m1 = Bars(
+                res.timestamps,
+                res.open[:, c],
+                res.high[:, c],
+                res.low[:, c],
+                res.close[:, c],
+                res.volume[:, c],
+                res.regime,
+            )
             for tf, agg in aggs.items():
                 sink(plan, tf, agg.push(m1))
         if on_day is not None:
@@ -302,8 +317,15 @@ def generate(
         volume (and regime).
     """
     request = plan_request(
-        assets, markets, start=start, end=end, seed=seed, timeframes=timeframes,
-        anomalies=anomalies, include_regime=include_regime, overrides=overrides,
+        assets,
+        markets,
+        start=start,
+        end=end,
+        seed=seed,
+        timeframes=timeframes,
+        anomalies=anomalies,
+        include_regime=include_regime,
+        overrides=overrides,
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
 
@@ -326,13 +348,18 @@ def generate(
 def _frame(bars: Optional[Bars], j: int, include_regime: bool) -> pd.DataFrame:
     if bars is None:
         ts = np.empty(0, dtype=np.int64)
-        data: dict[str, np.ndarray] = {c: np.empty(0) for c in ("open", "high", "low", "close", "volume")}
+        data: dict[str, np.ndarray] = {
+            c: np.empty(0) for c in ("open", "high", "low", "close", "volume")
+        }
         regime = np.empty(0, dtype=np.int8)
     else:
         ts = bars.timestamps
         data = {
-            "open": bars.open[:, j], "high": bars.high[:, j], "low": bars.low[:, j],
-            "close": bars.close[:, j], "volume": bars.volume[:, j],
+            "open": bars.open[:, j],
+            "high": bars.high[:, j],
+            "low": bars.low[:, j],
+            "close": bars.close[:, j],
+            "volume": bars.volume[:, j],
         }
         regime = bars.regime
     index = pd.DatetimeIndex(pd.to_datetime(ts, unit="s", utc=True), name="time")
@@ -347,7 +374,9 @@ class DiskReport:
     """Result of :func:`generate_to_disk`."""
 
     seed: int
-    paths: dict[str, dict[str, dict[str, Path]]] = field(default_factory=dict)  # market -> symbol -> tf -> path
+    paths: dict[str, dict[str, dict[str, Path]]] = field(
+        default_factory=dict
+    )  # market -> symbol -> tf -> path
 
     @property
     def n_files(self) -> int:
@@ -380,13 +409,25 @@ def generate_to_disk(
     """
     if request is None:
         request = plan_request(
-            assets, markets, start=start, end=end, seed=seed, timeframes=timeframes,
-            anomalies=anomalies, include_regime=include_regime, overrides=overrides,
+            assets,
+            markets,
+            start=start,
+            end=end,
+            seed=seed,
+            timeframes=timeframes,
+            anomalies=anomalies,
+            include_regime=include_regime,
+            overrides=overrides,
         )
     writers = {
         plan.market: CandleWriter(
-            output_dir, plan.market.value, plan.selected, list(range(len(plan.selected))),
-            request.timeframes, OutputFormat(fmt), request.include_regime,
+            output_dir,
+            plan.market.value,
+            plan.selected,
+            list(range(len(plan.selected))),
+            request.timeframes,
+            OutputFormat(fmt),
+            request.include_regime,
         )
         for plan in request.plans
     }
@@ -400,5 +441,7 @@ def generate_to_disk(
     finally:
         for market, writer in writers.items():
             paths = writer.close()
-            report.paths[market.value] = {s: {tf: p for tf, p in tfs.items()} for s, tfs in paths.items()}
+            report.paths[market.value] = {
+                s: {tf: p for tf, p in tfs.items()} for s, tfs in paths.items()
+            }
     return report

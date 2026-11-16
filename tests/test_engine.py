@@ -92,8 +92,13 @@ def test_no_minute_dominates_volume(stocks_two_weeks):
 
 def test_spikes_and_flash_crashes_are_injected():
     base = _run("crypto", 4, JAN_1_2024, JAN_1_2024 + 5 * DAY)
-    spiky = _run("crypto", 4, JAN_1_2024, JAN_1_2024 + 5 * DAY,
-                 frozenset({AnomalyType.SPIKES, AnomalyType.FLASH_CRASH}))
+    spiky = _run(
+        "crypto",
+        4,
+        JAN_1_2024,
+        JAN_1_2024 + 5 * DAY,
+        frozenset({AnomalyType.SPIKES, AnomalyType.FLASH_CRASH}),
+    )
     np.testing.assert_array_equal(base.timestamps, spiky.timestamps)
     wick = (spiky.high - spiky.low) / (base.high - base.low)
     assert (wick > 2).sum() > 10

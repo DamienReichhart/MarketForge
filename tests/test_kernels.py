@@ -10,7 +10,9 @@ def _cum(p):
 def test_regime_chain_matches_stationary_distribution():
     p = np.array([[0.9, 0.1], [0.3, 0.7]])
     rng = np.random.default_rng(0)
-    regimes, *_ = regime_chain(rng.random(200_000), _cum(p), np.zeros(2), np.ones(2), 1.0, 0, 0.0, 1.0)
+    regimes, *_ = regime_chain(
+        rng.random(200_000), _cum(p), np.zeros(2), np.ones(2), 1.0, 0, 0.0, 1.0
+    )
     # Stationary distribution of p is (0.75, 0.25).
     assert abs((regimes == 0).mean() - 0.75) < 0.01
 

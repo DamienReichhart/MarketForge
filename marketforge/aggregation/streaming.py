@@ -27,8 +27,14 @@ from marketforge.aggregation.timeframes import Timeframe
 from marketforge.trading_calendar import MINUTES_PER_DAY, TradingCalendar
 
 SUPPORTED_TIMEFRAMES = (
-    Timeframe.m1, Timeframe.m5, Timeframe.m15, Timeframe.m30,
-    Timeframe.H1, Timeframe.H4, Timeframe.D1, Timeframe.W1,
+    Timeframe.m1,
+    Timeframe.m5,
+    Timeframe.m15,
+    Timeframe.m30,
+    Timeframe.H1,
+    Timeframe.H4,
+    Timeframe.D1,
+    Timeframe.W1,
 )
 
 
@@ -37,22 +43,26 @@ class Bars:
     """Candles of one timeframe for every instrument of a market."""
 
     timestamps: np.ndarray  # (k,) bucket start, UTC seconds
-    open: np.ndarray        # (k, I)
+    open: np.ndarray  # (k, I)
     high: np.ndarray
     low: np.ndarray
     close: np.ndarray
     volume: np.ndarray
-    regime: np.ndarray      # (k,) regime at the candle's last minute
+    regime: np.ndarray  # (k,) regime at the candle's last minute
 
     def __len__(self) -> int:
         return int(self.timestamps.size)
 
     @classmethod
     def concat(cls, parts: list["Bars"]) -> "Bars":
-        return cls(*(np.concatenate([getattr(p, f) for p in parts]) for f in cls.__dataclass_fields__))
+        return cls(
+            *(np.concatenate([getattr(p, f) for p in parts]) for f in cls.__dataclass_fields__)
+        )
 
 
-def bucket_keys(calendar: TradingCalendar, timeframe: Timeframe, timestamps: np.ndarray) -> np.ndarray:
+def bucket_keys(
+    calendar: TradingCalendar, timeframe: Timeframe, timestamps: np.ndarray
+) -> np.ndarray:
     """Integer bucket id of each timestamp on the market's bar anchor clock."""
     anchor = calendar.anchor_minutes(timestamps)
     if timeframe == Timeframe.W1:
@@ -72,7 +82,9 @@ def bucket_start_anchor(timeframe: Timeframe, key: np.ndarray) -> np.ndarray:
 class BarAggregator:
     """Aggregates a market's m1 stream into one timeframe."""
 
-    def __init__(self, calendar: TradingCalendar, timeframe: Timeframe, start: int, end: int) -> None:
+    def __init__(
+        self, calendar: TradingCalendar, timeframe: Timeframe, start: int, end: int
+    ) -> None:
         if timeframe not in SUPPORTED_TIMEFRAMES:
             raise ValueError(f"Unsupported timeframe: {timeframe.name}")
         self.calendar = calendar
@@ -113,7 +125,9 @@ class BarAggregator:
         if self._first:
             self._first = False
             before = self.calendar.open_minutes(self.start - self._span, self.start)
-            if before.size and np.any(bucket_keys(self.calendar, self.timeframe, before) == keys[0]):
+            if before.size and np.any(
+                bucket_keys(self.calendar, self.timeframe, before) == keys[0]
+            ):
                 starts, ends = starts[1:], ends[1:]
         if drop_last and starts.size:
             starts, ends = starts[:-1], ends[:-1]
@@ -121,7 +135,9 @@ class BarAggregator:
             return None
         bucket = keys[starts]
         first_ts = data.timestamps[starts]
-        offset = self.calendar.anchor_minutes(first_ts) - bucket_start_anchor(self.timeframe, bucket)
+        offset = self.calendar.anchor_minutes(first_ts) - bucket_start_anchor(
+            self.timeframe, bucket
+        )
         # Restrict to the kept buckets so reduceat's last segment stops at its end.
         kept = slice(int(starts[0]), int(ends[-1]))
         seg = starts - starts[0]
@@ -137,4 +153,6 @@ class BarAggregator:
 
 
 def _slice(b: Bars, s: slice) -> Bars:
-    return Bars(b.timestamps[s], b.open[s], b.high[s], b.low[s], b.close[s], b.volume[s], b.regime[s])
+    return Bars(
+        b.timestamps[s], b.open[s], b.high[s], b.low[s], b.close[s], b.volume[s], b.regime[s]
+    )

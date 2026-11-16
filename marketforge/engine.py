@@ -113,23 +113,23 @@ class DayResult:
     """One UTC day of m1 candles for every instrument of a market."""
 
     timestamps: np.ndarray  # (n,) int64 UTC seconds
-    open: np.ndarray        # (n, I)
+    open: np.ndarray  # (n, I)
     high: np.ndarray
     low: np.ndarray
     close: np.ndarray
     volume: np.ndarray
-    regime: np.ndarray      # (n,) int8, market-wide
+    regime: np.ndarray  # (n,) int8, market-wide
 
 
 @dataclass
 class _State:
-    log_price: np.ndarray       # (F,) factor log close
+    log_price: np.ndarray  # (F,) factor log close
     garch_variance: np.ndarray  # (F,)
-    garch_shock: np.ndarray     # (F,)
+    garch_shock: np.ndarray  # (F,)
     regime: int
     drift_mult: float
     vol_mult: float
-    volume_memory: np.ndarray   # (I,)
+    volume_memory: np.ndarray  # (I,)
     last_timestamp: Optional[int] = None
 
 
@@ -144,12 +144,21 @@ def _normalised_regime_targets(
     """
     # Simulate long enough to visit every regime many times (>= ~2000 mean
     # durations of the stickiest one), with a fixed seed: deterministic.
-    stay = np.diff(np.concatenate([np.zeros((cumulative.shape[0], 1)), cumulative], axis=1), axis=1).diagonal()
+    stay = np.diff(
+        np.concatenate([np.zeros((cumulative.shape[0], 1)), cumulative], axis=1), axis=1
+    ).diagonal()
     longest = float(np.max(1.0 / np.maximum(1.0 - stay, 1e-9)))
     n = int(min(20_000_000, max(400_000, 2000 * longest)))
     u = np.random.Generator(np.random.PCG64(20260613)).random(n)
     _, d, v, *_ = regime_chain(
-        u, cumulative, drift, vol, _REGIME_SMOOTHING, initial, float(drift[initial]), float(vol[initial])
+        u,
+        cumulative,
+        drift,
+        vol,
+        _REGIME_SMOOTHING,
+        initial,
+        float(drift[initial]),
+        float(vol[initial]),
     )
     burn = min(n // 10, int(20 * longest))
     vol_scale = 1.0 / np.sqrt(np.mean(v[burn:] ** 2))
@@ -159,7 +168,9 @@ def _normalised_regime_targets(
 
 def _closure_variance(minutes: np.ndarray, defaults: MarketDefaults) -> np.ndarray:
     m = np.asarray(minutes, dtype=float)
-    return np.asarray(defaults.closure_variance_scale * np.power(m, defaults.closure_variance_exponent))
+    return np.asarray(
+        defaults.closure_variance_scale * np.power(m, defaults.closure_variance_exponent)
+    )
 
 
 @lru_cache(maxsize=None)
@@ -169,7 +180,9 @@ def _effective_minutes_per_year(market: MarketType, scale: float, exponent: floa
     ts = cal.open_minutes(*_REFERENCE_YEAR)
     closed = np.diff(ts) // 60 - 1
     closed = closed[closed > 0]
-    gap_var = float(np.sum(scale * np.power(closed.astype(float), exponent))) if closed.size else 0.0
+    gap_var = (
+        float(np.sum(scale * np.power(closed.astype(float), exponent))) if closed.size else 0.0
+    )
     return float(ts.size) + gap_var
 
 
@@ -233,9 +246,9 @@ class MarketSimulator:
         # the AR(1) innovation that produces it is smaller by sqrt(1 - phi^2).
         self._volume_noise = np.array(
             [by_symbol[s].volume_volatility for s in structure.instruments]
-        ) * np.sqrt(1.0 - vp.phi ** 2)
-        var_u = vp.lam ** 2 * _VAR_ABS_Z + self._volume_noise ** 2 + self.seasonality.log_variance
-        self._volume_log_correction = 0.5 * var_u / (1.0 - vp.phi ** 2)
+        ) * np.sqrt(1.0 - vp.phi**2)
+        var_u = vp.lam**2 * _VAR_ABS_Z + self._volume_noise**2 + self.seasonality.log_variance
+        self._volume_log_correction = 0.5 * var_u / (1.0 - vp.phi**2)
         self._base_volume = np.array([by_symbol[s].volume_base for s in structure.instruments])
 
         self._state = _State(
@@ -257,7 +270,9 @@ class MarketSimulator:
         corr = self.spec.factor_correlation
         for i, idx, w in self._cross_terms:
             s = factor_sigma[:, idx] * w
-            out[:, i] = np.sqrt(np.maximum(np.einsum("nj,jk,nk->n", s, corr[np.ix_(idx, idx)], s), 0.0))
+            out[:, i] = np.sqrt(
+                np.maximum(np.einsum("nj,jk,nk->n", s, corr[np.ix_(idx, idx)], s), 0.0)
+            )
         return np.asarray(out)
 
     def _correlated(self, z: np.ndarray, chi2: np.ndarray) -> np.ndarray:
@@ -296,14 +311,20 @@ class MarketSimulator:
         z = self._correlated(z_all[rows], chi_all[rows])
 
         regimes, drift_m, vol_m, st.regime, st.drift_mult, st.vol_mult = regime_chain(
-            u_regime[rows], self._regime_cum, self._regime_drift, self._regime_vol,
-            _REGIME_SMOOTHING, st.regime, st.drift_mult, st.vol_mult,
+            u_regime[rows],
+            self._regime_cum,
+            self._regime_drift,
+            self._regime_vol,
+            _REGIME_SMOOTHING,
+            st.regime,
+            st.drift_mult,
+            st.vol_mult,
         )
         h, st.garch_variance, st.garch_shock = gjr_garch(
             z, *self._garch, st.garch_variance, st.garch_shock
         )
         season = self.seasonality.factor(ts)
-        level = np.sqrt(h) * vol_m[:, None]                 # (n, F) turbulence
+        level = np.sqrt(h) * vol_m[:, None]  # (n, F) turbulence
         sigma_f = self._sigma * level * season[:, None]
         returns_f = self._mu * drift_m[:, None] + sigma_f * z
 
