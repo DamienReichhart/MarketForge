@@ -29,6 +29,7 @@ from typing import Callable, Iterable, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
+from threadpoolctl import threadpool_limits
 
 from marketforge.aggregation.streaming import SUPPORTED_TIMEFRAMES, BarAggregator, Bars
 from marketforge.aggregation.timeframes import Timeframe
@@ -207,6 +208,7 @@ def plan_request(
 
 
 # ---------------------------------------------------------------- running
+# Receives candles of the plan's *selected* instruments, in plan.selected order.
 Sink = Callable[[MarketPlan, Timeframe, Optional[Bars]], None]
 
 
@@ -219,12 +221,16 @@ def _run_market(
     sim = MarketSimulator(plan.spec, request.seed)
     cal = get_calendar(plan.market)
     aggs = {tf: BarAggregator(cal, tf, request.start, request.end) for tf in request.timeframes}
+    cols = plan.columns
     first = request.start // SECONDS_PER_DAY
     last = (request.end - 1) // SECONDS_PER_DAY
     for day in range(first, last + 1):
         res = sim.simulate_day(day, request.start, request.end)
         if res is not None:
-            m1 = Bars(res.timestamps, res.open, res.high, res.low, res.close, res.volume, res.regime)
+            # Only the selected instruments are aggregated and written.
+            c = cols
+            m1 = Bars(res.timestamps, res.open[:, c], res.high[:, c], res.low[:, c],
+                      res.close[:, c], res.volume[:, c], res.regime)
             for tf, agg in aggs.items():
                 sink(plan, tf, agg.push(m1))
         if on_day is not None:
@@ -240,13 +246,16 @@ def execute(
     on_day: Optional[Callable[[MarketType], None]] = None,
 ) -> None:
     """Run every market of a request, optionally in parallel threads."""
-    if jobs <= 1 or len(request.plans) == 1:
-        for plan in request.plans:
-            _run_market(request, plan, sink, on_day)
-        return
-    with ThreadPoolExecutor(max_workers=min(jobs, len(request.plans))) as pool:
-        for f in [pool.submit(_run_market, request, p, sink, on_day) for p in request.plans]:
-            f.result()
+    # The matrix products here are tiny; multithreaded BLAS only burns CPU
+    # (4x the CPU time for the same wall time) and oversubscribes parallel jobs.
+    with threadpool_limits(limits=1, user_api="blas"):
+        if jobs <= 1 or len(request.plans) == 1:
+            for plan in request.plans:
+                _run_market(request, plan, sink, on_day)
+            return
+        with ThreadPoolExecutor(max_workers=min(jobs, len(request.plans))) as pool:
+            for f in [pool.submit(_run_market, request, p, sink, on_day) for p in request.plans]:
+                f.result()
 
 
 # ------------------------------------------------------------------ public
@@ -297,11 +306,7 @@ def generate(
 
     def collect(plan: MarketPlan, tf: Timeframe, bars: Optional[Bars]) -> None:
         if bars is not None and len(bars):
-            cols = plan.columns
-            parts.setdefault((plan.market, tf), []).append(Bars(
-                bars.timestamps, bars.open[:, cols], bars.high[:, cols], bars.low[:, cols],
-                bars.close[:, cols], bars.volume[:, cols], bars.regime,
-            ))
+            parts.setdefault((plan.market, tf), []).append(bars)
 
     execute(request, collect)
     out = GeneratedData()
@@ -377,7 +382,7 @@ def generate_to_disk(
         )
     writers = {
         plan.market: CandleWriter(
-            output_dir, plan.market.value, plan.selected, plan.columns,
+            output_dir, plan.market.value, plan.selected, list(range(len(plan.selected))),
             request.timeframes, OutputFormat(fmt), request.include_regime,
         )
         for plan in request.plans
