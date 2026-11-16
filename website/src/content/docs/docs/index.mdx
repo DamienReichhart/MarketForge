@@ -1,0 +1,41 @@
+---
+title: MarketForge documentation
+description: Synthetic OHLCV market data for training AI trading models and testing backtesters. Install, generate, validate.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+MarketForge generates **synthetic, statistically realistic market data**: minute-by-minute candles (`m1` to `W1`) for 208 crypto, forex and US stock instruments, on each market's real trading calendar, with optional **regime labels** and a **bid-ask spread**. Every dataset is bit-for-bit reproducible from a seed, and can be extended later without changing a single earlier candle.
+
+It is built for the parts of quantitative work where real data is scarce, expensive, leaky or unlabelled:
+
+- **Training and pre-training machine-learning models** on unlimited data with known ground truth (the hidden market regime of every minute).
+- **Testing backtesters and trading systems** against calendars, gaps, closures, spreads and multi-asset alignment that behave like the real thing.
+- **Stress testing** strategies on crashes, high-volatility regimes and flash crashes, as often as you want, with a different seed each time.
+
+```bash
+pip install marketforge
+marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --with-regime --seed 42
+```
+
+:::caution[Read this before you train anything]
+Synthetic data teaches a model the generator, not the market. MarketForge has **no alpha to find**: it is a tool for building, debugging, pre-training and stress-testing, not a source of trading signals. See [What it is not](limits/).
+:::
+
+## Start here
+
+<CardGrid>
+	<LinkCard title="Installation" description="pip, from source, requirements." href="installation/" />
+	<LinkCard title="Quick start" description="Your first dataset in five minutes, from the shell or Python." href="quick-start/" />
+	<LinkCard title="Training ML models" description="Labelled regimes, clean splits, recipes for PyTorch and scikit-learn." href="use-cases/machine-learning/" />
+	<LinkCard title="Backtesting" description="Calendars, gaps and spreads that break naive engines." href="use-cases/backtesting/" />
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+	<LinkCard title="Command line" description="generate, extend, validate, list-instruments." href="guides/cli/" />
+	<LinkCard title="Python API" description="generate(), generate_to_disk(), extend(), validate()." href="guides/python-api/" />
+	<LinkCard title="The model" description="Student-t shocks, GJR-GARCH, regimes, Brownian-bridge highs and lows." href="reference/model/" />
+	<LinkCard title="Validation" description="The stylized facts every instrument is checked against." href="guides/validation/" />
+</CardGrid>

@@ -1,5 +1,0 @@
----
-title: quick-start
----
-
-Stub.
