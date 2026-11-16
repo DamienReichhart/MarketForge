@@ -22,7 +22,7 @@ explicitly.
 | Test | `pytest` on Linux for Python 3.12 to 3.14, and on macOS and Windows for 3.12 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Seed reproducibility | On Linux, macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
-| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation. Uploads the `dist` artifact |
+| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment. Uploads the `dist` and `sbom` artifacts |
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
@@ -72,12 +72,13 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    guard. This is `main`'s only CI run (`ci.yml` has no push trigger for
    `main`). Nothing is published unless all of it passes.
 3. **publish** downloads the exact `dist` artifact CI built and tested, checks
-   it holds only this version's sdist and wheel, records a signed build
-   provenance attestation, and uploads to PyPI through trusted publishing
-   (OIDC, no stored token).
+   it holds only this version's sdist and wheel, records signed build
+   provenance and SBOM attestations, and uploads to PyPI through trusted
+   publishing (OIDC, no stored token). Check a download with
+   `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
 4. **github-release** creates the tag `v<version>` on the released commit and a
    GitHub release with the CHANGELOG section as notes and the distributions
-   attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
+   and the SBOM (`marketforge-<version>.cdx.json`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
 5. **verify** installs the version from PyPI in clean environments on Linux
    (Python 3.12 and 3.14), macOS and Windows (3.14), retrying while the CDN
