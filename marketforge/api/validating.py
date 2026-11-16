@@ -30,7 +30,7 @@ def validate(
     Args:
         data: A DataFrame with ``open``, ``high``, ``low`` and ``close`` columns
             (as returned by :func:`generate`), or the path of a CSV or Parquet
-            candle file.
+            candle file. A ``spread`` column, when present, is checked too.
         market: ``crypto``, ``forex`` or ``stocks``. May be omitted for a file
             written by MarketForge, whose path names the market or the instrument.
 
@@ -70,7 +70,8 @@ def validate(
             "candles only"
         )
     open_, high, low, close = (frame[c].to_numpy() for c in _PRICES)
-    return validate_ohlcv(open_, high, low, close, market_type)
+    spread = frame["spread"].to_numpy() if "spread" in frame.columns else None
+    return validate_ohlcv(open_, high, low, close, market_type, spread)
 
 
 def _market_of(path: Path) -> MarketType:

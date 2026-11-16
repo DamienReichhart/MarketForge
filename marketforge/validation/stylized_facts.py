@@ -61,3 +61,25 @@ def range_efficiency(open_, high, low, close) -> float:
     if body == 0.0:
         return float("inf")
     return float(np.mean(h - l) / body)
+
+
+def median_spread_bps(spread: np.ndarray, close: np.ndarray) -> float:
+    """Median quoted spread, in basis points of the price."""
+    return float(1e4 * np.median(np.asarray(spread, dtype=float) / np.asarray(close, dtype=float)))
+
+
+def spread_widening(spread: np.ndarray, returns: np.ndarray, window: int = 30) -> float:
+    """
+    Mean spread during the most turbulent tenth of the minutes, relative to
+    the median spread. Turbulence is the mean |return| of the ``window``
+    minutes up to each one. Above 1: spreads widen when the market moves.
+    """
+    s = np.asarray(spread, dtype=float)
+    moves = np.abs(np.asarray(returns, dtype=float))
+    if s.size <= window:
+        return float("nan")
+    total = np.concatenate(([0.0], np.cumsum(moves)))
+    turbulence = total[window:] - total[:-window]
+    recent = s[window - 1 :]
+    turbulent = turbulence >= np.quantile(turbulence, 0.9)
+    return float(recent[turbulent].mean() / np.median(s))

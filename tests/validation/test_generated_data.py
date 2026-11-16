@@ -12,8 +12,6 @@ validation harness for every market, for several instruments and seeds.
 import pytest
 
 import marketforge as mf
-from marketforge.domain.markets import MarketType
-from marketforge.validation.report import validate_ohlcv
 
 CASES = {
     "crypto": ["BTCUSD", "ETHUSD", "SOLUSD"],
@@ -25,8 +23,10 @@ CASES = {
 @pytest.mark.parametrize("seed", [123, 7])
 @pytest.mark.parametrize("market", list(CASES))
 def test_generated_data_matches_stylized_facts(market, seed):
-    data = mf.generate(CASES[market], start="2024-01-01", end="2024-01-15", seed=seed)
+    data = mf.generate(
+        CASES[market], start="2024-01-01", end="2024-01-15", seed=seed, include_spread=True
+    )
     for symbol in CASES[market]:
-        d = data[symbol]["m1"]
-        report = validate_ohlcv(d.open, d.high, d.low, d.close, MarketType(market))
+        report = mf.validate(data[symbol]["m1"], market)
         assert report.passed, f"{symbol}\n{report.summary()}"
+        assert {"spread_bps", "spread_widening"} <= set(report.metrics)

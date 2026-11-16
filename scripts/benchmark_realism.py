@@ -16,7 +16,6 @@ import argparse
 
 import marketforge as mf
 from marketforge.domain.markets import MarketType
-from marketforge.validation.report import validate_ohlcv
 
 
 def main() -> None:
@@ -29,10 +28,11 @@ def main() -> None:
     total = failed = 0
     for seed in (int(s) for s in args.seeds.split(",")):
         for market in MarketType:
-            data = mf.generate(markets=[market], start=start, end=end, seed=seed)
+            data = mf.generate(
+                markets=[market], start=start, end=end, seed=seed, include_spread=True
+            )
             for symbol, frames in data.items():
-                d = frames["m1"]
-                report = validate_ohlcv(d.open, d.high, d.low, d.close, market)
+                report = mf.validate(frames["m1"], market)
                 total += 1
                 if not report.passed:
                     failed += 1

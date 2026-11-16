@@ -26,6 +26,7 @@ class MetricResult:
     low: float | None
     high: float | None
     passed: bool
+    provisional: bool = False  # its band is not anchored to real data
 
 
 @dataclass
@@ -53,7 +54,10 @@ class ValidationReport:
         ]
         for m in self.metrics.values():
             flag = "ok  " if m.passed else "FAIL"
-            lines.append(f"  {flag} {m.name} = {m.value:.4f}  (expected {_band(m.low, m.high)})")
+            note = ", provisional" if m.provisional and anchored else ""
+            lines.append(
+                f"  {flag} {m.name} = {m.value:.4f}  (expected {_band(m.low, m.high)}{note})"
+            )
         return "\n".join(lines)
 
 
@@ -65,13 +69,15 @@ def _band(low: float | None, high: float | None) -> str:
     return f"{low:g} to {high:g}"
 
 
-def _check(name, value, low, high) -> MetricResult:
+def _check(name, value, low, high, provisional: bool = False) -> MetricResult:
     ok = True
-    if low is not None and value < low:
+    if low is not None and not value >= low:
         ok = False
-    if high is not None and value > high:
+    if high is not None and not value <= high:
         ok = False
-    return MetricResult(name=name, value=value, low=low, high=high, passed=ok)
+    return MetricResult(
+        name=name, value=value, low=low, high=high, passed=ok, provisional=provisional
+    )
 
 
 def validate_returns(returns: np.ndarray, market_type: MarketType) -> ValidationReport:
@@ -102,9 +108,12 @@ def validate_returns(returns: np.ndarray, market_type: MarketType) -> Validation
     return report
 
 
-def validate_ohlcv(open_, high, low, close, market_type: MarketType) -> ValidationReport:
+def validate_ohlcv(
+    open_, high, low, close, market_type: MarketType, spread=None
+) -> ValidationReport:
     """
-    Validate an OHLC series: return-based facts plus range efficiency.
+    Validate an OHLC series: return-based facts plus range efficiency, and the
+    level and behaviour of the quoted spread when one is given.
 
     Return-based facts use each candle's open-to-close log return. Within a
     session that equals the close-to-close return; across a market closure it
@@ -118,4 +127,16 @@ def validate_ohlcv(open_, high, low, close, market_type: MarketType) -> Validati
         sf.range_efficiency(open_, high, low, close),
         *bands_for(market_type).range_efficiency,
     )
+    if spread is not None:
+        bands = bands_for(market_type)
+        report.metrics["spread_bps"] = _check(
+            "spread_bps", sf.median_spread_bps(spread, close), *bands.spread_bps, provisional=True
+        )
+        report.metrics["spread_widening"] = _check(
+            "spread_widening",
+            sf.spread_widening(spread, r),
+            bands.spread_widening_min,
+            None,
+            provisional=True,
+        )
     return report

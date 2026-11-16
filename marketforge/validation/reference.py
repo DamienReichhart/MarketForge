@@ -60,6 +60,10 @@ class Bands:
     range_efficiency: tuple[float, float]
     long_memory_min: float
     anchored: bool
+    # Spread bands are provisional for every market: no quote data has been
+    # measured yet. They only rule out the absurd (docs/adr/0008).
+    spread_bps: tuple[float, float] = (0.05, 40.0)
+    spread_widening_min: float = 0.95
 
 
 def _from_reference(ref: Reference) -> Bands:
