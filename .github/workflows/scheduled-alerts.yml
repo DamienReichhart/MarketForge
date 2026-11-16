@@ -1,0 +1,67 @@
+name: Scheduled run alerts
+
+# The scheduled runs exist to catch upstream breakage (a new dependency
+# release, a new advisory, a new CodeQL query) without waiting for a commit.
+# But GitHub notifies only whoever last edited the cron line, so a failure
+# could sit unseen. This opens one issue per workflow when its scheduled run
+# fails, comments on it while it keeps failing, and closes it when a later
+# scheduled run passes.
+#
+# workflow_run fires only from this file on the default branch (main).
+
+on:
+  # Safe: this job only reads the triggering run's metadata. It never checks
+  # out, downloads or executes anything from that run.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [CI, CodeQL, Scorecard]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  alert:
+    name: Open, update or close the alert issue
+    if: >-
+      github.event.workflow_run.event == 'schedule' &&
+      contains(fromJSON('["failure", "timed_out", "success"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Sync the issue with the run's outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          label=scheduled-failure
+          title="Scheduled ${WORKFLOW} run is failing"
+          issue="$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$label" --state open \
+            --json number,title --limit 100 \
+            | jq -r --arg t "$title" 'map(select(.title == $t))[0].number // empty')"
+
+          if [ "$CONCLUSION" = success ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --repo "$GITHUB_REPOSITORY" \
+                --comment "Passing again: ${RUN_URL}"
+              echo "Closed #${issue}" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            exit 0
+          fi
+
+          body="The scheduled **${WORKFLOW}** run on \`${HEAD_SHA}\` ended in \`${CONCLUSION}\`: ${RUN_URL}
+
+          Nothing in this repository changed to cause it: look for a new dependency release, a new advisory or a new analysis query. This issue closes itself when a scheduled run passes again."
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+            echo "Commented on #${issue}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            gh label create "$label" --repo "$GITHUB_REPOSITORY" --force \
+              --color B60205 --description "A scheduled workflow run is failing"
+            url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+              --label "$label" --body "$body")"
+            echo "Opened ${url}" >> "$GITHUB_STEP_SUMMARY"
+          fi
