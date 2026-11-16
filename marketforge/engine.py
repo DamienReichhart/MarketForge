@@ -364,6 +364,8 @@ class MarketSimulator:
         result = DayResult(ts, open_, high, low, close, volume, regimes)
         if self.spec.anomaly.types:
             self._inject_anomalies(day, rows, result)
+        if self.spec.defaults.integer_volume:
+            result.volume = np.maximum(np.rint(result.volume), 1.0)
         return result
 
     def run(self, start: int, end: int) -> Iterator[DayResult]:

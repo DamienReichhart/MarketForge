@@ -57,6 +57,8 @@ class MarketDefaults:
     # less inside the bar than a Brownian path would (range/body ~1.5-1.7
     # instead of 2.0), so high/low are drawn with this fraction of sigma.
     intrabar_volatility_ratio: float = 1.0
+    # Volume is a count (forex tick volume): emit whole numbers, at least 1.
+    integer_volume: bool = False
 
 
 CRYPTO_DEFAULTS = MarketDefaults(
@@ -121,6 +123,7 @@ FOREX_DEFAULTS = MarketDefaults(
     innovation_nu=10.0,
     volume_params=VolumeParams(phi=0.45, lam=0.25, kappa=0.4),
     intrabar_volatility_ratio=0.7,  # provisional
+    integer_volume=True,  # tick volume
     # Weekend (2880 min) gap ~ sqrt(80) ~ 9 open-minute stds: ~10 pips std
     # on EURUSD, with Student-t tails for the occasional 50-pip gap.
     closure_variance_scale=1.5,
