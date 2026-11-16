@@ -1,5 +1,74 @@
 # Changelog
 
+## 4.0.0
+
+Datasets can be extended, candles can carry a bid-ask spread, and the Python
+API covers what the command line does. **Every seed produces exactly the
+candles 3.1.1 produced**, with one exception listed under Breaking changes.
+The major version is for the renamed options and parameters.
+
+### Breaking changes
+- **"Asset" is now "instrument" everywhere**, as the glossary has said since
+  3.0. `--assets`/`-a` is `--instruments`/`-i`, `list-assets` is
+  `list-instruments`, and `generate()` and `generate_to_disk()` take
+  `instruments=` instead of `assets=`. The old names are removed.
+- **A seed must be an integer.** `seed=1.5`, `seed=True` and `seed="7"` raise
+  `TypeError`; 1.5 used to be truncated to 1 without a word.
+- **`validate` refuses candles that are not m1.** The bands describe minute
+  returns, and an H1 file used to pass as realistic.
+- **Flash crashes on a partly covered day move.** With the `flash_crash`
+  anomaly, a crash was placed among the candles the range kept of its day, so
+  changing `--to` within that day moved it and rewrote earlier candles,
+  against the reproducibility contract. It is now placed in the day's whole
+  session. Only days the range covers partly (a range that does not start or
+  end at midnight UTC) are affected, and only with `flash_crash`.
+
+### Extendable datasets
+- **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and
+  `mf.extend(dataset, end)` continue a dataset. The result is exactly what one
+  generation up to the new end would have produced; CSV files are
+  byte-identical to it. An extension that fails or is killed leaves the
+  dataset as it was.
+- **Every dataset has a manifest**, `marketforge.json`: version, seed, range,
+  instruments, timeframes, formats, anomalies and the resolved overrides. A
+  dataset can always be reproduced, even when the seed was random and the
+  terminal output is gone. `DiskReport.manifest` is its path.
+- Datasets written before 4.0 have no manifest and cannot be extended. See
+  [ADR 0009](docs/adr/0009-extend-datasets-from-an-exact-checkpoint.md).
+
+### Bid-ask spread
+- **`--with-spread` / `include_spread=True`** adds a `spread` column: the mean
+  quoted spread of the candle, in price units, around prices that are mid
+  prices. It widens in turbulent markets, in quiet hours and when a market
+  reopens, and is never below one cent for stocks.
+- Spread levels are **estimates**, derived per market from each instrument's
+  volatility. Set `spread_bps` in an override file to match your broker.
+- Asking for the spread changes no other column. See
+  [ADR 0008](docs/adr/0008-spread-is-an-opt-in-column-around-mid-prices.md).
+
+### Python API
+- `mf.validate(data, market)` checks a DataFrame or a file against the
+  validation bands, including the spread when there is one.
+- `mf.instruments()` returns the catalog as a DataFrame.
+- `data.panel("close", "H1")` returns one column per instrument, NaN where a
+  market was closed.
+- `overrides=` accepts a dict as well as a TOML path.
+- Instruments, markets, timeframes and anomalies can be one comma-separated
+  string, in any letter case: `mf.generate("EURUSD")` used to fail on
+  "unknown instruments E, U, R, S, D".
+
+### Command line
+- `--days N` as an alternative to `--to`.
+- `--timestamps iso` writes `2024-01-02T14:30:00Z` in CSV files.
+- `validate` reads the market from the path of a file MarketForge wrote, so
+  `--market` is optional, and its report says "at most 0.26" instead of
+  "target [None, 0.26]".
+- Timeframes are accepted in any letter case (`-t h1,d1`).
+- An unknown instrument suggests the closest symbol (`APPL (did you mean
+  AAPL?)`).
+- A file that receives no candle now comes with a warning instead of silence.
+- `generate` asks for `--output-dir` before it plans anything.
+
 ## 3.1.1
 
 One fix for macOS 15; on Linux, Windows and other macOS versions every seed
