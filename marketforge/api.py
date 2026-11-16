@@ -39,7 +39,9 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
-from marketforge.output.writers import CandleWriter, OutputFormat, ensure_open_file_capacity
+from marketforge.output.file_limits import ensure_open_file_capacity
+from marketforge.output.formats import OutputFormat
+from marketforge.output.writer import CandleWriter
 from marketforge.simulation.simulator import MarketSimulator
 from marketforge.simulation.spec import MarketSpec, build_market_spec
 

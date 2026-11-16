@@ -6,7 +6,7 @@ from marketforge.config.model_params import GARCHParams, RegimeParams
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
-from marketforge.output.writers import OutputFormat
+from marketforge.output.formats import OutputFormat
 
 
 def test_garch_requires_stationarity():

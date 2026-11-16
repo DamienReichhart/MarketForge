@@ -5,7 +5,8 @@ import pytest
 
 from marketforge.domain.bars import Bars
 from marketforge.domain.timeframes import Timeframe
-from marketforge.output.writers import CandleWriter, OutputFormat
+from marketforge.output.formats import OutputFormat
+from marketforge.output.writer import CandleWriter
 
 
 def _bars(t0: int, n: int) -> Bars:
@@ -61,7 +62,7 @@ def test_rerunning_into_the_same_directory_leaves_no_stale_file(tmp_path, fmt):
 
 @pytest.mark.parametrize("fmt", list(OutputFormat))
 def test_memory_cap_flushes_early_without_changing_the_output(tmp_path, fmt, monkeypatch):
-    import marketforge.output.writers as writers
+    import marketforge.output.writer as writers
 
     monkeypatch.setattr(writers, "ROW_GROUP_ROWS", 40)
     tfs = [Timeframe.m1, Timeframe.m5]
@@ -90,7 +91,7 @@ def test_written_columns_follow_the_requested_order(tmp_path):
 
 def test_open_file_limit_is_raised_when_parquet_needs_it(monkeypatch):
     resource = pytest.importorskip("resource")  # POSIX only
-    from marketforge.output import writers
+    from marketforge.output import file_limits as writers
 
     calls = []
     monkeypatch.setattr(resource, "getrlimit", lambda _: (256, 100_000))
@@ -104,7 +105,7 @@ def test_open_file_limit_is_raised_when_parquet_needs_it(monkeypatch):
 
 def test_open_file_limit_that_cannot_be_raised_fails_upfront(monkeypatch):
     resource = pytest.importorskip("resource")  # POSIX only
-    from marketforge.output import writers
+    from marketforge.output import file_limits as writers
 
     monkeypatch.setattr(resource, "getrlimit", lambda _: (256, 512))
     monkeypatch.setattr(resource, "setrlimit", lambda *_: None)
