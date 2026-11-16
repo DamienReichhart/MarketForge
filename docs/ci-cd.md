@@ -11,7 +11,7 @@ These workflows live in `.github/workflows/`:
 | `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
 
 All third-party actions are pinned to a commit SHA, and runner images to a
-version (`ubuntu-24.04`, `macos-15`, `windows-2025`), not `-latest`: the
+version (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `windows-2025`), not `-latest`: the
 distributions are built on these images, so moving to a new OS is a
 deliberate PR with a green CI run, never GitHub's migration schedule.
 Dependabot does not bump runner labels; review them yearly. Dependabot
@@ -25,10 +25,11 @@ explicitly.
 | --- | --- |
 | Lint & format | `ruff check`, `ruff format --check`, and `lint-imports`, which fails when a package imports from a layer above it (the contract is in `pyproject.toml`) |
 | Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.14 with the newest numpy (numpy's type stubs differ between releases) |
-| Test | `pytest` on Linux for Python 3.12 to 3.14, and on macOS and Windows for 3.12 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
+| Test | `pytest` against **the wheel the build job made** (the file CD publishes), not an editable install: the source package is deleted from the checkout first, so nothing can import it instead. On Linux (x86-64) for Python 3.12 to 3.14, and on Linux arm64, macOS (arm64) and Windows for 3.12 and 3.14. A file missing from the wheel or a platform where it does not work fails here, before PyPI, not in CD's **verify** after the upload |
+| Test coverage | `pytest --cov` on an editable install (coverage maps lines to the source tree), Linux, Python 3.13: 90% branch coverage minimum; uploads `coverage.xml` |
 | Test (py3.15 preview, non-blocking) | `pytest` on the next CPython (3.15, in beta) with binary wheels only. **Not** part of CI OK: an early warning, never a merge blocker. Promote it into the test matrix once 3.15 is final |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
-| Seed reproducibility | On Linux, macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
+| Seed reproducibility | On Linux (x86-64 and arm64), macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test (the wheel CI built) and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
 | Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
 | Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Uploads the `dist` and `sbom` artifacts |
@@ -141,7 +142,7 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    and the SBOM (`marketforge-<version>.cdx.json`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
 5. **verify** installs the version from PyPI in clean environments on Linux
-   (Python 3.12 and 3.14), macOS and Windows (3.14), retrying while the CDN
+   (Python 3.12 and 3.14), Linux arm64, macOS and Windows (3.14), retrying while the CDN
    catches up, and runs the CLI and a generation across all three markets.
 6. **pages** deploys the website CI built and link-checked in this run (the
    `github-pages` artifact) to GitHub Pages, at

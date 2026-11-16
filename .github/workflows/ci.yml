@@ -100,7 +100,12 @@ jobs:
         run: mypy marketforge
 
   test:
+    # Tests the wheel the build job made, the exact file CD publishes, not
+    # an editable install of the checkout: a module or data file missing
+    # from the wheel, or a platform where it does not import, fails here,
+    # before PyPI, instead of in CD's verify job after it.
     name: Test (${{ matrix.os }}, py${{ matrix.python-version }})
+    needs: build
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -109,14 +114,15 @@ jobs:
         os: [ubuntu-24.04]
         python-version: ["3.12", "3.13", "3.14"]
         include:
-          # Numba compiles natively: cover macOS (arm64) and Windows at both
-          # ends of the supported Python range.
+          # Numba compiles natively and BLAS rounds differently per platform:
+          # cover Linux arm64, macOS (arm64) and Windows at both ends of the
+          # supported Python range.
+          - { os: ubuntu-24.04-arm, python-version: "3.12" }
+          - { os: ubuntu-24.04-arm, python-version: "3.14" }
           - { os: macos-15, python-version: "3.12" }
           - { os: macos-15, python-version: "3.14" }
           - { os: windows-2025, python-version: "3.12" }
           - { os: windows-2025, python-version: "3.14" }
-          # The coverage leg (extends the existing ubuntu / 3.13 entry).
-          - { os: ubuntu-24.04, python-version: "3.13", coverage: true }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -127,15 +133,49 @@ jobs:
           activate-environment: "true"
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml
-      - name: Install
-        run: uv pip install -e . --group test
+      - name: Download the distributions CI built
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Install the wheel, not the checkout
+        run: |
+          uv pip install dist/*.whl --group test
+          # Delete the source package, so neither pytest nor Python can import
+          # it in place of the installed wheel.
+          rm -rf marketforge
+          python - <<'PY'
+          import pathlib
+          import marketforge
+
+          origin = pathlib.Path(marketforge.__file__).resolve()
+          print("testing", marketforge.__version__, "from", origin)
+          assert "site-packages" in origin.parts, f"not the installed wheel: {origin}"
+          PY
       - name: Show environment
         run: uv pip list
       - name: pytest
-        if: ${{ !matrix.coverage }}
         run: pytest
+
+  coverage:
+    # Coverage maps lines to the source tree, so it measures an editable
+    # install; the test matrix above covers the wheel.
+    name: Test coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          activate-environment: "true"
+          enable-cache: "true"
+          cache-dependency-glob: pyproject.toml
+      - name: Install
+        run: uv pip install -e . --group test
       - name: pytest (with coverage)
-        if: ${{ matrix.coverage }}
         run: |
           pytest --cov --cov-report=xml --cov-report=term
           {
@@ -145,7 +185,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
-        if: ${{ matrix.coverage && !cancelled() }}
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage
@@ -209,12 +249,13 @@ jobs:
     # dependency versions, same CPU), so SIMD differences between runners
     # cannot cause false alarms; each OS is checked against itself.
     name: Seed reproducibility (${{ matrix.os }})
+    needs: build
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -225,9 +266,14 @@ jobs:
           activate-environment: "true"
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml
-      - name: Fingerprint the code under test
+      - name: Download the distributions CI built
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Fingerprint the code under test (the wheel CI built)
         run: |
-          uv pip install .
+          uv pip install dist/*.whl
           # -I: import the installed package, never the checkout.
           python -I .github/scripts/repro.py capture "$RUNNER_TEMP/head.json"
       - name: Fingerprint the latest release with the same dependencies
@@ -531,6 +577,7 @@ jobs:
       - lint
       - typecheck
       - test
+      - coverage
       - min-deps
       - reproducibility
       - performance
