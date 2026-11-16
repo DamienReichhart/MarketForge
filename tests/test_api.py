@@ -74,3 +74,10 @@ def test_generate_to_disk_matches_in_memory(tmp_path, fmt):
     mem = mf.generate(["AAPL"], **kw)["AAPL"]["H1"]
     assert disk["timestamp"].tolist() == [int(t.timestamp()) for t in mem.index]
     assert (disk["close"] - mem["close"].to_numpy()).abs().max() < 1e-8
+
+
+def test_markets_accept_enum_values():
+    from marketforge.config.settings import MarketType
+
+    data = mf.generate(markets=[MarketType.STOCKS], start="2024-01-02", end="2024-01-03", seed=1)
+    assert "AAPL" in data

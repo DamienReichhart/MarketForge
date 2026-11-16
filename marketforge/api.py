@@ -182,7 +182,10 @@ def plan_request(
     anomaly_types = parse_anomalies(anomalies)
     catalog = load_catalog(overrides)
 
-    wanted_markets = [MarketType(str(m).lower()) for m in markets] if markets else None
+    wanted_markets = (
+        [m if isinstance(m, MarketType) else MarketType(str(m).strip().lower()) for m in markets]
+        if markets else None
+    )
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
     by_market: dict[MarketType, list[str]] = {}
     if assets:
