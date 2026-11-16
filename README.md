@@ -3,7 +3,8 @@
 Realistic synthetic OHLCV market data for backtesting, strategy development and
 ML research. MarketForge simulates 208 instruments across crypto, forex and US
 stocks minute by minute, on each market's real trading calendar, and publishes
-candles from `m1` to `W1` as CSV, Parquet or pandas DataFrames.
+candles from `m1` to `W1` as CSV, Parquet or pandas DataFrames, with an optional
+bid-ask spread.
 
 ```bash
 pip install marketforge
@@ -30,6 +31,11 @@ marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments E
 - **Bit-for-bit reproducible.** A seed fixes every random shock by market and
   minute. The same seed gives the same EURUSD whether you generate it alone or
   with 200 other instruments. Extending `--to` never changes earlier candles.
+- **Datasets you can extend.** Every dataset carries a manifest: the version,
+  seed and settings that produced it. `marketforge extend` continues it later,
+  and the result is byte-identical to generating the whole range at once.
+- **Bid-ask spread.** An optional `spread` column around the mid price widens
+  in turbulent markets, in quiet hours and when a market reopens.
 - **Fast and bounded in memory.** Simulation streams day by day through
   compiled (Numba) kernels, and only the instruments you ask for are computed
   past the random draws. A year of EURUSD across all 8 timeframes takes about
@@ -65,32 +71,38 @@ the pipeline and the release process.
 # One year of EURUSD, every timeframe, reproducible
 marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
-# A whole market as Parquet, with regime labels
-marketforge generate -o ./data --from 2024-01-01 --to 2024-07-01 --market crypto \
-    --format parquet --with-regime --seed 7
+# A whole market as Parquet, with regime labels and the bid-ask spread
+marketforge generate -o ./data --from 2024-01-01 --days 180 --market crypto \
+    --format parquet --with-regime --with-spread --seed 7
 
 # See what a run would produce (files, rows, disk size, time) without writing anything
 marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 
+# Continue a dataset: 30 more days, same seed, instruments, timeframes and format
+marketforge extend ./data --days 30
+
 # List instruments (forex crosses are marked as derived)
 marketforge list-instruments --market forex
 
-# Check a file against real-market stylized facts (exit code 1 on failure)
-marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
+# Check an m1 file against real-market stylized facts (exit code 1 on failure)
+marketforge validate --input ./data/forex/EURUSD_m1.csv
 ```
 
 ### `generate` options
 
 | Option | Meaning |
 | --- | --- |
-| `-o, --output-dir` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv\|parquet}`. |
-| `--from`, `--to` | Range `[from, to)`. Accepts `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds. UTC unless an offset is given. |
-| `-a, --instruments` | Comma-separated instruments. Their markets are inferred. |
+| `-o, --output-dir` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv\|parquet}` and `marketforge.json`. |
+| `--from` | Start of the range (inclusive). Accepts `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds. UTC unless an offset is given. |
+| `--to` or `--days` | End of the range (exclusive), in the same formats as `--from`, or its length in days. Give exactly one. |
+| `-i, --instruments` | Comma-separated instruments, in any letter case. Their markets are inferred. |
 | `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--instruments` is not given. With `--instruments`, it keeps only the instruments in these markets. |
-| `-s, --seed` | Non-negative integer. When omitted, a random seed is used and printed so the run can be reproduced. |
-| `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`. Default: all. |
+| `-s, --seed` | Non-negative integer. When omitted, a random seed is used, printed and recorded in the manifest so the run can be reproduced. |
+| `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`, in any letter case. Default: all. |
 | `--format` | `csv` (default) or `parquet`. Parquet files are about half the size and load much faster. |
+| `--timestamps` | `unix` (default) or `iso` (`2024-01-02T14:30:00Z`), for CSV files. |
 | `--anomalies` | Optional unrealistic events: `spikes`, `flash_crash`. |
+| `--with-spread` | Adds a `spread` column: the mean quoted bid-ask spread of the candle, in price units (see [Spread](#spread)). |
 | `--with-regime` | Adds a `regime` column: 0 trend_up, 1 trend_down, 2 range, 3 high_volatility, 4 crash. |
 | `--config` | TOML override file (see [Custom instruments](#custom-instruments)). |
 | `-j, --jobs` | Markets simulated in parallel. Default: one per market, up to the CPU count. |
@@ -98,34 +110,75 @@ marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 | `--no-progress` | Hide the progress bar. |
 | `--debug` (before the command) | Show full tracebacks. Errors are a single line otherwise. |
 
+A file that receives no candle (the market was closed for the whole range, or
+the range is shorter than the candle) is written empty, with a warning.
+
+### Extending a dataset
+
+```bash
+marketforge extend ./data --to 2025-03-01     # or --days 30
+```
+
+`extend` takes everything but the new end from the dataset's manifest, so the
+seed, instruments, timeframes, format and overrides cannot drift. Afterwards
+the dataset holds exactly the candles one generation up to the new end would
+have produced; CSV files are byte-identical to it. `--dry-run`, `--jobs` and
+`--no-progress` work as for `generate`.
+
+- CSV files are appended to in place. A Parquet file cannot be appended to, so
+  each one that gets new candles is rewritten.
+- An extension is all-or-nothing. If it fails or is interrupted, the dataset
+  is left, or put back by the next `extend`, exactly as it was.
+- Datasets go forward only, and only within a major version: a seed's candles
+  can differ between major versions. Datasets written before 4.0 have no
+  manifest and cannot be extended.
+
 ## Python API
 
 ```python
 import marketforge as mf
 
 data = mf.generate(
-    ["EURUSD", "AAPL"],
+    ["EURUSD", "AAPL"],                # or "EURUSD,AAPL"
     start="2024-01-01", end="2024-02-01",
     seed=42, timeframes=["m1", "H1", "D1"],
+    include_spread=True,
 )
-eurusd_h1 = data["EURUSD"]["H1"]     # DataFrame indexed by UTC time
-print(data.seed)                     # 42 (or the random seed that was chosen)
+eurusd_h1 = data["EURUSD"]["H1"]       # DataFrame indexed by UTC time
+closes = data.panel("close", "H1")     # one column per instrument
+print(data.seed)                       # 42 (or the random seed that was chosen)
 
-# Stream large ranges to disk instead of memory
-report = mf.generate_to_disk("./data", markets=["stocks"],
+# Stream large ranges to disk instead of memory, and continue them later
+report = mf.generate_to_disk("./data", markets="stocks",
                              start="2015-01-01", end="2025-01-01",
                              seed=1, fmt="parquet", jobs=3)
-print(report.n_files, report.paths["stocks"]["AAPL"]["D1"])
+print(report.n_files, report.paths["stocks"]["AAPL"]["D1"], report.manifest)
+mf.extend("./data", "2025-02-01")
+
+mf.instruments("forex")                # the catalog as a DataFrame
+report = mf.validate(data["EURUSD"]["m1"], "forex")
+print(report.passed, report.summary())
 ```
 
-`generate` returns `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a
-UTC `DatetimeIndex` named `time` and the columns `open, high, low, close,
-volume`, plus a categorical `regime` column with `include_regime=True`.
+| Function | What it does |
+| --- | --- |
+| `generate(...)` | Candles in memory: `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a UTC `DatetimeIndex` named `time` and the columns `open, high, low, close, volume`, plus `spread` with `include_spread=True` and a categorical `regime` with `include_regime=True`. |
+| `GeneratedData.panel(column, timeframe)` | One column of every instrument side by side. The index is the union of all candle times; a value is NaN where that instrument's market was closed, never forward-filled. |
+| `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
+| `extend(dataset, end)` | Continues a dataset, as `marketforge extend` does. |
+| `instruments(markets=None, overrides=None)` | The catalog as a DataFrame indexed by symbol: market, start price, volatility, drift, base volume, and whether the instrument is a derived forex cross. |
+| `validate(data, market=None)` | Checks m1 candles (a DataFrame or a CSV/Parquet path) against a market's validation bands. The market can be omitted for a file MarketForge wrote. |
+| `parse_time(value)` | The Unix seconds of any time MarketForge accepts. |
+
+Instruments, markets, timeframes and anomalies can be given as a list or as
+one comma-separated string, in any letter case. `overrides` takes the path of
+a TOML file or the same content as a dict: `{"BTCUSD": {"start_price": 42000}}`.
 
 ## Output
 
 ```
 data/
+├── marketforge.json
 ├── crypto/BTCUSD_m1.csv, BTCUSD_H1.csv, ...
 ├── forex/EURUSD_m1.csv, ...
 └── stocks/AAPL_m1.csv, ...
@@ -137,15 +190,26 @@ timestamp,open,high,low,close,volume
 1704205860,184.8539491,185.03837413,184.84785539,185.03767407,127066.8316
 ```
 
-- `timestamp`: start of the candle, in Unix seconds (UTC). Parquet uses the same
-  columns, with `timestamp` stored as int64.
+- `timestamp`: start of the candle, in Unix seconds (UTC), or as
+  `2024-01-02T14:30:00Z` with `--timestamps iso`. Parquet uses the same
+  columns, with `timestamp` always stored as int64 Unix seconds.
+- `spread` (with `--with-spread`) comes after `volume`, and `regime` (with
+  `--with-regime`) last.
+- Prices are mid prices. With a spread, bid = price - spread / 2 and
+  ask = price + spread / 2.
 - Prices are rounded to 8 decimals and volume to 4 (trailing zeros are not written).
 - `high >= max(open, close)`, `low <= min(open, close)`, all prices and volumes
   positive.
 - Within a session, each candle opens at the previous close. The first candle
   after a closure opens with a gap.
-- Every output file is rewritten from scratch, so re-running into the same
-  directory never leaves candles from an earlier run behind.
+- `generate` rewrites every output file and the manifest from scratch, so
+  re-running into the same directory never leaves candles from an earlier run
+  behind. Only `extend` adds to existing files.
+- `marketforge.json`, the manifest, records the MarketForge version, seed,
+  range, instruments, timeframes, formats, anomalies and the resolved
+  overrides (the values, not a path, so the dataset stands on its own), plus
+  the checkpoint `extend` resumes from. Anyone you give the dataset to can
+  read your custom instrument parameters there.
 - Candles are buffered and written in chunks of up to 32,768 rows per file
   (one Parquet row group each), with at most ~2 million rows buffered per
   market.
@@ -179,8 +243,11 @@ half-built.
 (GRXEUR, SPXUSD, WTIUSD, ...) trade on the forex calendar, nearly 24/5. Their
 real sessions and daily maintenance breaks are not modelled. Forex is open on
 Christmas and New Year's Day. NYSE one-off closures (9/11, Hurricane Sandy,
-national days of mourning) are not modelled. Forex tick-volume levels are
-estimates, not measurements.
+national days of mourning) are not modelled. Forex tick-volume levels and
+every spread level are estimates, not measurements.
+
+`start_price` is the price at the start of the range, whatever date that is: a
+range starting in 2015 starts at the same prices as one starting in 2024.
 
 Annual volatility and drift in the catalog are what you get. Regime multipliers
 are normalised so they change *when* volatility and drift happen, not how much.
@@ -204,6 +271,7 @@ volatility = 0.90
 drift = 0.0                   # annualised log drift
 volume_base = 20000           # mean volume per minute (coins / ticks / shares)
 volume_volatility = 0.5       # lognormal sigma of volume noise
+spread_bps = 8                # typical bid-ask spread, in basis points of the price
 correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
 ```
 
@@ -244,6 +312,31 @@ Per open minute *t* and simulated series *f*:
   move, with the volatility level and with intraday seasonality, and has its
   own persistent noise.
 
+### Spread
+
+With `--with-spread`, each candle carries the mean quoted bid-ask spread of
+its minutes, in price units. Per minute, the spread is the instrument's
+typical level multiplied by:
+
+- the volatility level (GARCH and regime) to the power 0.5, so spreads widen
+  in turbulent markets;
+- the inverse of intraday seasonality to the power 0.5, so they widen in quiet
+  hours;
+- a reopening term: forex spreads are about five times wider when the week
+  opens and stock spreads four times wider at the open, decaying within
+  minutes;
+- lognormal noise.
+
+Stock spreads are never below one cent, so a liquid large cap quotes exactly
+one cent wide most of the day.
+
+The typical level is the instrument's `spread_bps`. Built-in instruments have
+none of their own: each market derives it from the instrument's volatility,
+giving about half a pip on EURUSD, 13 basis points on USDTRY and 1.3 basis points
+on BTCUSD. **These levels are estimates, not measurements**; set `spread_bps`
+in an override file to match your broker. Asking for the spread changes no
+other column. See [ADR 0008](docs/adr/0008-spread-is-an-opt-in-column-around-mid-prices.md).
+
 Design decisions and their reasons are recorded in [`docs/adr/`](docs/adr), and
 the vocabulary in [`GLOSSARY.md`](GLOSSARY.md).
 
@@ -254,8 +347,9 @@ marketforge validate --input ./data/crypto/BTCUSD_m1.csv --market crypto
 python scripts/benchmark_realism.py --seeds 123,7 --days 14   # every instrument
 ```
 
-The validator measures open-to-close minute returns (overnight and weekend gaps
-excluded) against per-market bands:
+The validator takes m1 candles only, and refuses other timeframes: the bands
+describe minute returns. It measures open-to-close minute returns (overnight
+and weekend gaps excluded) against per-market bands:
 
 - **Heavy tails**: excess kurtosis in a realistic range.
 - **Volatility clustering**: the autocorrelation of |returns| over the first
@@ -266,6 +360,9 @@ excluded) against per-market bands:
   where crosses have no natural "down".
 - **Range efficiency**: mean(high − low) / mean(|close − open|). A pure random
   walk gives 2.0.
+- **Spread** (when the file has a `spread` column): the median spread is
+  between 0.05 and 40 basis points, and spreads do not narrow in the most
+  turbulent minutes. These two bands are provisional for every market.
 
 The bands are anchored to the same statistics measured on real m1 data. See
 [`marketforge/validation/reference.py`](marketforge/validation/reference.py)
@@ -291,9 +388,10 @@ With two-week windows and three seeds, 621 of 624 instrument checks pass. All
 
 For a given MarketForge **major version**, `(seed, market, minute)` fully
 determines every random shock. Output is identical regardless of which
-instruments are selected, the timeframes, the output format, `--jobs`, or how
-far `--to` extends. Changes that alter output for an existing seed only ship in
-a new major version.
+instruments are selected, the timeframes, the output format, `--jobs`, whether
+the spread is requested, how far `--to` extends, or whether the range was
+generated at once or extended in steps. Changes that alter output for an
+existing seed only ship in a new major version.
 
 Candle values are bit-for-bit identical on a given platform and NumPy build.
 Across machines they can differ in the last bit before rounding: NumPy picks
