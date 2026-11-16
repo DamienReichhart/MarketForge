@@ -52,22 +52,19 @@ def leverage_correlation(returns: np.ndarray) -> float:
 
 
 def range_efficiency(open_, high, low, close) -> float:
-    """Mean of (High-Low) / |Close-Open|, a measure of intrabar range richness.
+    """Mean intrabar range over mean absolute body: mean(High-Low) / mean(|Close-Open|).
 
-    Near-doji candles (body < 0.01% of mid-price) are excluded from the mean
-    because their body is effectively zero on a relative scale and would
-    produce arbitrarily large ratios that are not meaningful.
+    A driftless Brownian path gives 2.0 (E[range] = 2*sqrt(2/pi)*s versus
+    E|body| = sqrt(2/pi)*s). Using the ratio of means needs no threshold for
+    near-doji candles; the previous mean of per-candle ratios dropped bodies
+    under 1 bp and returned inf for quiet instruments such as pegged USDHKD.
     """
     o = np.asarray(open_, float); h = np.asarray(high, float)
     l = np.asarray(low, float); c = np.asarray(close, float)
-    body = np.abs(c - o)
-    rng_ = h - l
-    mid = (h + l) * 0.5
-    # Relative threshold: exclude bars where body < 0.01% of mid-price
-    mask = body > mid * 1e-4
-    if not np.any(mask):
+    body = float(np.mean(np.abs(c - o)))
+    if body == 0.0:
         return float("inf")
-    return float(np.mean(rng_[mask] / body[mask]))
+    return float(np.mean(h - l) / body)
 
 
 def ljung_box_pvalue(x: np.ndarray, lags: int = 20) -> float:
