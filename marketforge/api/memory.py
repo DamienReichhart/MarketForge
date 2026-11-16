@@ -103,9 +103,8 @@ def generate(
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
 
-    def collect(plan: MarketPlan, tf: Timeframe, bars: Bars | None) -> None:
-        if bars is not None and len(bars):
-            parts.setdefault((plan.market, tf), []).append(bars)
+    def collect(plan: MarketPlan, tf: Timeframe, bars: Bars) -> None:
+        parts.setdefault((plan.market, tf), []).append(bars)
 
     execute(request, collect)
     out = GeneratedData()

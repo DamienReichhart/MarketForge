@@ -9,7 +9,8 @@
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from marketforge.api.parsing import (
     Names,
@@ -22,7 +23,8 @@ from marketforge.api.parsing import (
     parse_timeframes,
 )
 from marketforge.config.loader import load_catalog
-from marketforge.config.overrides import Overrides
+from marketforge.config.overrides import Overrides, resolve_overrides
+from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
@@ -31,12 +33,29 @@ from marketforge.simulation.spec import MarketSpec, build_market_spec
 DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
 
 
+# A candle that is still open when a dataset ends started less than this many
+# UTC days before the dataset's last day (the longest candle is a week), so an
+# extension that resumes this far back rebuilds every open candle from its
+# first minute.
+RESUME_DAYS = 8
+
+
+@dataclass
+class Checkpoint:
+    """Where the simulation of one market can be resumed to extend a dataset."""
+
+    day: int  # UTC day to resume from
+    state: dict[str, Any]  # the simulator's snapshot at the start of that day
+    written: dict[str, int]  # timeframe -> start of the last candle already published
+
+
 @dataclass
 class MarketPlan:
     """What to simulate for one market and which instruments to output."""
 
     spec: MarketSpec
     selected: list[str]
+    resume: Checkpoint | None = None
 
     @property
     def market(self) -> MarketType:
@@ -53,10 +72,22 @@ class Request:
     seed: int
     timeframes: list[Timeframe]
     include_regime: bool = False
+    anomalies: frozenset[AnomalyType] = frozenset()
+    overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    @property
+    def first_day(self) -> int:
+        """The first UTC day to simulate: the start, or where an extension resumes."""
+        resumed = [plan.resume.day for plan in self.plans if plan.resume is not None]
+        return min(resumed) if resumed else self.start // SECONDS_PER_DAY
+
+    @property
+    def last_day(self) -> int:
+        return (self.end - 1) // SECONDS_PER_DAY
 
     @property
     def n_days(self) -> int:
-        return (self.end - 1) // SECONDS_PER_DAY - self.start // SECONDS_PER_DAY + 1
+        return self.last_day - self.first_day + 1
 
 
 def plan_request(
@@ -93,7 +124,8 @@ def plan_request(
     seed = parse_seed(seed)
     tfs = parse_timeframes(timeframes)
     anomaly_types = parse_anomalies(anomalies)
-    catalog = load_catalog(overrides)
+    resolved = resolve_overrides(overrides)
+    catalog = load_catalog(resolved)
 
     wanted_markets = parse_markets(markets)
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
@@ -117,7 +149,7 @@ def plan_request(
         MarketPlan(build_market_spec(catalog[m], anomaly_types), selected)
         for m, selected in by_market.items()
     ]
-    return Request(plans, t0, t1, seed, tfs, include_regime)
+    return Request(plans, t0, t1, seed, tfs, include_regime, anomaly_types, resolved)
 
 
 def _unknown_instruments(unknown: list[str], known: list[str]) -> str:

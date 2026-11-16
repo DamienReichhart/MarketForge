@@ -101,7 +101,7 @@ def write_request(
         for plan in request.plans
     }
 
-    def write(plan: MarketPlan, tf: Timeframe, bars: Bars | None) -> None:
+    def write(plan: MarketPlan, tf: Timeframe, bars: Bars) -> None:
         writers[plan.market].write(tf, bars)
 
     report = DiskReport(seed=request.seed)
