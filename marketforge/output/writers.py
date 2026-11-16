@@ -28,6 +28,9 @@ from marketforge.aggregation.timeframes import Timeframe
 
 PRICE_DECIMALS = 8
 VOLUME_DECIMALS = 4
+# Parquet row-group size: day-sized row groups (1440 rows) made files larger
+# than CSV; buffering to this size keeps memory bounded (~2 MB per file).
+ROW_GROUP_ROWS = 32_768
 
 
 class OutputFormat(str, Enum):
@@ -76,6 +79,7 @@ class CandleWriter:
         }
         self._started: set[Path] = set()
         self._parquet: dict[Path, pq.ParquetWriter] = {}
+        self._buffers: dict[Path, list[pa.Table]] = {}
         # Start every file empty, even if no candle ends up being written.
         for files in self.paths.values():
             for path in files.values():
@@ -97,14 +101,31 @@ class CandleWriter:
                 with open(path, "ab") as fh:
                     pacsv.write_csv(table, fh, pacsv.WriteOptions(include_header=False))
             else:
-                writer = self._parquet.get(path)
-                if writer is None:
-                    writer = pq.ParquetWriter(path, table.schema, compression="zstd")
-                    self._parquet[path] = writer
-                writer.write_table(table)
+                buf = self._buffers.setdefault(path, [])
+                buf.append(table)
+                if sum(t.num_rows for t in buf) >= ROW_GROUP_ROWS:
+                    self._flush(path)
+
+    def _flush(self, path: Path) -> None:
+        buf = self._buffers.pop(path, [])
+        if not buf:
+            return
+        table = pa.concat_tables(buf)
+        writer = self._parquet.get(path)
+        if writer is None:
+            # Random-walk doubles barely compress as-is; byte-stream-split
+            # encoding makes files ~40% of the CSV size instead of ~60%.
+            writer = pq.ParquetWriter(
+                path, table.schema, compression="zstd", use_dictionary=["timestamp"],
+                use_byte_stream_split=["open", "high", "low", "close", "volume"],
+            )
+            self._parquet[path] = writer
+        writer.write_table(table)
 
     def close(self) -> dict[str, dict[str, Path]]:
         """Finish all files and return {symbol: {timeframe: path}}."""
+        for path in list(self._buffers):
+            self._flush(path)
         for writer in self._parquet.values():
             writer.close()
         self._parquet.clear()
