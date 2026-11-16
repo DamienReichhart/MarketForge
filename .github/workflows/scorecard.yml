@@ -1,0 +1,50 @@
+name: Scorecard
+
+# OpenSSF Scorecard: grades the repository's supply-chain security practices
+# (branch protection, pinned actions, token permissions, signed releases,
+# SAST, ...). Findings appear under Security > Code scanning, and the results
+# are published for the public badge at
+# https://scorecard.dev/viewer/?uri=github.com/DamienReichhart/MarketForge
+#
+# publish_results requires this restricted shape: no top-level env or
+# defaults, and only allow-listed actions in the job.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 2"
+  # Re-grade when branch protection changes.
+  branch_protection_rule:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write # upload the SARIF to code scanning
+      id-token: write # publish the results for the badge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard
+          path: results.sarif
+          retention-days: 14
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif
+          category: scorecard
