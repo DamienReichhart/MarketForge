@@ -301,6 +301,28 @@ its `exp`/`log` implementation by CPU (for example AVX-512), and those differ by
 one ulp on a small fraction of inputs. See
 [ADR 0007](docs/adr/0007-optimise-without-changing-a-single-bit.md).
 
+## Project layout
+
+```
+marketforge/
+  domain/        Shared vocabulary: markets, regimes, anomalies, timeframes, candles. Imports nothing else.
+  calendars/     When each market is open and where its bars start (NYSE rules, DST).
+  config/        Model parameters, per-market defaults, TOML overrides.
+    catalog/     Built-in instruments and correlations, one package per market.
+  simulation/    The day-by-day market simulator and its parts (kernels, factors, regimes, anomalies).
+  aggregation/   m1 candles to higher timeframes, streaming.
+  output/        CSV and Parquet writers.
+  validation/    Stylized-fact metrics and the bands generated data must meet.
+  api/           generate() and generate_to_disk(): parsing, planning, execution.
+  cli/           The marketforge command, one module per subcommand.
+tests/           Mirrors the package, plus tooling/ for the release scripts.
+```
+
+Each package may import from the ones listed above it, never from the ones
+below; `aggregation`, `output` and `validation` do not import each other. CI
+enforces this with `lint-imports`. The supported Python API is what
+`import marketforge` exposes; module paths below it can change between releases.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

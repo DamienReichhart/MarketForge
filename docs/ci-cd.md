@@ -23,7 +23,7 @@ explicitly.
 
 | Job | What it checks |
 | --- | --- |
-| Lint & format | `ruff check` and `ruff format --check` |
+| Lint & format | `ruff check`, `ruff format --check`, and `lint-imports`, which fails when a package imports from a layer above it (the contract is in `pyproject.toml`) |
 | Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.14 with the newest numpy (numpy's type stubs differ between releases) |
 | Test | `pytest` on Linux for Python 3.12 to 3.14, and on macOS and Windows for 3.12 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
 | Test (py3.15 preview, non-blocking) | `pytest` on the next CPython (3.15, in beta) with binary wheels only. **Not** part of CI OK: an early warning, never a merge blocker. Promote it into the test matrix once 3.15 is final |
@@ -44,7 +44,7 @@ for a commit.
 
 ```bash
 pip install -e . --group dev          # or: uv pip install -e . --group dev
-ruff check . && ruff format --check .
+ruff check . && ruff format --check . && lint-imports
 mypy marketforge
 pytest --cov
 uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
