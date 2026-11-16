@@ -14,7 +14,7 @@ with correlations, realistic market behavior, and multiple timeframes.
 
 from marketforge._version import __version__
 from marketforge.api.catalog import instruments
-from marketforge.api.disk import generate_to_disk
+from marketforge.api.disk import extend, generate_to_disk
 from marketforge.api.memory import GeneratedData, generate
 from marketforge.api.parsing import parse_time
 from marketforge.api.validating import validate
@@ -24,6 +24,7 @@ __author__ = "REICHHART Damien"
 __all__ = [
     "GeneratedData",
     "__version__",
+    "extend",
     "generate",
     "generate_to_disk",
     "instruments",

@@ -31,6 +31,7 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.encoding import candle_schema, record_batch, rounded_columns
 from marketforge.output.formats import OutputFormat
+from marketforge.output.manifest import REWRITE_SUFFIX
 
 # Rows buffered per file before it is written: one Parquet row group. Day-sized
 # row groups (1440 rows) made Parquet files larger than CSV.
@@ -53,7 +54,14 @@ class CandleWriter:
         fmt: OutputFormat = OutputFormat.CSV,
         include_regime: bool = False,
         max_buffered_rows: int = MAX_BUFFERED_ROWS,
+        extend: bool = False,
     ) -> None:
+        """
+        With ``extend``, candles are added to the files a dataset already has:
+        CSV files are appended to in place, and a Parquet file that receives
+        candles is written whole (its rows, then the new ones) beside the
+        original under ``REWRITE_SUFFIX``, for the caller to swap in.
+        """
         self.directory = Path(output_dir) / market
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fmt = OutputFormat(fmt)
@@ -76,12 +84,19 @@ class CandleWriter:
         self._total_buffered = 0
         self._csv_options = pacsv.WriteOptions(include_header=False)
         self._csv_header = (",".join(self.schema.names) + "\n").encode("ascii")
+        self._extend = extend
+        every = [path for files in self.paths.values() for path in files.values()]
+        if extend:
+            missing = [path for path in every if not path.exists()]
+            if missing:
+                raise FileNotFoundError(f"the dataset has lost {missing[0]}")
+            self._started.update(every)
+            return
         # Never leave a stale file from an earlier run behind: every output is
         # rewritten from scratch (on first flush, or empty at close).
-        for files in self.paths.values():
-            for path in files.values():
-                if path.exists():
-                    path.unlink()
+        for path in every:
+            if path.exists():
+                path.unlink()
 
     @property
     def n_files(self) -> int:
@@ -89,7 +104,7 @@ class CandleWriter:
 
     @property
     def empty(self) -> list[tuple[str, str]]:
-        """The (symbol, timeframe) files that have received no candle."""
+        """The (symbol, timeframe) files that have received no candle from this writer."""
         return [
             (symbol, timeframe)
             for symbol, files in self.paths.items()
@@ -138,13 +153,17 @@ class CandleWriter:
             # Random-walk doubles barely compress as-is; byte-stream-split
             # encoding makes files ~40% of the CSV size instead of ~60%.
             writer = pq.ParquetWriter(
-                path,
+                path.with_name(path.name + REWRITE_SUFFIX) if self._extend else path,
                 self.schema,
                 compression="zstd",
                 use_dictionary=["timestamp"],
                 use_byte_stream_split=["open", "high", "low", "close", "volume"],
             )
             self._parquet[path] = writer
+            if self._extend:
+                existing = pq.ParquetFile(path)
+                for group in range(existing.num_row_groups):
+                    writer.write_table(existing.read_row_group(group))
         writer.write_table(table, row_group_size=table.num_rows)
 
     def close(self) -> dict[str, dict[str, Path]]:
@@ -156,6 +175,8 @@ class CandleWriter:
             for writer in self._parquet.values():
                 writer.close()
             self._parquet.clear()
+        if self._extend:
+            return self.paths
         # Files that received no candle are still valid, empty files.
         empty = self.schema.empty_table()
         for files in self.paths.values():

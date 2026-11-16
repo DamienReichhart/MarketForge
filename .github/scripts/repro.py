@@ -101,7 +101,8 @@ def capture(out: Path) -> None:
     for name, kwargs in DISK_SCENARIOS.items():
         with tempfile.TemporaryDirectory() as tmp:
             mf.generate_to_disk(tmp, fmt="csv", jobs=1, **kwargs)
-            files = sorted(p for p in Path(tmp).rglob("*") if p.is_file())
+            # Candle files only: the manifest names the version that wrote it.
+            files = sorted(p for p in Path(tmp).rglob("*.csv") if p.is_file())
             if not files:
                 sys.exit(f"::error::scenario {name} wrote no files")
             for path in files:
