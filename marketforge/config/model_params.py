@@ -133,6 +133,70 @@ class VolumeParams:
 
 
 @dataclass(frozen=True)
+class SpreadParams:
+    """
+    Quoted bid-ask spread around the mid price (see docs/adr/0008).
+
+    Per minute and instrument, as a fraction of the price:
+
+        spread_t = base * turbulence_t ** turbulence_exponent
+                   / s(t) ** liquidity_exponent
+                   * (1 + reopen_widening * exp(-(m_t - 1) / reopen_minutes))
+                   * lognormal noise
+
+    where m_t counts the open minutes since the market last reopened, and the
+    result is never below one ``tick`` in price units.
+
+    ``base`` is the instrument's catalog ``spread_bps``. Instruments without
+    one get ``reference_bps * (volatility / reference_volatility) **
+    volatility_exponent``, at least ``minimum_bps``: within a market, the more
+    volatile instruments are the less liquid ones. These levels are estimates
+    of typical quoted spreads, not measurements.
+
+    Attributes:
+        reference_bps: Default spread, in basis points of the price, of an
+            instrument whose annual volatility is ``reference_volatility``.
+        reference_volatility: See ``reference_bps``.
+        volatility_exponent: How fast the default spread grows with volatility.
+        minimum_bps: Floor of the default spread.
+        tick: Smallest quoted spread in price units (one cent for US stocks).
+        turbulence_exponent: Elasticity to the volatility level (GARCH x regime).
+        liquidity_exponent: Elasticity to intraday seasonality: spreads widen
+            in the quiet hours.
+        reopen_widening: Extra width, as a multiple, in the first minute after
+            a closure.
+        reopen_minutes: Decay time of that extra width, in minutes.
+        noise: Lognormal sigma of the minute-to-minute noise.
+    """
+
+    reference_bps: float
+    reference_volatility: float
+    volatility_exponent: float
+    minimum_bps: float
+    tick: float = 0.0
+    turbulence_exponent: float = 0.5
+    liquidity_exponent: float = 0.5
+    reopen_widening: float = 0.0
+    reopen_minutes: float = 1.0
+    noise: float = 0.25
+
+    def __post_init__(self) -> None:
+        for name in ("reference_bps", "reference_volatility", "minimum_bps", "reopen_minutes"):
+            if getattr(self, name) <= 0:
+                raise ValueError(f"{name} must be positive, got {getattr(self, name)}")
+        for name in ("tick", "reopen_widening", "noise"):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be non-negative, got {getattr(self, name)}")
+
+    def default_bps(self, volatility: float) -> float:
+        """Spread, in basis points, of an instrument that does not set its own."""
+        scaled = self.reference_bps * (volatility / self.reference_volatility) ** (
+            self.volatility_exponent
+        )
+        return float(max(self.minimum_bps, scaled))
+
+
+@dataclass(frozen=True)
 class AnomalyConfig:
     """
     Anomaly settings for a market.

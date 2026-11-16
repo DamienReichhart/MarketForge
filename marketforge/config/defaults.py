@@ -16,7 +16,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marketforge.config.model_params import AnomalyConfig, GARCHParams, RegimeParams, VolumeParams
+from marketforge.config.model_params import (
+    AnomalyConfig,
+    GARCHParams,
+    RegimeParams,
+    SpreadParams,
+    VolumeParams,
+)
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
 
@@ -33,6 +39,7 @@ class MarketDefaults:
         anomaly_config: Anomaly magnitudes (which ones run is chosen per request).
         innovation_nu: Student-t degrees of freedom of shocks (None = Gaussian).
         volume_params: Volume dynamics shared by the market's instruments.
+        spread_params: Quoted spread levels and dynamics (estimates).
         closure_variance_scale, closure_variance_exponent: Price variance
             accumulated over a closure of C minutes, in open-minute variances:
             scale * C ** exponent. Produces overnight and weekend gaps.
@@ -46,6 +53,7 @@ class MarketDefaults:
     anomaly_config: AnomalyConfig
     innovation_nu: float
     volume_params: VolumeParams
+    spread_params: SpreadParams
     closure_variance_scale: float = 0.0
     closure_variance_exponent: float = 0.5
     # Intrabar diffusion relative to the bar's volatility. Real minutes wander
@@ -87,6 +95,10 @@ CRYPTO_DEFAULTS = MarketDefaults(
     # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
     innovation_nu=6.0,
     volume_params=VolumeParams(phi=0.45, lam=0.35, kappa=0.4),
+    # Estimate: ~1.5 bp on BTCUSD, ~5 bp on the most volatile coins.
+    spread_params=SpreadParams(
+        reference_bps=1.5, reference_volatility=0.55, volatility_exponent=2.0, minimum_bps=0.5
+    ),
     intrabar_volatility_ratio=0.62,
 )
 
@@ -117,6 +129,16 @@ FOREX_DEFAULTS = MarketDefaults(
     ),
     innovation_nu=10.0,
     volume_params=VolumeParams(phi=0.45, lam=0.25, kappa=0.4),
+    # Estimate: ~0.6 pip on EURUSD, several bp on exotics, metals and CFDs;
+    # five times wider when the week opens, back to normal within the hour.
+    spread_params=SpreadParams(
+        reference_bps=0.55,
+        reference_volatility=0.065,
+        volatility_exponent=2.5,
+        minimum_bps=0.2,
+        reopen_widening=4.0,
+        reopen_minutes=15.0,
+    ),
     intrabar_volatility_ratio=0.7,  # provisional
     integer_volume=True,  # tick volume
     # Weekend (2880 min) gap ~ sqrt(80) ~ 9 open-minute stds: ~10 pips std
@@ -157,6 +179,17 @@ STOCKS_DEFAULTS = MarketDefaults(
     ),
     innovation_nu=10.0,
     volume_params=VolumeParams(phi=0.45, lam=0.3, kappa=0.4),
+    # Estimate: large caps quote one cent wide most of the day, and several
+    # cents for the first minutes after the open.
+    spread_params=SpreadParams(
+        reference_bps=0.5,
+        reference_volatility=0.25,
+        volatility_exponent=1.0,
+        minimum_bps=0.2,
+        tick=0.01,
+        reopen_widening=3.0,
+        reopen_minutes=5.0,
+    ),
     intrabar_volatility_ratio=0.7,  # provisional
     # Overnight (1050 min) variance ~ 0.3 of a 390-minute session; a weekend
     # adds ~40% more, in line with empirical overnight/weekend ratios.

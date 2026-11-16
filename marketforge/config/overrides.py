@@ -24,7 +24,8 @@ editing the package.
 Keys: market (required for new instruments), start_price, volatility
 (annualised), drift (annualised log drift), volume_base (mean volume per
 minute: coins for crypto, ticks for forex, shares for stocks),
-volume_volatility, correlations (to instruments of the same market;
+volume_volatility, spread_bps (typical quoted spread in basis points of the
+price; default: the market's rule), correlations (to instruments of the same market;
 unspecified pairs of a new instrument default to 0).
 """
 
@@ -44,7 +45,7 @@ from marketforge.config.catalog.correlation import ensure_positive_semidefinite
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.domain.markets import MarketType
 
-_FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility")
+_FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility", "spread_bps")
 _KEYS = set(_FIELDS) | {"market", "correlations"}
 
 

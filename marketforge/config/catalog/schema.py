@@ -32,6 +32,8 @@ class InstrumentParams:
         volume_base: Mean volume per open minute, in the market's unit:
             base-asset units (crypto), ticks (forex), shares (stocks).
         volume_volatility: Lognormal sigma of the volume noise.
+        spread_bps: Typical quoted spread in basis points of the price (0.55
+            is 0.6 pip on EURUSD). None: the market's rule, from volatility.
     """
 
     symbol: str
@@ -40,6 +42,7 @@ class InstrumentParams:
     drift: float = 0.0
     volume_base: float = 1000.0
     volume_volatility: float = 0.5
+    spread_bps: float | None = None
 
     def __post_init__(self) -> None:
         """Validate instrument parameters."""
@@ -49,6 +52,8 @@ class InstrumentParams:
             raise ValueError(f"volatility must be positive, got {self.volatility}")
         if self.volume_base <= 0:
             raise ValueError(f"volume_base must be positive, got {self.volume_base}")
+        if self.spread_bps is not None and self.spread_bps <= 0:
+            raise ValueError(f"spread_bps must be positive, got {self.spread_bps}")
 
 
 @dataclass

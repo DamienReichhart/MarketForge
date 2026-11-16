@@ -60,6 +60,7 @@ from marketforge.simulation.projection import Projection, SessionShape
 from marketforge.simulation.regimes import REGIME_SMOOTHING, normalised_regime_targets
 from marketforge.simulation.seasonality import get_seasonality
 from marketforge.simulation.spec import MarketSpec
+from marketforge.simulation.spread import minutes_since_reopen, quoted_spread
 
 # Stable per-market stream identifiers (part of the reproducibility contract).
 _MARKET_STREAM = {MarketType.CRYPTO: 1, MarketType.FOREX: 2, MarketType.STOCKS: 3}
@@ -94,7 +95,11 @@ class MarketSimulator:
     """
 
     def __init__(
-        self, spec: MarketSpec, seed: int, instruments: Sequence[str] | None = None
+        self,
+        spec: MarketSpec,
+        seed: int,
+        instruments: Sequence[str] | None = None,
+        spread: bool = False,
     ) -> None:
         if seed < 0:
             raise ValueError(f"seed must be a non-negative integer, got {seed}")
@@ -169,6 +174,18 @@ class MarketSimulator:
         self._volume_noise = noise[inst]
         self._volume_log_correction = (0.5 * var_u / (1.0 - vp.phi**2))[inst]
         self._base_volume = np.array([by_symbol[s].volume_base for s in symbols])[inst]
+
+        # Typical spread of each selected instrument, as a fraction of its price:
+        # its own catalog value, else the market's rule from its annual volatility.
+        self._spread = spread
+        sp = d.spread_params
+        annual = self._sigma_ref * np.sqrt(minutes_per_year)
+        self._spread_base = 1e-4 * np.array(
+            [
+                by_symbol[s].spread_bps or sp.default_bps(float(v))
+                for s, v in zip(selected, annual, strict=True)
+            ]
+        )
 
         self._state = _State(
             log_price=np.log([a.start_price for a in factors])[fa],
@@ -381,4 +398,16 @@ class MarketSimulator:
             )
         if self.spec.defaults.integer_volume:
             result.volume = np.maximum(np.rint(result.volume), 1.0)
+        if self._spread:
+            # Its own random stream: asking for spreads changes no candle.
+            noise = self._day_rng(day, 2).standard_normal((MINUTES_PER_DAY, n_i))
+            result.spread = quoted_spread(
+                self.spec.defaults.spread_params,
+                self._spread_base,
+                result.close,
+                level_i,  # holds the log of the turbulence by now
+                season,
+                minutes_since_reopen(self.calendar, day)[rows],
+                self._select(noise, rows),
+            )
         return result

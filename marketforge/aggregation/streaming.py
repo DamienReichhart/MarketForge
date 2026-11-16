@@ -112,13 +112,13 @@ class BarAggregator:
         if self._carry:
             # The open bucket ends at the first row with another key.
             split = int(np.searchsorted(keys, self._carry_key, side="right"))
-            rows = Bars.concat([*self._carry, _slice(minutes, slice(0, split))])
+            rows = Bars.concat([*self._carry, minutes.rows(slice(0, split))])
             pieces.append((rows, np.full(len(rows), self._carry_key, dtype=keys.dtype)))
         else:
             split = 0
         if last_start > split:
-            pieces.append((_slice(minutes, slice(split, last_start)), keys[split:last_start]))
-        self._carry = [_slice(minutes, slice(last_start, None))]
+            pieces.append((minutes.rows(slice(split, last_start)), keys[split:last_start]))
+        self._carry = [minutes.rows(slice(last_start, None))]
         self._carry_key = last_key
         return self._emit(pieces) if pieces else None
 
@@ -154,7 +154,7 @@ class BarAggregator:
             hi = n - 1
         if hi <= lo:
             return None
-        return out if (lo, hi) == (0, n) else _slice(out, slice(lo, hi))
+        return out if (lo, hi) == (0, n) else out.rows(slice(lo, hi))
 
     def _reduce(self, data: Bars, keys: np.ndarray) -> tuple[Bars, int]:
         """One candle per bucket of contiguous rows; returns it and the first key."""
@@ -174,11 +174,10 @@ class BarAggregator:
             close=data.close[ends - 1],
             volume=np.add.reduceat(data.volume, starts, axis=0),
             regime=data.regime[ends - 1],
+            spread=(
+                None
+                if data.spread is None
+                else np.add.reduceat(data.spread, starts, axis=0) / (ends - starts)[:, None]
+            ),
         )
         return bars, int(bucket[0])
-
-
-def _slice(b: Bars, s: slice) -> Bars:
-    return Bars(
-        b.timestamps[s], b.open[s], b.high[s], b.low[s], b.close[s], b.volume[s], b.regime[s]
-    )
