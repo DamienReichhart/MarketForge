@@ -48,9 +48,6 @@ class FactorStructure:
     def is_identity(self) -> bool:
         return self.factors == self.instruments
 
-    def factor_index(self, symbol: str) -> int:
-        return self.factors.index(symbol)
-
 
 def split_pair(symbol: str) -> tuple[str, str]:
     """Split a six-character forex symbol into (base, quote) codes."""
