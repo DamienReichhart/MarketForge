@@ -103,49 +103,6 @@ class MarketConfig:
     def get_asset(self, symbol: str) -> AssetParams:
         """Get asset parameters by symbol."""
         return self.assets[symbol]
-    
-    def get_correlation_submatrix(self, symbols: list[str]) -> np.ndarray:
-        """
-        Get correlation submatrix for a subset of assets.
-        
-        Args:
-            symbols: List of symbols to include.
-            
-        Returns:
-            Correlation submatrix for the specified symbols.
-        """
-        indices = [self.asset_order.index(s) for s in symbols]
-        return self.correlation_matrix[np.ix_(indices, indices)]
-    
-    def get_assets_by_category(self, category: str) -> list[AssetParams]:
-        """Get all assets in a category."""
-        return [a for a in self.assets.values() if a.category == category]
-
-
-def build_correlation_matrix(
-    n_assets: int,
-    correlations: dict[tuple[int, int], float],
-    default_correlation: float = 0.3
-) -> np.ndarray:
-    """
-    Build a correlation matrix from sparse correlation definitions.
-    
-    Args:
-        n_assets: Number of assets.
-        correlations: Dict mapping (i, j) pairs to correlation values.
-        default_correlation: Default correlation for unspecified pairs.
-        
-    Returns:
-        Full symmetric correlation matrix.
-    """
-    matrix = np.full((n_assets, n_assets), default_correlation)
-    np.fill_diagonal(matrix, 1.0)
-    
-    for (i, j), corr in correlations.items():
-        matrix[i, j] = corr
-        matrix[j, i] = corr
-    
-    return matrix
 
 
 def ensure_positive_semidefinite(matrix: np.ndarray, epsilon: float = 1e-6) -> np.ndarray:
