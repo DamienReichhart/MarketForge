@@ -1,12 +1,13 @@
 # CI/CD
 
-Three workflows live in `.github/workflows/`:
+These workflows live in `.github/workflows/`:
 
 | Workflow | Runs on | Purpose |
 | --- | --- | --- |
 | `ci.yml` (**CI**) | every PR, push to `dev`, merge queue, weekly schedule, manual; on `main` it runs inside CD | Quality gate |
 | `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, and release to PyPI and GitHub when the version is new |
 | `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
+| `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
 
 All third-party actions are pinned to a commit SHA. Dependabot
 (`.github/dependabot.yml`) opens one grouped PR a week against `dev` to bump
