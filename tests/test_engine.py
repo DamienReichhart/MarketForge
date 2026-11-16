@@ -9,6 +9,9 @@ from marketforge.engine import DayResult, MarketSimulator, build_market_spec
 
 JAN_1_2024 = 1704067200
 DAY = 86400
+# Ends a range inside the trading session of every market (16:10 UTC is
+# 11:10 New York in January), so the last day is cut short for all three.
+MID_SESSION = 16 * 3600 + 600
 
 
 def _run(market: str, seed: int, start: int, end: int, anomalies=frozenset()) -> DayResult:
@@ -49,7 +52,7 @@ def test_same_seed_same_output_and_different_seed_differs():
 
 @pytest.mark.parametrize("market", ["crypto", "forex", "stocks"])
 def test_extending_the_range_never_changes_earlier_candles(market):
-    short = _run(market, 9, JAN_1_2024, JAN_1_2024 + 3 * DAY + 5000)
+    short = _run(market, 9, JAN_1_2024, JAN_1_2024 + 3 * DAY + MID_SESSION)
     long = _run(market, 9, JAN_1_2024, JAN_1_2024 + 6 * DAY)
     n = short.timestamps.size
     np.testing.assert_array_equal(short.timestamps, long.timestamps[:n])
