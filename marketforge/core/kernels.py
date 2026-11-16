@@ -20,7 +20,7 @@ import numpy as np
 from numba import njit
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def regime_chain(
     uniforms: np.ndarray,
     cumulative_transitions: np.ndarray,
@@ -69,7 +69,7 @@ def regime_chain(
     return regimes, drifts, vols, regime, drift_mult, vol_mult
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def gjr_garch(
     shocks: np.ndarray,
     omega: float,
@@ -112,7 +112,7 @@ def gjr_garch(
     return h, variance, last_shock
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def ar1(drivers: np.ndarray, phi: float, state: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Column-wise AR(1): y_t = phi * y_{t-1} + u_t.

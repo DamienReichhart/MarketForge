@@ -15,14 +15,13 @@ with correlations, realistic market behavior, and multiple timeframes.
 __version__ = "2.0.0"
 __author__ = "REICHHART Damien"
 
-from marketforge.config.settings import GeneratorConfig
-from marketforge.core.returns import ReturnGenerator
-from marketforge.generators.ohlcv import OHLCVBuilder
+from marketforge.api import GeneratedData, generate, generate_to_disk, parse_time
 
 __all__ = [
-    "GeneratorConfig",
-    "ReturnGenerator",
-    "OHLCVBuilder",
+    "generate",
+    "generate_to_disk",
+    "parse_time",
+    "GeneratedData",
     "__version__",
 ]
 
