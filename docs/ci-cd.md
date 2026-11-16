@@ -25,6 +25,7 @@ explicitly.
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
+| Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
 The weekly scheduled run tests against the newest releases of every
