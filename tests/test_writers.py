@@ -5,7 +5,7 @@ import pytest
 
 from marketforge.aggregation.streaming import Bars
 from marketforge.aggregation.timeframes import Timeframe
-from marketforge.output.writers import CandleWriter, OutputFormat, candle_batches, candle_table
+from marketforge.output.writers import CandleWriter, OutputFormat, candle_batches
 
 
 def _bars(t0: int, n: int) -> Bars:
@@ -112,10 +112,10 @@ def test_open_file_limit_that_cannot_be_raised_fails_upfront(monkeypatch):
         writers.ensure_open_file_capacity(1664)
 
 
-def test_candle_table_rounds_one_instrument():
-    table = candle_table(_bars(0, 2), 1, include_regime=True)
-    assert table.column_names == ["timestamp", "open", "high", "low", "close", "volume", "regime"]
-    assert table["open"].to_pylist()[0] == 150.0
-    assert table["volume"].to_pylist() == [1234.5679, 1234.5679]
+def test_candle_batches_round_each_instrument():
+    (batch,) = candle_batches(_bars(0, 2), [1], include_regime=True)
+    assert batch.schema.names == ["timestamp", "open", "high", "low", "close", "volume", "regime"]
+    assert batch.column("open")[0].as_py() == 150.0
+    assert batch.column("volume").to_pylist() == [1234.5679, 1234.5679]
     batches = candle_batches(_bars(0, 2), [1, 0], include_regime=False)
     assert [b.column("open")[0].as_py() for b in batches] == [150.0, 1.08512346]

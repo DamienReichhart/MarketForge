@@ -100,11 +100,6 @@ def candle_batches(
     return [_batch([(ts, *(f[j] for f in fields), *regime)], schema) for j in range(len(fields[0]))]
 
 
-def candle_table(bars: Bars, column: int, include_regime: bool) -> pa.Table:
-    """Arrow table of one instrument's candles (prices and volume rounded)."""
-    return pa.Table.from_batches(candle_batches(bars, [column], include_regime))
-
-
 def ensure_open_file_capacity(n_files: int) -> None:
     """
     Make sure this process may keep ``n_files`` files open at once.
