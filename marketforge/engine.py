@@ -377,7 +377,10 @@ class MarketSimulator:
         season = self.seasonality.factor(ts)
 
         # Gaps after closures: at most a few rows a day.
-        gap_rows = np.empty(0, dtype=np.int64)
+        # intp, not int64: it is what np.nonzero returns below, so both paths
+        # hand factor_paths the same dtype. The explicit annotation keeps mypy
+        # from pinning the narrower type inferred from this placeholder.
+        gap_rows: np.ndarray = np.empty(0, dtype=np.intp)
         gap = np.empty((0, self._sigma.size))
         if st.last_timestamp is not None:
             prev = np.concatenate(([st.last_timestamp], ts[:-1]))
