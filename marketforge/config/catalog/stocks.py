@@ -31,6 +31,7 @@ from marketforge.config.settings import MarketType
 # Prices as of late 2024, volatility based on historical behavior
 # Volume in thousands of shares
 
+# volume_base is the mean number of shares traded per minute of the session.
 STOCKS_ASSETS_DATA = {
     # Technology - Mega Cap
     "AAPL": AssetParams("AAPL", 185.00, 0.25, 0.08, 50000, 0.45, "tech_mega"),

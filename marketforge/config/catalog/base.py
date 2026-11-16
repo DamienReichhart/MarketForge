@@ -22,15 +22,16 @@ from marketforge.config.settings import MarketType
 @dataclass
 class AssetParams:
     """
-    Parameters for a single asset.
-    
+    Parameters for a single instrument.
+
     Attributes:
-        symbol: Asset symbol (e.g., 'EURUSD', 'BTCUSD', 'AAPL').
-        start_price: Initial price for the asset.
-        volatility: Annualized volatility (e.g., 0.02 for 2%).
-        drift: Annualized drift/trend (e.g., 0.0001).
-        volume_base: Base volume level for the asset.
-        volume_volatility: Volatility of volume (log-normal sigma).
+        symbol: Instrument symbol (e.g., 'EURUSD', 'BTCUSD', 'AAPL').
+        start_price: Initial price.
+        volatility: Annualized volatility (e.g., 0.25 for 25%).
+        drift: Annualized log drift (e.g., 0.08).
+        volume_base: Mean volume per open minute, in the market's unit:
+            base-asset units (crypto), ticks (forex), shares (stocks).
+        volume_volatility: Lognormal sigma of the volume noise.
         category: Optional category for grouping (e.g., 'major', 'tech').
     """
     symbol: str
