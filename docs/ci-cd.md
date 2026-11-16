@@ -78,8 +78,9 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    GitHub release with the CHANGELOG section as notes and the distributions
    attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
-5. **verify** installs the version from PyPI in a clean environment (retrying
-   while the CDN catches up) and runs it.
+5. **verify** installs the version from PyPI in clean environments on Linux
+   (Python 3.12 and 3.14), macOS and Windows (3.14), retrying while the CDN
+   catches up, and runs the CLI and a generation across all three markets.
 
 A push to `main` that does not bump the version (a docs fix, say) is a green
 no-op release. PRs into `main` are stricter: their **Release readiness** job
