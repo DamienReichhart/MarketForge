@@ -43,7 +43,7 @@ env:
 jobs:
   guard:
     name: Resolve version & guard
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -88,7 +88,7 @@ jobs:
     name: Publish to PyPI
     needs: [guard, ci]
     if: ${{ needs.guard.outputs.release == 'true' && !inputs.dry-run }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
       # Add required reviewers to this environment for a manual approval gate.
@@ -140,7 +140,7 @@ jobs:
   github-release:
     name: Tag & GitHub release
     needs: [guard, publish]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -200,10 +200,10 @@ jobs:
         # Numba compiles natively: check what users actually install on each
         # platform, at both ends of the supported Python range.
         include:
-          - { os: ubuntu-latest, python-version: "3.12" }
-          - { os: ubuntu-latest, python-version: "3.14" }
-          - { os: macos-latest, python-version: "3.14" }
-          - { os: windows-latest, python-version: "3.14" }
+          - { os: ubuntu-24.04, python-version: "3.12" }
+          - { os: ubuntu-24.04, python-version: "3.14" }
+          - { os: macos-15, python-version: "3.14" }
+          - { os: windows-2025, python-version: "3.14" }
     defaults:
       run:
         shell: bash

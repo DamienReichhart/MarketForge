@@ -44,7 +44,7 @@ defaults:
 jobs:
   lint:
     name: Lint & format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,7 +64,7 @@ jobs:
 
   typecheck:
     name: Type-check (py${{ matrix.python-version }}, numpy ${{ matrix.numpy }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -104,17 +104,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         python-version: ["3.12", "3.13", "3.14"]
         include:
           # Numba compiles natively: cover macOS (arm64) and Windows at both
           # ends of the supported Python range.
-          - { os: macos-latest, python-version: "3.12" }
-          - { os: macos-latest, python-version: "3.14" }
-          - { os: windows-latest, python-version: "3.12" }
-          - { os: windows-latest, python-version: "3.14" }
+          - { os: macos-15, python-version: "3.12" }
+          - { os: macos-15, python-version: "3.14" }
+          - { os: windows-2025, python-version: "3.12" }
+          - { os: windows-2025, python-version: "3.14" }
           # The coverage leg (extends the existing ubuntu / 3.13 entry).
-          - { os: ubuntu-latest, python-version: "3.13", coverage: true }
+          - { os: ubuntu-24.04, python-version: "3.13", coverage: true }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -156,7 +156,7 @@ jobs:
     # "CI OK": a red mark here never blocks a merge. When it is final, move it
     # into the test matrix and add its classifier to pyproject.toml.
     name: Test (py3.15 preview, non-blocking)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -180,7 +180,7 @@ jobs:
 
   min-deps:
     name: Test (lowest supported dependencies)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -212,7 +212,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -239,7 +239,7 @@ jobs:
 
   build:
     name: Build & verify distributions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -320,7 +320,7 @@ jobs:
 
   audit:
     name: Dependency vulnerability audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -348,7 +348,7 @@ jobs:
 
   workflows:
     name: Lint GitHub workflows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -371,7 +371,7 @@ jobs:
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -389,7 +389,7 @@ jobs:
     if: >-
       (github.event_name == 'pull_request' && github.base_ref == 'main') ||
       (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -421,7 +421,7 @@ jobs:
       - workflows
       - dependency-review
       - release-readiness
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every job to succeed (or be skipped)

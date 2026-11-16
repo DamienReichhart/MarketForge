@@ -10,7 +10,11 @@ These workflows live in `.github/workflows/`:
 | `scorecard.yml` (**Scorecard**) | push to `main`, weekly, branch-protection changes | OpenSSF Scorecard: grades supply-chain practices; findings go to code scanning, results feed the public badge |
 | `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
 
-All third-party actions are pinned to a commit SHA. Dependabot
+All third-party actions are pinned to a commit SHA, and runner images to a
+version (`ubuntu-24.04`, `macos-15`, `windows-2025`), not `-latest`: the
+distributions are built on these images, so moving to a new OS is a
+deliberate PR with a green CI run, never GitHub's migration schedule.
+Dependabot does not bump runner labels; review them yearly. Dependabot
 (`.github/dependabot.yml`) opens one grouped PR a week against `dev` to bump
 them. Every job starts with a read-only token; jobs that need more ask for it
 explicitly.
