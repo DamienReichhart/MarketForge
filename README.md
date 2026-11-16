@@ -423,4 +423,4 @@ enforces this with `lint-imports`. The supported Python API is what
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+AGPL-3.0-or-later. See [LICENSE](LICENSE).

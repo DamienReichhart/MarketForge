@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the GNU Affero General Public License v3.0 or later.
+# See the LICENSE file in the project root for full license information.
 
 """Quoted bid-ask spread around the mid price (see docs/adr/0008)."""
 
