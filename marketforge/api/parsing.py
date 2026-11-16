@@ -4,20 +4,32 @@
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
 
-"""Turning user input (times, timeframe names, anomaly names) into domain values."""
+"""Turning user input (times, names of timeframes, markets and anomalies, seeds) into domain values."""
 
 from __future__ import annotations
 
 import datetime as dt
+import secrets
 from collections.abc import Iterable
 
 import numpy as np
 
 from marketforge.aggregation.streaming import SUPPORTED_TIMEFRAMES
 from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 
 TimeLike = int | float | str | dt.datetime | dt.date
+# One name, several names separated by commas, or any iterable of names.
+Names = str | Iterable[str]
+
+
+def as_names(value: Names | None) -> list[str]:
+    """The non-empty names of ``value``, stripped, in order and without duplicates."""
+    if value is None:
+        return []
+    parts = value.split(",") if isinstance(value, str) else [str(v) for v in value]
+    return list(dict.fromkeys(name for part in parts if (name := part.strip())))
 
 
 def parse_time(value: TimeLike) -> int:
@@ -56,13 +68,25 @@ def parse_time(value: TimeLike) -> int:
     return int(moment.timestamp())
 
 
-def parse_timeframes(values: Iterable[str]) -> list[Timeframe]:
+def parse_seed(seed: int | None) -> int:
+    """The seed to use: the given non-negative integer, or a random one when omitted."""
+    if seed is None:
+        return secrets.randbits(32)
+    if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
+        raise TypeError(f"seed must be an integer, got {seed!r}")
+    if seed < 0:
+        raise ValueError(f"seed must be a non-negative integer, got {seed}")
+    return int(seed)
+
+
+def parse_timeframes(values: Names) -> list[Timeframe]:
     out: list[Timeframe] = []
-    for v in values:
-        tf = Timeframe.from_string(v.strip())
+    for v in as_names(values):
+        tf = Timeframe.from_string(v)
         if tf not in SUPPORTED_TIMEFRAMES:
             raise ValueError(
-                f"Unsupported timeframe {v!r}; choose from {[t.name for t in SUPPORTED_TIMEFRAMES]}"
+                f"Unsupported timeframe {v!r}; choose from "
+                f"{', '.join(t.name for t in SUPPORTED_TIMEFRAMES)}"
             )
         if tf not in out:
             out.append(tf)
@@ -71,11 +95,31 @@ def parse_timeframes(values: Iterable[str]) -> list[Timeframe]:
     return out
 
 
-def parse_anomalies(values: Iterable[str]) -> frozenset[AnomalyType]:
-    out = set()
-    for v in values:
+def parse_markets(values: Names | None) -> list[MarketType] | None:
+    """The requested markets, or None for every market (nothing given, or ``all``)."""
+    out: list[MarketType] = []
+    for name in as_names(values):
+        if name.lower() == "all":
+            return None
         try:
-            out.add(AnomalyType(v.strip().lower()))
+            market = MarketType(name.lower())
         except ValueError:
-            raise ValueError(f"Unknown anomaly {v!r}; choose from spikes, flash_crash") from None
+            raise ValueError(
+                f"Unknown market {name!r}; choose from "
+                f"{', '.join(m.value for m in MarketType)} or all"
+            ) from None
+        if market not in out:
+            out.append(market)
+    return out or None
+
+
+def parse_anomalies(values: Names) -> frozenset[AnomalyType]:
+    out = set()
+    for v in as_names(values):
+        try:
+            out.add(AnomalyType(v.lower()))
+        except ValueError:
+            raise ValueError(
+                f"Unknown anomaly {v!r}; choose from {', '.join(a.value for a in AnomalyType)}"
+            ) from None
     return frozenset(out)

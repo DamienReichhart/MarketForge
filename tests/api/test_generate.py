@@ -69,7 +69,8 @@ def test_market_filter_and_errors():
 
 
 def test_closed_market_range_returns_empty_frames():
-    df = mf.generate(["AAPL"], start="2024-01-06", end="2024-01-08", seed=1)["AAPL"]["m1"]
+    with pytest.warns(UserWarning, match="No candles for AAPL m1"):
+        df = mf.generate(["AAPL"], start="2024-01-06", end="2024-01-08", seed=1)["AAPL"]["m1"]
     assert df.empty and list(df.columns) == ["open", "high", "low", "close", "volume"]
 
 
@@ -112,3 +113,38 @@ def test_generation_error_is_not_masked_by_closing_writers(tmp_path, monkeypatch
         mf.generate_to_disk(tmp_path, ["EURUSD"], start="2024-01-02", end="2024-01-03", seed=1)
     # Writers were still closed: every file exists and is valid (empty).
     assert pd.read_csv(tmp_path / "forex" / "EURUSD_m1.csv").empty
+
+
+def test_names_may_be_one_string_in_any_case():
+    listed = mf.generate(
+        ["EURUSD", "AAPL"], start="2024-01-02", end="2024-01-04", seed=5, timeframes=["H1", "D1"]
+    )
+    loose = mf.generate(
+        "eurusd, aapl", start="2024-01-02", end="2024-01-04", seed=5, timeframes="h1,d1"
+    )
+    assert list(loose) == list(listed) and list(loose["AAPL"]) == ["H1", "D1"]
+    pd.testing.assert_frame_equal(loose["EURUSD"]["H1"], listed["EURUSD"]["H1"])
+    one = mf.generate("EURUSD", markets="all", start="2024-01-02", end="2024-01-03", seed=5)
+    assert list(one) == ["EURUSD"]
+
+
+@pytest.mark.parametrize("seed", [1.5, 2.0, True, "7"])
+def test_seed_must_be_an_integer(seed):
+    with pytest.raises(TypeError, match="seed must be an integer"):
+        mf.generate("EURUSD", start="2024-01-02", end="2024-01-03", seed=seed)
+
+
+def test_unknown_names_say_what_is_valid():
+    with pytest.raises(ValueError, match=r"APPL \(did you mean AAPL\?\)"):
+        mf.generate("APPL", start="2024-01-02", end="2024-01-03")
+    with pytest.raises(ValueError, match="Unknown market 'fx'; choose from crypto, forex, stocks"):
+        mf.generate(markets="fx", start="2024-01-02", end="2024-01-03")
+
+
+def test_outputs_without_a_candle_are_warned_about(tmp_path):
+    # 2024-01-01 is an NYSE holiday, and half a day holds no complete forex D1 candle.
+    kwargs = {"start": "2024-01-01", "end": "2024-01-01T12:00", "seed": 1, "timeframes": "m1,D1"}
+    with pytest.warns(UserWarning, match="No candles for EURUSD D1, AAPL m1, AAPL D1"):
+        mf.generate("EURUSD,AAPL", **kwargs)
+    with pytest.warns(UserWarning, match="No candles for EURUSD D1, AAPL m1, AAPL D1"):
+        mf.generate_to_disk(tmp_path, "EURUSD,AAPL", **kwargs)

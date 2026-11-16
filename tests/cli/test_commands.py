@@ -118,3 +118,30 @@ def test_validate_generated_parquet(tmp_path):
     )
     assert "Validation report (crypto)" in res.output
     assert res.exit_code == 0, res.output
+
+
+def test_generate_takes_lowercase_timeframes_and_warns_about_empty_files(tmp_path):
+    res = _run(
+        "generate",
+        "-o",
+        str(tmp_path),
+        "--from",
+        "2024-01-01",
+        "--to",
+        "2024-01-01T12:00",
+        "--assets",
+        "AAPL",
+        "-t",
+        "d1",
+        "--seed",
+        "1",
+        "--no-progress",
+    )
+    assert res.exit_code == 0, res.output
+    assert "Warning: No candles for AAPL D1" in res.output
+
+
+def test_generate_asks_for_an_output_directory_before_planning():
+    res = _run("generate", "--from", "2024-01-01", "--to", "2024-01-02", "--assets", "AAPL")
+    assert res.exit_code == 2
+    assert "Missing option '--output-dir'" in res.output and "Range" not in res.output

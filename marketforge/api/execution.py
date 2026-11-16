@@ -8,7 +8,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import warnings
+from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 
 from threadpoolctl import threadpool_limits
@@ -68,3 +69,16 @@ def execute(
         with ThreadPoolExecutor(max_workers=min(jobs, len(request.plans))) as pool:
             for f in [pool.submit(_run_market, request, p, sink, on_day) for p in request.plans]:
                 f.result()
+
+
+def warn_about_empty(empty: Iterable[tuple[str, str]]) -> None:
+    """Warn once about the (instrument, timeframe) outputs that received no candle."""
+    names = [f"{symbol} {timeframe}" for symbol, timeframe in empty]
+    if not names:
+        return
+    shown = ", ".join(names[:6]) + (f" and {len(names) - 6} more" if len(names) > 6 else "")
+    warnings.warn(
+        f"No candles for {shown}: the range holds no complete candle of that timeframe "
+        "(the market is closed, or the range is shorter than the candle)",
+        stacklevel=3,
+    )

@@ -8,14 +8,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from marketforge.api.execution import execute
-from marketforge.api.parsing import TimeLike
+from marketforge.api.execution import execute, warn_about_empty
+from marketforge.api.parsing import Names, TimeLike
 from marketforge.api.planning import MarketPlan, plan_request
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
@@ -30,14 +29,14 @@ class GeneratedData(dict):
 
 
 def generate(
-    assets: Sequence[str] | None = None,
+    assets: Names | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
-    markets: Sequence[str | MarketType] | None = None,
+    markets: Names | None = None,
     seed: int | None = None,
-    timeframes: Sequence[str] = ("m1",),
-    anomalies: Sequence[str] = (),
+    timeframes: Names = ("m1",),
+    anomalies: Names = (),
     include_regime: bool = False,
     overrides: str | Path | None = None,
 ) -> GeneratedData:
@@ -88,6 +87,9 @@ def generate(
             frames = _frames(chunks or [], len(plan.selected), request.include_regime)
             for symbol, frame in zip(plan.selected, frames, strict=True):
                 out.setdefault(symbol, {})[tf.name] = frame
+    warn_about_empty(
+        (symbol, name) for symbol, frames in out.items() for name, f in frames.items() if f.empty
+    )
     return out
 
 

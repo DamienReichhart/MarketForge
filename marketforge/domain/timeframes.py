@@ -29,8 +29,9 @@ class Timeframe(Enum):
 
     @classmethod
     def from_string(cls, s: str) -> Timeframe:
-        """Parse a timeframe name such as ``m5``, ``H1`` or ``D1``."""
-        try:
-            return cls[s]
-        except KeyError:
-            raise ValueError(f"Unknown timeframe {s!r}; valid: {[t.name for t in cls]}") from None
+        """Parse a timeframe name such as ``m5``, ``H1`` or ``D1``, in any letter case."""
+        wanted = s.strip().lower()
+        for timeframe in cls:
+            if timeframe.name.lower() == wanted:
+                return timeframe
+        raise ValueError(f"Unknown timeframe {s!r}; valid: {', '.join(t.name for t in cls)}")

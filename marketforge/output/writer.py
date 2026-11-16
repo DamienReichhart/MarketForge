@@ -70,6 +70,7 @@ class CandleWriter:
         self._max_buffered = max(ROW_GROUP_ROWS, int(max_buffered_rows))
         self._parquet: dict[Path, pq.ParquetWriter] = {}
         self._started: set[Path] = set()
+        self._rows = dict.fromkeys((p for files in self.paths.values() for p in files.values()), 0)
         self._buffers: dict[Path, list[tuple[np.ndarray, ...]]] = {}
         self._buffered: dict[Path, int] = {}
         self._total_buffered = 0
@@ -86,6 +87,16 @@ class CandleWriter:
     def n_files(self) -> int:
         return sum(len(files) for files in self.paths.values())
 
+    @property
+    def empty(self) -> list[tuple[str, str]]:
+        """The (symbol, timeframe) files that have received no candle."""
+        return [
+            (symbol, timeframe)
+            for symbol, files in self.paths.items()
+            for timeframe, path in files.items()
+            if not self._rows[path]
+        ]
+
     def write(self, timeframe: Timeframe, bars: Bars | None) -> None:
         if bars is None or len(bars) == 0:
             return
@@ -97,6 +108,7 @@ class CandleWriter:
             self._buffers.setdefault(path, []).append((ts, *(f[j] for f in fields), *regime))
             n = self._buffered.get(path, 0) + rows
             self._buffered[path] = n
+            self._rows[path] += rows
             self._total_buffered += rows
             if n >= ROW_GROUP_ROWS:
                 self._flush(path)

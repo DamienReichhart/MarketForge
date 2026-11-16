@@ -12,6 +12,7 @@ import os
 import sys
 import threading
 import time
+import warnings
 from pathlib import Path
 
 import click
@@ -21,10 +22,6 @@ from marketforge.api.disk import write_request
 from marketforge.api.planning import plan_request
 from marketforge.cli.plan_summary import print_plan
 from marketforge.domain.markets import MarketType
-
-
-def _split(value: str | None) -> list[str]:
-    return [v.strip() for v in value.split(",") if v.strip()] if value else []
 
 
 @click.command()
@@ -68,7 +65,7 @@ def _split(value: str | None) -> list[str]:
     "-t",
     default="m1,m5,m15,m30,H1,H4,D1,W1",
     show_default=True,
-    help="Comma-separated: m1,m5,m15,m30,H1,H4,D1,W1.",
+    help="Comma-separated, in any letter case: m1,m5,m15,m30,H1,H4,D1,W1.",
 )
 @click.option(
     "--anomalies", metavar="LIST", help="Optional unrealistic events: spikes, flash_crash."
@@ -124,26 +121,23 @@ def generate(
     progress: bool,
 ) -> None:
     """Generate candles and write them to disk."""
-    market_list = _split(markets)
-    if [m.lower() for m in market_list] == ["all"]:
-        market_list = []
+    if not dry_run and not output_dir:
+        raise click.UsageError("Missing option '--output-dir' / '-o'.")
     request = plan_request(
-        _split(assets) or None,
-        market_list or None,
+        assets,
+        markets,
         start=start,
         end=end,
         seed=seed,
-        timeframes=_split(timeframes),
-        anomalies=_split(anomalies),
+        timeframes=timeframes,
+        anomalies=anomalies or (),
         include_regime=with_regime,
         overrides=overrides,
     )
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
     print_plan(request, fmt, output_dir, seed is None)
-    if dry_run:
+    if dry_run or not output_dir:
         return
-    if not output_dir:
-        raise click.UsageError("Missing option '--output-dir' / '-o'.")
 
     t0 = time.time()
     total = request.n_days * len(request.plans)
@@ -157,14 +151,18 @@ def generate(
             with lock:
                 bar.update(1)
 
-    try:
-        report = write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=tick)
-    finally:
-        if bar is not None:
-            bar.close()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            report = write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=tick)
+        finally:
+            if bar is not None:
+                bar.close()
     elapsed = time.time() - t0
     click.secho(
         f"\nDone in {elapsed:.1f}s: {report.n_files} files in {Path(output_dir).resolve()}",
         fg="green",
     )
     click.echo(f"Reproduce with --seed {report.seed}")
+    for warning in caught:
+        click.secho(f"Warning: {warning.message}", fg="yellow", err=True)

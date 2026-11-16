@@ -8,12 +8,20 @@
 
 from __future__ import annotations
 
-import secrets
-from collections.abc import Sequence
+import difflib
 from dataclasses import dataclass
 from pathlib import Path
 
-from marketforge.api.parsing import TimeLike, parse_anomalies, parse_time, parse_timeframes
+from marketforge.api.parsing import (
+    Names,
+    TimeLike,
+    as_names,
+    parse_anomalies,
+    parse_markets,
+    parse_seed,
+    parse_time,
+    parse_timeframes,
+)
 from marketforge.config.loader import load_catalog
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import SECONDS_PER_DAY
@@ -52,14 +60,14 @@ class Request:
 
 
 def plan_request(
-    assets: Sequence[str] | None = None,
-    markets: Sequence[str | MarketType] | None = None,
+    assets: Names | None = None,
+    markets: Names | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
     seed: int | None = None,
-    timeframes: Sequence[str] = DEFAULT_TIMEFRAMES,
-    anomalies: Sequence[str] = (),
+    timeframes: Names = DEFAULT_TIMEFRAMES,
+    anomalies: Names = (),
     include_regime: bool = False,
     overrides: str | Path | None = None,
 ) -> Request:
@@ -71,35 +79,30 @@ def plan_request(
     assets that belong to the listed markets are produced. With neither, all
     markets are produced.
 
+    Names (assets, markets, timeframes, anomalies) may be given as a list or
+    as one comma-separated string, in any letter case.
+
     Raises:
         ValueError: on unknown assets or markets, an empty selection, or an
             invalid time range.
+        TypeError: on a seed that is not an integer.
     """
     t0, t1 = parse_time(start), parse_time(end)
     if t0 >= t1:
         raise ValueError(f"start ({t0}) must be before end ({t1})")
-    if seed is None:
-        seed = secrets.randbits(32)
-    if seed < 0:
-        raise ValueError(f"seed must be a non-negative integer, got {seed}")
+    seed = parse_seed(seed)
     tfs = parse_timeframes(timeframes)
     anomaly_types = parse_anomalies(anomalies)
     catalog = load_catalog(overrides)
 
-    wanted_markets = (
-        [m if isinstance(m, MarketType) else MarketType(str(m).strip().lower()) for m in markets]
-        if markets
-        else None
-    )
+    wanted_markets = parse_markets(markets)
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
     by_market: dict[MarketType, list[str]] = {}
-    if assets:
-        requested = list(dict.fromkeys(a.strip().upper() for a in assets if a.strip()))
+    requested = [a.upper() for a in as_names(assets)]
+    if requested:
         unknown = [a for a in requested if a not in symbol_market]
         if unknown:
-            raise ValueError(
-                f"Unknown instrument(s): {', '.join(unknown)}. Run 'marketforge list-assets'."
-            )
+            raise ValueError(_unknown_instruments(unknown, list(symbol_market)))
         for a in requested:
             m = symbol_market[a]
             if wanted_markets is None or m in wanted_markets:
@@ -114,4 +117,13 @@ def plan_request(
         MarketPlan(build_market_spec(catalog[m], anomaly_types), selected)
         for m, selected in by_market.items()
     ]
-    return Request(plans, t0, t1, int(seed), tfs, include_regime)
+    return Request(plans, t0, t1, seed, tfs, include_regime)
+
+
+def _unknown_instruments(unknown: list[str], known: list[str]) -> str:
+    """Error text naming the unknown instruments and, where one is close, what was meant."""
+    parts = []
+    for symbol in unknown:
+        close = difflib.get_close_matches(symbol, known, n=1, cutoff=0.7)
+        parts.append(f"{symbol} (did you mean {close[0]}?)" if close else symbol)
+    return f"Unknown instrument(s): {', '.join(parts)}. Run 'marketforge list-assets'."

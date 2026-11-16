@@ -8,12 +8,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from marketforge.api.execution import execute
-from marketforge.api.parsing import TimeLike
+from marketforge.api.execution import execute, warn_about_empty
+from marketforge.api.parsing import Names, TimeLike
 from marketforge.api.planning import DEFAULT_TIMEFRAMES, MarketPlan, Request, plan_request
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
@@ -39,14 +39,14 @@ class DiskReport:
 
 def generate_to_disk(
     output_dir: str | Path,
-    assets: Sequence[str] | None = None,
+    assets: Names | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
-    markets: Sequence[str | MarketType] | None = None,
+    markets: Names | None = None,
     seed: int | None = None,
-    timeframes: Sequence[str] = DEFAULT_TIMEFRAMES,
-    anomalies: Sequence[str] = (),
+    timeframes: Names = DEFAULT_TIMEFRAMES,
+    anomalies: Names = (),
     include_regime: bool = False,
     overrides: str | Path | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
@@ -125,4 +125,5 @@ def write_request(
     error = close_all()
     if error is not None:
         raise error
+    warn_about_empty(pair for writer in writers.values() for pair in writer.empty)
     return report
