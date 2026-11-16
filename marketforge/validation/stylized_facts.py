@@ -11,11 +11,14 @@ documented statistical properties of real financial returns.
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import kurtosis
 
 
 def excess_kurtosis(returns: np.ndarray) -> float:
     """Excess kurtosis (0 for a normal distribution; > 0 = fat tails)."""
+    # Imported here: scipy.stats takes about half a second to import, and
+    # `import marketforge` (every CLI call) must not pay it to generate data.
+    from scipy.stats import kurtosis
+
     return float(kurtosis(np.asarray(returns, dtype=float), fisher=True, bias=False))
 
 
