@@ -12,7 +12,7 @@ stress testing, and development purposes. Supports multi-asset generation
 with correlations, realistic market behavior, and multiple timeframes.
 """
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 __author__ = "REICHHART Damien"
 
 from marketforge.api import GeneratedData, generate, generate_to_disk, parse_time
