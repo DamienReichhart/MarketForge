@@ -1,5 +1,63 @@
 # Changelog
 
+## 3.1.0
+
+Faster generation with **bit-for-bit identical output**: every seed produces
+exactly the candles 3.0.0 produced (checked on 4,717 outputs across markets,
+anomalies including flash crashes, DST, holidays, subsets and overrides, on
+both the newest dependencies and the declared floors). The rules that keep it that
+way are recorded in `docs/adr/0007-optimise-without-changing-a-single-bit.md`.
+
+### Performance
+| Workload (best of 3, one core unless noted) | 3.0.0 | 3.1.0 |
+| --- | --- | --- |
+| EURUSD, 1 year, 8 timeframes, CSV | 5.2 s | 1.7 s |
+| All 208 instruments, 1 month, 8 timeframes, CSV | 10.4 s | 6.0 s |
+| Same, Parquet | 7.7 s | 4.1 s |
+| Same, CSV, default `--jobs` (one per market) | 14.5 s | 5.8 s |
+| Crypto market, 3 months, m1 + H1, in memory | 1.8 s | 0.85 s |
+
+- Only the requested instruments, and the factors they are built from, are
+  simulated past the market-wide random draws. Asking for EURUSD no longer
+  computes 81 forex instruments to keep one.
+- The per-minute price, intrabar and volume pipeline runs in fused Numba
+  kernels instead of ~15 full-size NumPy temporaries. A whole-market day is
+  about 2× faster.
+- Writers round each field once for every instrument and buffer every file,
+  CSV included, instead of making one small write per file per simulated day.
+  In 3.0 these small writes made the writer, not the simulation, the
+  bottleneck, and the GIL contention made `--jobs` slower than one job.
+- Weekly and daily aggregation no longer re-copies the open bucket every day.
+  m1 candles pass straight through, and the bar clock is computed once per day
+  for all timeframes.
+- In-memory DataFrames are built with one copy and share their time index.
+  This also halves peak memory, because the intermediate concatenation is gone.
+- The regime calibration (a multi-million-step chain, up to ~200 MB of
+  temporaries) is computed once per process instead of once per simulator.
+  Seasonality is cached the same way.
+- `--dry-run` estimates use the new cost model and match measured times.
+
+### Fixes
+- Parquet output could fail with "Too many open files": every Parquet file
+  stays open until the run ends (1,664 for the full catalog), above the
+  default limit of 256 on macOS and, for long ranges, 1,024 on Linux. The soft
+  limit is now raised towards the hard limit when needed, and the run stops
+  before generating anything with a clear message if that is not enough.
+- Re-running Parquet generation into the same directory could leave a
+  previous run's file in place for a timeframe that received no candle this
+  time. Every output is now rewritten from scratch.
+- Write buffers are capped at ~2 million rows per market (~100 MB). Before,
+  up to 32,768 rows were buffered per file, which could reach gigabytes on
+  long full-catalog runs.
+- When generation fails, every writer is still closed and the original error
+  is raised, not a secondary error from closing files.
+
+### API
+- `MarketSimulator(spec, seed, instruments=...)` simulates a subset of a
+  market; `DayResult` columns follow the requested order.
+- `BarAggregator.push(bars, anchor=None)` accepts precomputed bar-clock
+  minutes, shared by several timeframes.
+
 ## 3.0.0
 
 A rewrite of the simulation pipeline. **The same seed produces different data
