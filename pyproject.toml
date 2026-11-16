@@ -7,7 +7,7 @@ name = "marketforge"
 # Single source of truth for the release version. The CD pipeline releases
 # `v<version>` when this changes on main; `marketforge.__version__` reads it
 # back from the installed metadata.
-version = "3.0.0"
+version = "3.1.0"
 description = "A professional-grade synthetic OHLCV data generator"
 readme = "README.md"
 license = "MIT"
@@ -112,8 +112,8 @@ source = ["marketforge"]
 branch = true
 
 [tool.coverage.report]
-# Numba-compiled kernels execute outside the Python tracer, so
-# marketforge/core/kernels.py always reports low coverage.
+# Numba-compiled kernels execute outside the Python tracer; they are covered
+# by tests/test_kernels.py, which also runs each kernel's interpreted py_func.
 fail_under = 90
 show_missing = true
 skip_covered = true
