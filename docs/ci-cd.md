@@ -130,5 +130,7 @@ These are GitHub and PyPI settings; the workflows cannot apply them.
    updates, so a released tag can never be moved.
 5. **Code scanning.** If CodeQL *default setup* is enabled, switch it off: it
    conflicts with `codeql.yml`.
-6. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+6. **Private vulnerability reporting.** Enable it in *Settings → Code
+   security*; `SECURITY.md` sends reporters there.
+7. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
    locally to hide the bulk reformat commit from `git blame`.
