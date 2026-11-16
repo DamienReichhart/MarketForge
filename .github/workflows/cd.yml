@@ -5,7 +5,8 @@ name: CD
 #
 #   guard ─┐
 #   ci ────┴─► publish (PyPI) ─► github-release
-#                             └► verify (Linux, macOS, Windows)
+#      │                      └► verify (Linux, macOS, Windows)
+#      └─────► pages (website on GitHub Pages)
 #
 # The guard decides whether there is anything to release. A version that is
 # already tagged means "nothing to release": CI still runs (this workflow is
@@ -17,7 +18,10 @@ name: CD
 # those failures are caught before the merge.
 #
 # The distributions published are the ones CI built and tested in this run
-# (the `dist` artifact), not a rebuild.
+# (the `dist` artifact), not a rebuild. Likewise, the website deployed is
+# the `github-pages` artifact CI built and link-checked. It is deployed on
+# every push to main whether or not there is a version to release, so a
+# documentation fix on main goes live without a release.
 
 on:
   push:
@@ -136,6 +140,25 @@ jobs:
         # exists; do not add one. Also uploads PEP 740 attestations to PyPI.
         with:
           print-hash: true
+
+  pages:
+    name: Deploy the website
+    needs: [ci]
+    if: ${{ github.ref == 'refs/heads/main' && !inputs.dry-run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Settings > Pages > Source must be "GitHub Actions". The environment's
+    # deployment branch policy should allow main only.
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      pages: write # deploy to GitHub Pages
+      id-token: write # prove the deployment comes from this workflow
+    steps:
+      - name: Deploy the site CI built
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   github-release:
     name: Tag & GitHub release
