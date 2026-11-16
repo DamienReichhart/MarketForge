@@ -175,23 +175,38 @@ jobs:
           echo "Released [${TAG}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})" >> "$GITHUB_STEP_SUMMARY"
 
   verify:
-    name: Verify the PyPI release installs
+    name: Verify the PyPI release installs (${{ matrix.os }})
     needs: [guard, publish]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Numba compiles natively: check what users actually install on each
+        # platform, at both ends of the supported Python range.
+        include:
+          - { os: ubuntu-latest, python-version: "3.12" }
+          - { os: ubuntu-latest, python-version: "3.14" }
+          - { os: macos-latest, python-version: "3.14" }
+          - { os: windows-latest, python-version: "3.14" }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
           enable-cache: "false"
       - name: Install from PyPI and run it
         env:
           NAME: ${{ needs.guard.outputs.name }}
           VERSION: ${{ needs.guard.outputs.version }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
           cd "$RUNNER_TEMP"
-          uv venv verify
+          uv venv verify --python "$PYTHON_VERSION"
+          if [ "$RUNNER_OS" = Windows ]; then bin=verify/Scripts; else bin=verify/bin; fi
           # The PyPI CDN can take a few minutes to serve a new release.
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             if uv pip install --python verify --no-cache --refresh "${NAME}==${VERSION}"; then
@@ -201,8 +216,8 @@ jobs:
             echo "Not available yet (attempt ${attempt}); retrying in 30 s"
             sleep 30
           done
-          actual="$(verify/bin/marketforge --version)"
+          actual="$("$bin/marketforge" --version)"
           echo "$actual"
           [ "$actual" = "marketforge, version ${VERSION}" ]
-          verify/bin/python -c "import marketforge as mf; d = mf.generate(['EURUSD'], start='2024-01-02', end='2024-01-03', seed=1, timeframes=['H1']); assert len(d['EURUSD']['H1']) > 0"
-          echo "Verified: \`pip install ${NAME}==${VERSION}\` works" >> "$GITHUB_STEP_SUMMARY"
+          "$bin/python" -c "import marketforge as mf; d = mf.generate(['EURUSD', 'BTCUSD', 'AAPL'], start='2024-01-02', end='2024-01-04', seed=1, timeframes=['H1']); assert all(len(d[s]['H1']) > 0 for s in d), d"
+          echo "Verified on ${RUNNER_OS} / Python ${PYTHON_VERSION}: \`pip install ${NAME}==${VERSION}\` works" >> "$GITHUB_STEP_SUMMARY"
