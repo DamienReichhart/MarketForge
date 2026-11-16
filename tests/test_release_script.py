@@ -143,3 +143,72 @@ def test_main_reports_failures_as_annotations(capsys, monkeypatch, tmp_path):
     assert release.main(["notes", "9.9.9"]) == 1
     assert "::error title=Release blocked::" in capsys.readouterr().out
     assert "Release blocked" in summary.read_text()
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "feat!: drop the legacy API",
+        "refactor(api)!: make the enums StrEnum\n\nBody.",
+        "fix: tidy up\n\nBREAKING CHANGE: the CLI flag --foo is gone",
+        "fix: tidy up\n\nBREAKING-CHANGE: same, hyphenated",
+    ],
+)
+def test_breaking_commits_recognises_conventional_markers(message):
+    assert release.breaking_commits([message]) == [message.splitlines()[0]]
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "feat: add a market",
+        "fix(cli): mention breaking change in prose, not as a footer",
+        "Merge pull request #12 from x/dev",
+        "docs: explain why `feat!:` means breaking",
+        "",
+    ],
+)
+def test_breaking_commits_ignores_ordinary_commits(message):
+    assert release.breaking_commits([message]) == []
+
+
+def test_breaking_commits_need_a_major_bump():
+    breaking = ["refactor!: change the enums"]
+    with pytest.raises(release.ReleaseError, match="not a major release"):
+        release.check_breaking_bump(Version("3.2.0"), Version("3.1.0"), breaking)
+    release.check_breaking_bump(Version("4.0.0"), Version("3.1.0"), breaking)
+    release.check_breaking_bump(Version("4.0.0rc1"), Version("3.1.0"), breaking)
+    release.check_breaking_bump(Version("3.2.0"), Version("3.1.0"), [])
+    release.check_breaking_bump(Version("1.0.0"), None, breaking)
+
+
+def test_breaking_commits_below_1_0_need_a_minor_bump():
+    breaking = ["feat!: x"]
+    with pytest.raises(release.ReleaseError, match="not a major release"):
+        release.check_breaking_bump(Version("0.3.1"), Version("0.3.0"), breaking)
+    release.check_breaking_bump(Version("0.4.0"), Version("0.3.0"), breaking)
+
+
+def _fake_repo(monkeypatch, tags, messages=(), on_pypi=False):
+    monkeypatch.setattr(release, "git_tags", lambda: list(tags))
+    monkeypatch.setattr(release, "commit_messages_since", lambda tag: list(messages))
+    monkeypatch.setattr(release, "pypi_has_version", lambda name, version: on_pypi)
+    _, raw = release.read_project(ROOT / "pyproject.toml")
+    return raw
+
+
+def test_guard_fails_on_an_existing_tag(monkeypatch, capsys):
+    _fake_repo(monkeypatch, [f"v{raw_version()}"])
+    assert release.main(["guard"]) == 1
+    assert "already released" in capsys.readouterr().out
+
+
+def test_guard_blocks_unflagged_breaking_changes(monkeypatch, capsys):
+    major = Version(raw_version()).major
+    _fake_repo(monkeypatch, [f"v{major}.0.0rc1"], messages=["feat!: incompatible"])
+    assert release.main(["guard"]) == 1
+    assert "not a major release" in capsys.readouterr().out
+
+
+def raw_version():
+    return release.read_project(ROOT / "pyproject.toml")[1]
