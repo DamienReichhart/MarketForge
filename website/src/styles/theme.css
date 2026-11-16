@@ -209,3 +209,56 @@ h1#_top {
 		margin-top: 0.6rem;
 	}
 }
+
+/* Site title in the text colour; the accent is kept for links and data. */
+.site-title {
+	color: var(--sl-color-white) !important;
+	gap: 0.6rem;
+}
+
+.site-title img {
+	height: 1.6rem;
+	width: auto;
+}
+
+/* Sidebar: small uppercase group labels, current page marked by a rule. */
+.sidebar-content .large {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--sl-color-gray-3);
+}
+
+.sidebar-content a {
+	font-size: var(--sl-text-sm);
+}
+
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+	font-weight: 550;
+	color: var(--sl-color-white);
+	background-color: var(--mf-panel);
+	box-shadow: inset 2px 0 0 var(--sl-color-accent);
+	border-radius: 0 3px 3px 0;
+}
+
+/* Asides: neutral panels with a coloured rule instead of tinted slabs. */
+.starlight-aside {
+	background-color: var(--mf-panel) !important;
+	border: 1px solid var(--mf-line);
+	border-inline-start-width: 3px;
+	border-inline-start-color: var(--sl-color-asides-border);
+	border-radius: 0 4px 4px 0;
+}
+
+.starlight-aside--caution {
+	--sl-color-asides-border: var(--sl-color-accent);
+	--sl-color-asides-text-accent: var(--sl-color-accent);
+}
+
+.starlight-aside--note {
+	--sl-color-asides-border: var(--sl-color-gray-3);
+	--sl-color-asides-text-accent: var(--sl-color-white);
+}
