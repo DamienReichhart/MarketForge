@@ -132,3 +132,80 @@ def test_volume_units_per_market():
     btc = _run("crypto", 1, JAN_1_2024, JAN_1_2024 + DAY)
     i = build_market_spec(load_market_config("crypto")).symbols.index("BTCUSD")
     assert 5 < btc.volume[:, i].mean() < 80  # BTC per minute
+
+
+def _subset_matches_full(spec, symbols, start, end, seed=4):
+    full = list(MarketSimulator(spec, seed).run(start, end))
+    sub = MarketSimulator(spec, seed, instruments=symbols)
+    assert sub.instruments == tuple(symbols)
+    cols = [spec.symbols.index(s) for s in symbols]
+    days = list(sub.run(start, end))
+    assert len(days) == len(full)
+    for a, b in zip(days, full, strict=True):
+        np.testing.assert_array_equal(a.timestamps, b.timestamps)
+        np.testing.assert_array_equal(a.regime, b.regime)
+        for field in ("open", "high", "low", "close", "volume"):
+            np.testing.assert_array_equal(getattr(a, field), getattr(b, field)[:, cols])
+
+
+@pytest.mark.parametrize(
+    ("market", "symbols"),
+    [
+        ("crypto", ["SOLUSD", "BTCUSD"]),  # identity projection, reordered
+        ("stocks", ["MSFT"]),
+        ("forex", ["GBPJPY", "EURUSD", "AUDNZD", "USDCHF"]),  # anchors and two-term crosses
+    ],
+)
+def test_simulating_a_subset_is_bit_identical_to_the_whole_market(market, symbols):
+    anomalies = frozenset({AnomalyType.SPIKES, AnomalyType.FLASH_CRASH})
+    spec = build_market_spec(load_market_config(market), anomalies)
+    _subset_matches_full(spec, symbols, JAN_1_2024, JAN_1_2024 + 4 * DAY)
+
+
+def test_subset_of_a_forex_structure_with_three_term_crosses(tmp_path):
+    from marketforge.config.loader import load_catalog
+
+    # GRX is linked to USD through EUR, so GRXJPY = GRXEUR + EURUSD + USDJPY:
+    # the general (matrix product) projection.
+    cfg = tmp_path / "o.toml"
+    cfg.write_text(
+        '[instruments.GRXJPY]\nmarket = "forex"\nstart_price = 650000\nvolatility = 0.2\n'
+    )
+    spec = build_market_spec(load_catalog(cfg)[MarketType.FOREX])
+    row = spec.structure.weights[spec.symbols.index("GRXJPY")]
+    assert np.count_nonzero(row) == 3
+    _subset_matches_full(spec, ["GRXJPY", "EURJPY"], JAN_1_2024, JAN_1_2024 + 3 * DAY)
+
+
+def test_instrument_selection_is_validated():
+    spec = build_market_spec(load_market_config("crypto"))
+    with pytest.raises(ValueError, match="Not instruments"):
+        MarketSimulator(spec, 1, instruments=["AAPL"])
+    with pytest.raises(ValueError, match="Duplicate"):
+        MarketSimulator(spec, 1, instruments=["BTCUSD", "BTCUSD"])
+    with pytest.raises(ValueError, match="At least one"):
+        MarketSimulator(spec, 1, instruments=[])
+
+
+def test_cached_regime_calibration_is_shared_but_never_mutated():
+    spec = build_market_spec(load_market_config("stocks"))
+    a, b = MarketSimulator(spec, 1), MarketSimulator(spec, 2)
+    np.testing.assert_array_equal(a._regime_vol, b._regime_vol)
+    a._regime_vol[0] = -1.0  # a private copy: the cache and other simulators are untouched
+    assert MarketSimulator(spec, 3)._regime_vol[0] != -1.0 and b._regime_vol[0] != -1.0
+
+
+def test_flash_crash_dips_and_recovers():
+    # Seed 0 crashes XRPUSD on 2024-01-03 (crypto: 0.2% chance per instrument-day).
+    spec_crash = build_market_spec(
+        load_market_config("crypto"), frozenset({AnomalyType.FLASH_CRASH})
+    )
+    spec_base = build_market_spec(load_market_config("crypto"))
+    start, end = JAN_1_2024 + DAY, JAN_1_2024 + 4 * DAY
+    crash = np.vstack([d.close for d in MarketSimulator(spec_crash, 0, ["XRPUSD"]).run(start, end)])
+    base = np.vstack([d.close for d in MarketSimulator(spec_base, 0, ["XRPUSD"]).run(start, end)])
+    ratio = (crash / base)[:, 0]
+    hit = np.nonzero(ratio != 1.0)[0]
+    assert 0 < hit.size <= spec_crash.anomaly.flash_crash_recovery_candles
+    assert ratio.min() == pytest.approx(1.0 - spec_crash.anomaly.flash_crash_magnitude)
+    assert np.all(np.diff(hit) == 1)  # one contiguous episode, back to the base path after

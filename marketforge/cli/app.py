@@ -252,28 +252,45 @@ def _print_plan(request: Any, fmt: str, output_dir: str | None, random_seed: boo
     )
     click.echo(f"  Timeframes  {', '.join(tf.name for tf in request.timeframes)}")
     rows = 0
-    sim_work = 0
+    seconds = 0.0
     for plan in request.plans:
         open_minutes = get_calendar(plan.market).count_open_minutes(request.start, request.end)
         per_asset = sum(open_minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes)
         rows += per_asset * len(plan.selected)
-        sim_work += open_minutes * len(plan.spec.symbols)
+        seconds += _simulation_seconds(plan, request.n_days, open_minutes)
         names = ", ".join(plan.selected[:6]) + (
             f" (+{len(plan.selected) - 6} more)" if len(plan.selected) > 6 else ""
         )
         click.echo(
             f"  {plan.market.value:<11} {len(plan.selected)} instrument(s), {open_minutes:,} open minutes: {names}"
         )
-    # Calibrated on a month of all markets (one core): ~68 B/row CSV, ~4M
-    # simulated instrument-minutes/s, ~1.2M written rows/s.
     bytes_per_row = 68 if fmt == "csv" else 33
-    seconds = sim_work / 4e6 + rows / 1.2e6
+    seconds += rows * (_CSV_ROW_SECONDS if fmt == "csv" else _PARQUET_ROW_SECONDS)
     n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
     click.echo(
         f"  Output      {n_files} {fmt} files, ~{rows:,} rows, ~{_human(rows * bytes_per_row)}"
         + (f" in {output_dir}" if output_dir else "")
     )
     click.echo(f"  Estimate    ~{_duration(seconds)} on one core")
+
+
+# Cost model behind --dry-run's time estimate (one core, measured on 3.1).
+# Random draws are market-wide and fixed-shape: 1440 x (factors + 3 x
+# instruments) per simulated day, whatever is selected. The rest of the
+# simulation runs only for the selected instruments' open minutes.
+_DRAW_SECONDS = 7e-9
+_INSTRUMENT_MINUTE_SECONDS = 35e-9
+_MARKET_DAY_SECONDS = 1e-3  # per-day bookkeeping (calendar, aggregation, buffers)
+_CSV_ROW_SECONDS = 0.75e-6  # aggregation + formatting + writing, per output row
+_PARQUET_ROW_SECONDS = 0.6e-6
+
+
+def _simulation_seconds(plan: Any, n_days: int, open_minutes: int) -> float:
+    structure = plan.spec.structure
+    draws = 1440 * (len(structure.factors) + 3 * len(structure.instruments))
+    return n_days * (draws * _DRAW_SECONDS + _MARKET_DAY_SECONDS) + (
+        open_minutes * len(plan.selected) * _INSTRUMENT_MINUTE_SECONDS
+    )
 
 
 def _human(n: float) -> str:

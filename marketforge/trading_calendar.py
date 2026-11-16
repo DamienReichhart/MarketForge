@@ -164,6 +164,13 @@ class TradingCalendar:
         if self.timezone is None or ts.size == 0:
             return minutes
         days = ts // SECONDS_PER_DAY
+        lo, hi = int(days.min()), int(days.max())
+        if hi - lo <= ts.size:
+            # Typical case (a day or a few of minutes): direct lookup, no sort.
+            table = np.array(
+                [self.utc_offset_minutes(d) for d in range(lo, hi + 1)], dtype=np.int64
+            )
+            return np.asarray(minutes + table[days - lo])
         uniq, inv = np.unique(days, return_inverse=True)
         offsets = np.array([self.utc_offset_minutes(int(d)) for d in uniq], dtype=np.int64)
         return np.asarray(minutes + offsets[inv])

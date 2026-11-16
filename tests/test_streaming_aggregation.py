@@ -99,17 +99,25 @@ def test_crypto_weeks_start_on_monday():
     ] == [0] * 4
 
 
-@pytest.mark.parametrize("tf", [Timeframe.m5, Timeframe.H4, Timeframe.D1])
-def test_streaming_equals_one_shot(tf):
-    s, e = _ts("2024-01-01T00:00"), _ts("2024-01-05T00:00")
-    days = _days("crypto", s, e, seed=3)
-    cal = get_calendar(MarketType.CRYPTO)
+@pytest.mark.parametrize("market", ["crypto", "forex", "stocks"])
+@pytest.mark.parametrize(
+    "tf", [Timeframe.m1, Timeframe.m5, Timeframe.H4, Timeframe.D1, Timeframe.W1]
+)
+@pytest.mark.parametrize("with_anchor", [False, True])
+def test_streaming_equals_one_shot_bit_for_bit(market, tf, with_anchor):
+    # Starts mid-week and mid-session so that first and last buckets are partial.
+    s, e = _ts("2024-01-03T15:07"), _ts("2024-01-19T18:41")
+    days = _days(market, s, e, seed=3)
+    cal = get_calendar(MarketType(market))
     streamed = BarAggregator(cal, tf, s, e)
-    parts = [p for d in days for p in [streamed.push(d)] if p is not None] + [streamed.finish()]
+    parts = [
+        streamed.push(d, cal.anchor_minutes(d.timestamps) if with_anchor else None) for d in days
+    ]
+    parts.append(streamed.finish())
     one_shot = BarAggregator(cal, tf, s, e)
     whole = [one_shot.push(Bars.concat(days)), one_shot.finish()]
     a = Bars.concat([p for p in parts if p is not None])
     b = Bars.concat([p for p in whole if p is not None])
-    np.testing.assert_array_equal(a.timestamps, b.timestamps)
-    np.testing.assert_allclose(a.high, b.high)
-    np.testing.assert_allclose(a.volume, b.volume)
+    assert len(a) > 0
+    for field in Bars.__dataclass_fields__:
+        np.testing.assert_array_equal(getattr(a, field), getattr(b, field))
