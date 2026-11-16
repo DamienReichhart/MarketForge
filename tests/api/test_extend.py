@@ -104,6 +104,7 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
         "start": "2024-01-01T00:00:00Z",
         "end": "2024-01-03T00:00:00Z",
         "format": "csv",
+        "timestamps": "unix",
         "timeframes": ["H1"],
         "anomalies": [],
         "include_regime": False,
@@ -195,3 +196,17 @@ def test_an_extension_killed_midway_is_undone_or_finished_by_the_next_one(
             assert got[name].read_bytes() == path.read_bytes(), name
         else:
             assert pq.read_table(got[name]).equals(pq.read_table(path)), name
+
+
+def test_iso_timestamps_survive_an_extension_and_validation(tmp_path):
+    kwargs = {"start": "2024-01-02", "seed": 4, "timeframes": "m1,H1", "timestamps": "iso"}
+    mf.generate_to_disk(tmp_path / "whole", "BTCUSD", end="2024-01-20", **kwargs)
+    report = mf.generate_to_disk(tmp_path / "part", "BTCUSD", end="2024-01-09T07:21", **kwargs)
+    mf.extend(tmp_path / "part", "2024-01-20")
+    h1, m1 = (report.paths["crypto"]["BTCUSD"][tf] for tf in ("H1", "m1"))
+    assert h1.read_text().splitlines()[:2][1].startswith("2024-01-02T00:00:00Z,")
+    assert h1.read_text().splitlines()[-1].startswith("2024-01-19T23:00:00Z,")
+    assert m1.read_bytes() == (tmp_path / "whole" / "crypto" / "BTCUSD_m1.csv").read_bytes()
+    assert mf.validate(m1).passed
+    with pytest.raises(ValueError, match="ISO timestamps are for CSV files"):
+        mf.generate_to_disk(tmp_path / "pq", "BTCUSD", end="2024-01-03", fmt="parquet", **kwargs)

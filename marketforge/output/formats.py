@@ -16,3 +16,10 @@ class OutputFormat(StrEnum):
 
     CSV = "csv"
     PARQUET = "parquet"
+
+
+class TimestampFormat(StrEnum):
+    """How CSV files write a candle's start time (Parquet always stores Unix seconds)."""
+
+    UNIX = "unix"  # 1704205800
+    ISO = "iso"  # 2024-01-02T14:30:00Z

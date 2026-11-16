@@ -42,6 +42,7 @@ class Manifest:
     start: int  # Unix seconds, inclusive
     end: int  # Unix seconds, exclusive
     format: str
+    timestamps: str
     timeframes: list[str]
     anomalies: list[str]
     include_regime: bool
@@ -57,6 +58,7 @@ class Manifest:
             "start": iso_time(self.start),
             "end": iso_time(self.end),
             "format": self.format,
+            "timestamps": self.timestamps,
             "timeframes": self.timeframes,
             "anomalies": self.anomalies,
             "include_regime": self.include_regime,
@@ -76,6 +78,7 @@ class Manifest:
             start=_unix(doc["start"]),
             end=_unix(doc["end"]),
             format=doc["format"],
+            timestamps=doc["timestamps"],
             timeframes=doc["timeframes"],
             anomalies=doc["anomalies"],
             include_regime=doc["include_regime"],

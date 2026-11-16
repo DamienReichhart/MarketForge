@@ -49,7 +49,14 @@ def end_of_range(start: int, end: str | None, days: int | None) -> str | int:
     raise click.UsageError("Give exactly one of '--to' and '--days'.")
 
 
-def run(request: Request, output_dir: str, fmt: str, jobs: int | None, progress: bool) -> None:
+def run(
+    request: Request,
+    output_dir: str,
+    fmt: str,
+    timestamps: str,
+    jobs: int | None,
+    progress: bool,
+) -> None:
     """Write a request's candles to ``output_dir`` and report what was done."""
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
     t0 = time.time()
@@ -67,7 +74,9 @@ def run(request: Request, output_dir: str, fmt: str, jobs: int | None, progress:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         try:
-            report = write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=tick)
+            report = write_request(
+                request, output_dir, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=tick
+            )
         finally:
             if bar is not None:
                 bar.close()

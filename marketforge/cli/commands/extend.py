@@ -44,7 +44,7 @@ def extend(
     generation up to the new end would have produced.
     """
     new_end = end_of_range(read_manifest(dataset).end, end, days)
-    request, fmt = plan_extension(dataset, new_end)
+    request, fmt, timestamps = plan_extension(dataset, new_end)
     print_plan(request, fmt, dataset, random_seed=False)
     if not dry_run:
-        run(request, dataset, fmt, jobs, progress)
+        run(request, dataset, fmt, timestamps, jobs, progress)

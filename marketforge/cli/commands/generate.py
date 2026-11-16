@@ -70,6 +70,13 @@ from marketforge.cli.running import days_option, end_of_range, jobs_option, prog
     help="Output file format.",
 )
 @click.option(
+    "--timestamps",
+    type=click.Choice(["unix", "iso"]),
+    default="unix",
+    show_default=True,
+    help="How CSV files write time: Unix seconds, or ISO 8601 like 2024-01-02T14:30:00Z.",
+)
+@click.option(
     "--config",
     "overrides",
     type=click.Path(exists=True, dir_okay=False),
@@ -103,6 +110,7 @@ def generate(
     timeframes: str,
     anomalies: str | None,
     fmt: str,
+    timestamps: str,
     overrides: str | None,
     with_spread: bool,
     with_regime: bool,
@@ -128,5 +136,5 @@ def generate(
     print_plan(request, fmt, output_dir, seed is None)
     if dry_run or not output_dir:
         return
-    run(request, output_dir, fmt, jobs, progress)
+    run(request, output_dir, fmt, timestamps, jobs, progress)
     click.echo(f"Reproduce with --seed {request.seed}")

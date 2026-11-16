@@ -24,13 +24,14 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from marketforge.domain.bars import Bars
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.encoding import candle_schema, record_batch, rounded_columns
-from marketforge.output.formats import OutputFormat
+from marketforge.output.formats import OutputFormat, TimestampFormat
 from marketforge.output.manifest import REWRITE_SUFFIX
 
 # Rows buffered per file before it is written: one Parquet row group. Day-sized
@@ -56,6 +57,7 @@ class CandleWriter:
         max_buffered_rows: int = MAX_BUFFERED_ROWS,
         extend: bool = False,
         include_spread: bool = False,
+        timestamps: TimestampFormat = TimestampFormat.UNIX,
     ) -> None:
         """
         With ``extend``, candles are added to the files a dataset already has:
@@ -66,6 +68,9 @@ class CandleWriter:
         self.directory = Path(output_dir) / market
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fmt = OutputFormat(fmt)
+        self._iso = TimestampFormat(timestamps) == TimestampFormat.ISO
+        if self._iso and self.fmt != OutputFormat.CSV:
+            raise ValueError("ISO timestamps are for CSV files; Parquet stores Unix seconds")
         self.include_regime = include_regime
         self.schema = candle_schema(include_regime, include_spread)
         self._symbols = list(symbols)
@@ -83,7 +88,7 @@ class CandleWriter:
         self._buffers: dict[Path, list[tuple[np.ndarray, ...]]] = {}
         self._buffered: dict[Path, int] = {}
         self._total_buffered = 0
-        self._csv_options = pacsv.WriteOptions(include_header=False)
+        self._csv_options = pacsv.WriteOptions(include_header=False, quoting_style="none")
         self._csv_header = (",".join(self.schema.names) + "\n").encode("ascii")
         self._extend = extend
         every = [path for files in self.paths.values() for path in files.values()]
@@ -144,6 +149,11 @@ class CandleWriter:
         if self.fmt == OutputFormat.CSV:
             first = path not in self._started
             self._started.add(path)
+            if self._iso:
+                moments = table["timestamp"].cast(pa.timestamp("s", tz="UTC"))
+                table = table.set_column(
+                    0, "timestamp", pc.strftime(moments, format="%Y-%m-%dT%H:%M:%SZ")
+                )
             with open(path, "wb" if first else "ab") as fh:
                 if first:
                     fh.write(self._csv_header)

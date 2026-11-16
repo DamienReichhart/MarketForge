@@ -28,7 +28,7 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.file_limits import ensure_open_file_capacity
-from marketforge.output.formats import OutputFormat
+from marketforge.output.formats import OutputFormat, TimestampFormat
 from marketforge.output.manifest import (
     Manifest,
     begin_extension,
@@ -71,6 +71,7 @@ def generate_to_disk(
     include_spread: bool = False,
     overrides: Overrides | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
+    timestamps: str | TimestampFormat = TimestampFormat.UNIX,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,
 ) -> DiskReport:
@@ -78,7 +79,8 @@ def generate_to_disk(
     Generate a dataset: ``{output_dir}/{market}/{SYMBOL}_{tf}.{fmt}`` and a manifest.
 
     Takes the same arguments as :func:`generate` plus ``fmt`` (``csv`` or
-    ``parquet``) and ``jobs`` (markets simulated in parallel). Memory use does
+    ``parquet``), ``timestamps`` (``unix`` seconds or ``iso`` 8601 in CSV
+    files) and ``jobs`` (markets simulated in parallel). Memory use does
     not grow with the length of the range. The manifest (``marketforge.json``)
     records how the dataset was produced, so that it can be reproduced, and
     continued later with :func:`extend`.
@@ -95,7 +97,9 @@ def generate_to_disk(
         include_spread=include_spread,
         overrides=overrides,
     )
-    return write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=on_day)
+    return write_request(
+        request, output_dir, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=on_day
+    )
 
 
 def extend(
@@ -116,12 +120,14 @@ def extend(
         ValueError: if the directory is not a dataset, ``end`` is not after the
             dataset's end, or the dataset was written by another major version.
     """
-    request, fmt = plan_extension(dataset, end)
-    return write_request(request, dataset, fmt=fmt, jobs=jobs, on_day=on_day)
+    request, fmt, timestamps = plan_extension(dataset, end)
+    return write_request(request, dataset, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=on_day)
 
 
-def plan_extension(dataset: str | os.PathLike[str], end: TimeLike) -> tuple[Request, OutputFormat]:
-    """Resolve the extension of a dataset into a request and the dataset's format."""
+def plan_extension(
+    dataset: str | os.PathLike[str], end: TimeLike
+) -> tuple[Request, OutputFormat, TimestampFormat]:
+    """Resolve the extension of a dataset into a request and the dataset's file formats."""
     recover(dataset)
     manifest = read_manifest(dataset)
     if manifest.version.split(".")[0] != __version__.split(".")[0]:
@@ -148,7 +154,7 @@ def plan_extension(dataset: str | os.PathLike[str], end: TimeLike) -> tuple[Requ
     request.extends_from = manifest.end
     for plan in request.plans:
         plan.resume = Checkpoint(**manifest.checkpoint[plan.market.value])
-    return request, OutputFormat(manifest.format)
+    return request, OutputFormat(manifest.format), TimestampFormat(manifest.timestamps)
 
 
 def write_request(
@@ -156,11 +162,13 @@ def write_request(
     output_dir: str | os.PathLike[str],
     *,
     fmt: str | OutputFormat = OutputFormat.CSV,
+    timestamps: str | TimestampFormat = TimestampFormat.UNIX,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,
 ) -> DiskReport:
     """Run an already resolved request (a new dataset or an extension) into ``output_dir``."""
     fmt = OutputFormat(fmt)
+    timestamps = TimestampFormat(timestamps)
     root = Path(output_dir)
     extending = request.extends_from is not None
     if fmt == OutputFormat.PARQUET:
@@ -180,6 +188,7 @@ def write_request(
             request.include_regime,
             extend=extending,
             include_spread=request.include_spread,
+            timestamps=timestamps,
         )
         for plan in request.plans
     }
@@ -220,6 +229,7 @@ def write_request(
         start=request.start,
         end=request.end,
         format=fmt.value,
+        timestamps=timestamps.value,
         timeframes=[tf.name for tf in request.timeframes],
         anomalies=sorted(request.anomalies),
         include_regime=request.include_regime,
