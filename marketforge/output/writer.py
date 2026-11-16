@@ -150,7 +150,9 @@ class CandleWriter:
             first = path not in self._started
             self._started.add(path)
             if self._iso:
-                moments = table["timestamp"].cast(pa.timestamp("s", tz="UTC"))
+                # Zone-less on purpose: formatting a zoned timestamp needs a time
+                # zone database, which Windows does not ship. The "Z" is literal.
+                moments = table["timestamp"].cast(pa.timestamp("s"))
                 table = table.set_column(
                     0, "timestamp", pc.strftime(moments, format="%Y-%m-%dT%H:%M:%SZ")
                 )
@@ -172,9 +174,11 @@ class CandleWriter:
             )
             self._parquet[path] = writer
             if self._extend:
-                existing = pq.ParquetFile(path)
-                for group in range(existing.num_row_groups):
-                    writer.write_table(existing.read_row_group(group))
+                # Closed before the rewritten file replaces it (Windows cannot
+                # replace a file that is still open).
+                with pq.ParquetFile(path) as existing:
+                    for group in range(existing.num_row_groups):
+                        writer.write_table(existing.read_row_group(group))
         writer.write_table(table, row_group_size=table.num_rows)
 
     def close(self) -> dict[str, dict[str, Path]]:
