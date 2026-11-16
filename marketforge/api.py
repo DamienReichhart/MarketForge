@@ -69,7 +69,7 @@ def parse_time(value: TimeLike) -> int:
     if isinstance(value, dt.datetime):
         moment = value
     elif isinstance(value, dt.date):
-        moment = dt.datetime(value.year, value.month, value.day, tzinfo=dt.timezone.utc)
+        moment = dt.datetime(value.year, value.month, value.day, tzinfo=dt.UTC)
     elif isinstance(value, str):
         text = value.strip()
         if text.lstrip("-").isdigit():
@@ -84,7 +84,7 @@ def parse_time(value: TimeLike) -> int:
     else:
         raise TypeError(f"Unsupported time value: {value!r}")
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=dt.timezone.utc)
+        moment = moment.replace(tzinfo=dt.UTC)
     return int(moment.timestamp())
 
 

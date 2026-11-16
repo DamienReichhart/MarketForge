@@ -12,11 +12,11 @@ from marketforge.trading_calendar import get_calendar
 
 
 def _ts(s: str) -> int:
-    return int(dt.datetime.fromisoformat(s).replace(tzinfo=dt.timezone.utc).timestamp())
+    return int(dt.datetime.fromisoformat(s).replace(tzinfo=dt.UTC).timestamp())
 
 
 def _iso(t) -> str:
-    return dt.datetime.fromtimestamp(int(t), dt.timezone.utc).strftime("%Y-%m-%dT%H:%M")
+    return dt.datetime.fromtimestamp(int(t), dt.UTC).strftime("%Y-%m-%dT%H:%M")
 
 
 def _days(market: str, start: int, end: int, seed: int = 1) -> list[Bars]:
@@ -94,9 +94,7 @@ def test_stocks_hourly_bars_align_to_the_half_hour_open():
 
 def test_crypto_weeks_start_on_monday():
     bars, _ = _aggregate("crypto", Timeframe.W1, "2024-01-01T00:00", "2024-01-29T00:00")
-    assert [
-        dt.datetime.fromtimestamp(int(t), dt.timezone.utc).weekday() for t in bars.timestamps
-    ] == [0] * 4
+    assert [dt.datetime.fromtimestamp(int(t), dt.UTC).weekday() for t in bars.timestamps] == [0] * 4
 
 
 @pytest.mark.parametrize("market", ["crypto", "forex", "stocks"])

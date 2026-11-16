@@ -12,7 +12,7 @@ from marketforge.trading_calendar import (
 
 
 def _ts(s: str) -> int:
-    return int(dt.datetime.fromisoformat(s).replace(tzinfo=dt.timezone.utc).timestamp())
+    return int(dt.datetime.fromisoformat(s).replace(tzinfo=dt.UTC).timestamp())
 
 
 def test_nyse_holidays_2024():

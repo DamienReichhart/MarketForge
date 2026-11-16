@@ -18,11 +18,11 @@ explicitly.
 | Job | What it checks |
 | --- | --- |
 | Lint & format | `ruff check` and `ruff format --check` |
-| Type-check | `mypy marketforge` on Python 3.10 and 3.14 (they resolve different numpy releases, whose stubs differ) |
-| Test | `pytest` on Linux for Python 3.10 to 3.14, and on macOS and Windows for 3.10 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
+| Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.14 with the newest numpy (numpy's type stubs differ between releases) |
+| Test | `pytest` on Linux for Python 3.12 to 3.14, and on macOS and Windows for 3.12 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation. Uploads the `dist` artifact |
-| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.10 and 3.14 |
+| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |

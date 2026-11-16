@@ -61,15 +61,17 @@ jobs:
         run: ruff format --check --diff .
 
   typecheck:
-    name: Type-check (py${{ matrix.python-version }})
+    name: Type-check (py${{ matrix.python-version }}, numpy ${{ matrix.numpy }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        # Oldest and newest Python resolve different numpy releases, whose
-        # type stubs differ: check both ends.
-        python-version: ["3.10", "3.14"]
+        # numpy's type stubs differ between releases: check the declared
+        # floor (2.2) on the oldest Python and the newest numpy on the newest.
+        include:
+          - { python-version: "3.12", numpy: "2.2.*" }
+          - { python-version: "3.14", numpy: "latest" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,7 +83,15 @@ jobs:
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml
       - name: Install
-        run: uv pip install -e . --group typecheck
+        env:
+          NUMPY: ${{ matrix.numpy }}
+        run: |
+          if [ "$NUMPY" = latest ]; then
+            uv pip install -e . --group typecheck
+          else
+            uv pip install -e . --group typecheck "numpy==$NUMPY"
+          fi
+          python -c 'import numpy; print("numpy", numpy.__version__)'
       - name: mypy
         run: mypy marketforge
 
@@ -93,13 +103,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
         include:
           # Numba compiles natively: cover macOS (arm64) and Windows at both
           # ends of the supported Python range.
-          - { os: macos-latest, python-version: "3.10" }
+          - { os: macos-latest, python-version: "3.12" }
           - { os: macos-latest, python-version: "3.14" }
-          - { os: windows-latest, python-version: "3.10" }
+          - { os: windows-latest, python-version: "3.12" }
           - { os: windows-latest, python-version: "3.14" }
           # The coverage leg (extends the existing ubuntu / 3.13 entry).
           - { os: ubuntu-latest, python-version: "3.13", coverage: true }
@@ -149,7 +159,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           activate-environment: "true"
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml
@@ -240,7 +250,7 @@ jobs:
       - name: Audit the runtime dependency tree (oldest and newest Python)
         run: |
           status=0
-          for py in 3.10 3.14; do
+          for py in 3.12 3.14; do
             uv pip compile pyproject.toml --python-version "$py" --generate-hashes --quiet \
               -o "requirements-$py.txt"
             echo "::group::pip-audit (Python $py resolution)"

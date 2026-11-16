@@ -59,7 +59,7 @@ def test_extending_the_range_never_changes_earlier_candles(market):
 
 def test_stocks_have_no_candles_outside_the_nyse_session(stocks_two_weeks):
     ts = stocks_two_weeks.timestamps
-    when = [dt.datetime.fromtimestamp(int(t), dt.timezone.utc) for t in ts[::30]]
+    when = [dt.datetime.fromtimestamp(int(t), dt.UTC) for t in ts[::30]]
     assert all(w.weekday() < 5 for w in when)
     # 2024-01-01 and 2024-01-15 are NYSE holidays; 9 sessions remain.
     assert ts.size == 9 * 390
@@ -75,7 +75,7 @@ def test_stocks_gap_only_at_session_open(stocks_two_weeks):
 
 def test_forex_has_no_saturday_candles_and_crosses_are_arbitrage_free():
     r = _run("forex", 2, JAN_1_2024, JAN_1_2024 + 7 * DAY)
-    sat = [dt.datetime.fromtimestamp(int(t), dt.timezone.utc).weekday() == 5 for t in r.timestamps]
+    sat = [dt.datetime.fromtimestamp(int(t), dt.UTC).weekday() == 5 for t in r.timestamps]
     assert not any(sat)
     syms = build_market_spec(load_market_config("forex")).symbols
     i, j, k = (syms.index(s) for s in ("EURJPY", "EURUSD", "USDJPY"))
