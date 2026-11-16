@@ -101,7 +101,11 @@ CRYPTO_DEFAULTS = MarketDefaults(
     volume_volatility=0.6,
     session_gaps=False,
     weekend_gaps=False,
-    innovation_nu=5.0,  # Finite excess kurtosis (theoretical EK=6); stable across seeds
+    # The Student-t mixing variable is shared by every crypto asset (tail
+    # dependence), so a rare draw hits the whole market at once. With nu=5 that
+    # produced 20-80 sigma minutes and sample kurtosis in the thousands on some
+    # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
+    innovation_nu=6.0,
     volume_params=VolumeParams(phi=0.72, lam=0.35, noise_sigma=0.5),
 )
 
@@ -145,8 +149,9 @@ FOREX_DEFAULTS = MarketDefaults(
     weekend_gaps=True,
     innovation_nu=10.0,  # Higher nu reduces kurtosis for robust multi-seed/multi-asset behavior
     volume_params=VolumeParams(phi=0.6, lam=0.25, noise_sigma=0.35),
-    # Weekend (2880 min) gap ~ sqrt(215) open-minute stds, a few pips on EURUSD.
-    closure_variance_scale=4.0,
+    # Weekend (2880 min) gap ~ sqrt(80) ~ 9 open-minute stds: ~10 pips std
+    # on EURUSD, with Student-t tails for the occasional 50-pip gap.
+    closure_variance_scale=1.5,
     closure_variance_exponent=0.5,
 )
 
@@ -158,9 +163,13 @@ STOCKS_DEFAULTS = MarketDefaults(
     base_drift=0.0002,  # Slight upward bias
     garch_params=GARCHParams(
         omega=0.00001,
-        alpha=0.04,
-        beta=0.86,
-        gamma=0.16,  # Strong leverage for robust negative correlation
+        alpha=0.05,
+        beta=0.88,
+        # v2 used alpha=0.04, gamma=0.16: on minute data a run of negative
+        # Student-t shocks compounded variance to ~260x its mean (37-sigma
+        # minutes, excess kurtosis in the hundreds). 0.08 keeps a clearly
+        # negative leverage correlation without the blow-ups.
+        gamma=0.08,
     ),
     regime_params=RegimeParams(
         transition_matrix=(
