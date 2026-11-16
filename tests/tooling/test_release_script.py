@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / ".github" / "scripts" / "release.py"
 if not SCRIPT.is_file():  # running from the sdist, which ships tests/ but not .github/
     pytest.skip("release tooling is not part of the sdist", allow_module_level=True)

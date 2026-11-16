@@ -109,7 +109,7 @@ branch = true
 
 [tool.coverage.report]
 # Numba-compiled kernels execute outside the Python tracer; they are covered
-# by tests/test_kernels.py, which also runs each kernel's interpreted py_func.
+# by tests/simulation/test_kernels.py, which also runs each kernel's interpreted py_func.
 fail_under = 90
 show_missing = true
 skip_covered = true
