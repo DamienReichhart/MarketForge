@@ -1,6 +1,6 @@
 import numpy as np
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 from marketforge.validation.report import ValidationReport, validate_returns
 
 

@@ -23,7 +23,7 @@ from typing import Any
 import click
 
 from marketforge import __version__
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 
 def _split(value: str | None) -> list[str]:

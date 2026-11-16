@@ -3,12 +3,8 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from marketforge.config.settings import MarketType
-from marketforge.trading_calendar import (
-    get_calendar,
-    nyse_early_closes,
-    nyse_holidays,
-)
+from marketforge.domain.markets import MarketType
+from marketforge.trading_calendar import get_calendar, nyse_early_closes, nyse_holidays
 
 
 def _ts(s: str) -> int:

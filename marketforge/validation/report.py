@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 from marketforge.validation import stylized_facts as sf
 from marketforge.validation.reference import bands_for
 

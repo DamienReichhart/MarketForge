@@ -29,10 +29,9 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
+from marketforge.domain.time import MINUTES_PER_DAY, SECONDS_PER_DAY
 
-MINUTES_PER_DAY = 1440
-SECONDS_PER_DAY = 86400
 NEW_YORK = ZoneInfo("America/New_York")
 _UTC = dt.UTC
 _EPOCH = dt.date(1970, 1, 1)

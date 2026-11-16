@@ -2,13 +2,10 @@ import numpy as np
 import pytest
 
 from marketforge.config.defaults import get_market_defaults
-from marketforge.config.settings import (
-    AnomalyType,
-    GARCHParams,
-    MarketType,
-    RegimeParams,
-    RegimeType,
-)
+from marketforge.config.settings import GARCHParams, RegimeParams
+from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.markets import MarketType
+from marketforge.domain.regimes import RegimeType
 from marketforge.output.writers import OutputFormat
 
 

@@ -29,8 +29,8 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from marketforge.aggregation.streaming import Bars
-from marketforge.aggregation.timeframes import Timeframe
+from marketforge.domain.bars import Bars
+from marketforge.domain.timeframes import Timeframe
 
 PRICE_DECIMALS = 8
 VOLUME_DECIMALS = 4

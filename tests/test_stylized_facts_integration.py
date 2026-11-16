@@ -12,7 +12,7 @@ validation harness for every market, for several instruments and seeds.
 import pytest
 
 import marketforge as mf
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 from marketforge.validation.report import validate_ohlcv
 
 CASES = {

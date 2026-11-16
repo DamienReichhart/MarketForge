@@ -20,7 +20,7 @@ from marketforge.config.catalog.base import (
     MarketConfig,
     ensure_positive_semidefinite,
 )
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 # =============================================================================
 # CRYPTO ASSET DEFINITIONS

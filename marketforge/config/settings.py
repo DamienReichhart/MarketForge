@@ -14,35 +14,9 @@ values (start price, volatility, drift, volume) live in the catalogs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import StrEnum
 
-
-class MarketType(StrEnum):
-    """A market: a family of instruments sharing one calendar and one regime path."""
-
-    CRYPTO = "crypto"
-    FOREX = "forex"
-    STOCKS = "stocks"
-
-
-class AnomalyType(StrEnum):
-    """Optional, deliberately unrealistic events layered on the simulation."""
-
-    SPIKES = "spikes"
-    FLASH_CRASH = "flash_crash"
-
-
-class RegimeType(StrEnum):
-    """Market-wide regimes, in the order used by regime parameters and labels."""
-
-    TREND_UP = "trend_up"
-    TREND_DOWN = "trend_down"
-    RANGE = "range"
-    HIGH_VOLATILITY = "high_volatility"
-    CRASH = "crash"
-
-
-_REGIME_ORDER = list(RegimeType)
+from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.regimes import RegimeType
 
 
 @dataclass(frozen=True)
@@ -124,7 +98,7 @@ class RegimeParams:
         ]
 
     def get_regime_index(self, regime: RegimeType) -> int:
-        return _REGIME_ORDER.index(regime)
+        return list(RegimeType).index(regime)
 
 
 @dataclass(frozen=True)

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 
 @dataclass(frozen=True)

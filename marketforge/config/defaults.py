@@ -16,14 +16,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from marketforge.config.settings import (
-    AnomalyConfig,
-    GARCHParams,
-    MarketType,
-    RegimeParams,
-    RegimeType,
-    VolumeParams,
-)
+from marketforge.config.settings import AnomalyConfig, GARCHParams, RegimeParams, VolumeParams
+from marketforge.domain.markets import MarketType
+from marketforge.domain.regimes import RegimeType
 
 
 @dataclass(frozen=True)

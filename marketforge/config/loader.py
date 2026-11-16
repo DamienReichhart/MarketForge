@@ -12,7 +12,7 @@ import os
 from functools import cache
 
 from marketforge.config.catalog.base import MarketConfig
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 
 @cache

@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from marketforge.config.loader import load_market_config
-from marketforge.config.settings import AnomalyType, MarketType
+from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.markets import MarketType
 from marketforge.engine import DayResult, MarketSimulator, build_market_spec
 
 JAN_1_2024 = 1704067200

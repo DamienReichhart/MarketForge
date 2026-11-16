@@ -3,10 +3,11 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from marketforge.aggregation.streaming import BarAggregator, Bars
-from marketforge.aggregation.timeframes import Timeframe
+from marketforge.aggregation.streaming import BarAggregator
 from marketforge.config.loader import load_market_config
-from marketforge.config.settings import MarketType
+from marketforge.domain.bars import Bars
+from marketforge.domain.markets import MarketType
+from marketforge.domain.timeframes import Timeframe
 from marketforge.engine import MarketSimulator, build_market_spec
 from marketforge.trading_calendar import get_calendar
 

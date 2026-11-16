@@ -3,7 +3,7 @@ import pytest
 
 from marketforge.config.loader import load_catalog
 from marketforge.config.overrides import OverrideError
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 
 def _write(tmp_path, text):

@@ -21,15 +21,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
+from marketforge.domain.time import REFERENCE_YEAR, SECONDS_PER_DAY
 
 if TYPE_CHECKING:
     from marketforge.trading_calendar import TradingCalendar
-
-SECONDS_PER_DAY = 86400
-# Reference window used for normalisation: calendar year 2023.
-_REFERENCE_START = 1672531200
-_REFERENCE_END = 1704067200
 
 # FX activity windows (UTC minutes-of-day).
 _FX_ASIAN = (0, 420)  # 00:00-07:00
@@ -56,7 +52,7 @@ class SessionSeasonality:
 
     def __init__(self, calendar: TradingCalendar) -> None:
         self._calendar = calendar
-        ref = calendar.open_minutes(_REFERENCE_START, _REFERENCE_END)
+        ref = calendar.open_minutes(*REFERENCE_YEAR)
         raw = self._raw(ref)
         self._norm = float(np.sqrt(np.mean(raw**2)))
         self._log_var = float(np.var(np.log(raw / self._norm)))

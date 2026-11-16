@@ -44,7 +44,7 @@ import numpy as np
 
 from marketforge.config.catalog.base import AssetParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
-from marketforge.config.settings import AnomalyConfig, AnomalyType, MarketType
+from marketforge.config.settings import AnomalyConfig
 from marketforge.core.factors import FactorStructure, forex_structure
 from marketforge.core.innovations import correlated_shocks
 from marketforge.core.kernels import (
@@ -56,12 +56,10 @@ from marketforge.core.kernels import (
     regime_chain,
 )
 from marketforge.core.seasonality import SessionSeasonality
-from marketforge.trading_calendar import (
-    MINUTES_PER_DAY,
-    SECONDS_PER_DAY,
-    TradingCalendar,
-    get_calendar,
-)
+from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.markets import MarketType
+from marketforge.domain.time import MINUTES_PER_DAY, REFERENCE_YEAR, SECONDS_PER_DAY
+from marketforge.trading_calendar import TradingCalendar, get_calendar
 
 # Stable per-market stream identifiers (part of the reproducibility contract).
 _MARKET_STREAM = {MarketType.CRYPTO: 1, MarketType.FOREX: 2, MarketType.STOCKS: 3}
@@ -72,7 +70,6 @@ _REGIME_SMOOTHING = 1.0 / 15.0
 _MEAN_ABS_Z = float(np.sqrt(2.0 / np.pi))
 _VAR_ABS_Z = 1.0 - 2.0 / np.pi
 _Z_CLIP = 10.0
-_REFERENCE_YEAR = (1672531200, 1704067200)  # 2023, for annualisation
 
 
 @dataclass(frozen=True)
@@ -211,7 +208,7 @@ def _closure_variance(minutes: np.ndarray, defaults: MarketDefaults) -> np.ndarr
 def _effective_minutes_per_year(market: MarketType, scale: float, exponent: float) -> float:
     """Open minutes per year plus closure variance, in open-minute units."""
     cal = get_calendar(market)
-    ts = cal.open_minutes(*_REFERENCE_YEAR)
+    ts = cal.open_minutes(*REFERENCE_YEAR)
     closed = np.diff(ts) // 60 - 1
     closed = closed[closed > 0]
     gap_var = (

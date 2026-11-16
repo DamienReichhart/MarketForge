@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 
 
 @dataclass

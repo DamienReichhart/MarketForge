@@ -3,8 +3,8 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
-from marketforge.aggregation.streaming import Bars
-from marketforge.aggregation.timeframes import Timeframe
+from marketforge.domain.bars import Bars
+from marketforge.domain.timeframes import Timeframe
 from marketforge.output.writers import CandleWriter, OutputFormat, candle_batches
 
 

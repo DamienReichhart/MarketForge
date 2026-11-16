@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 
 import marketforge as mf
-from marketforge.config.settings import MarketType
+from marketforge.domain.markets import MarketType
 from marketforge.validation.report import validate_ohlcv
 
 
