@@ -502,6 +502,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: zizmor --format=github .github/workflows
 
+  secrets:
+    # The project holds no secrets by design (PyPI trusted publishing, no
+    # tokens), and GitHub push protection blocks known token formats. This
+    # also scans the whole history, and generic patterns push protection
+    # does not know: a key that slips into a commit fails CI. gitleaks is
+    # built from source at a pinned version through the Go module proxy,
+    # whose checksum database verifies the code (no third-party action).
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: v8.30.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: Install gitleaks
+        run: |
+          GOBIN="$RUNNER_TEMP/bin" go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}"
+          "$RUNNER_TEMP/bin/gitleaks" version
+      - name: Scan every commit
+        # --redact: a finding is reported by file, line and rule, never by value.
+        run: '"$RUNNER_TEMP/bin/gitleaks" git --redact --no-banner --verbose .'
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
@@ -588,6 +617,7 @@ jobs:
       - docs-examples
       - build
       - audit
+      - secrets
       - workflows
       - dependency-review
       - release-readiness
