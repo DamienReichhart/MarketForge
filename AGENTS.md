@@ -18,4 +18,4 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazi
 
 ## CI/CD
 
-CI runs `ruff check`, `ruff format --check`, `mypy marketforge` and `pytest` (install the tools with `pip install -e . --group dev`); run them before pushing. A push to `main` releases the version in `pyproject.toml` and fails if that version is already tagged, so merge to `main` only to release. See `docs/ci-cd.md`.
+CI runs `ruff check`, `ruff format --check`, `mypy marketforge` and `pytest` (install the tools with `pip install -e . --group dev`); run them before pushing. CI also fails if any seed's output differs from the latest release without a major version bump, and a release is blocked if a commit marked breaking (`type!:` or `BREAKING CHANGE:`) ships without a major bump. A push to `main` releases the version in `pyproject.toml` when it is not yet tagged, and PRs into `main` must bump it and add a `CHANGELOG.md` section, so merge to `main` only to release. See `docs/ci-cd.md`.
