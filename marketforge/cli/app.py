@@ -292,7 +292,7 @@ def _duration(s: float) -> str:
 def list_assets(market: str | None, overrides: str | None) -> None:
     """List available instruments with their start price and volatility."""
     from marketforge.config.loader import load_catalog
-    from marketforge.engine import build_market_spec
+    from marketforge.simulation.spec import build_market_spec
 
     catalog = load_catalog(overrides)
     for m, cfg in catalog.items():

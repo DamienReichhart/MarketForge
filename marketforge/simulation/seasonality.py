@@ -17,15 +17,13 @@ minute never depends on the requested range.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from functools import cache
 
 import numpy as np
 
+from marketforge.calendars.trading_calendar import TradingCalendar, get_calendar
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import REFERENCE_YEAR, SECONDS_PER_DAY
-
-if TYPE_CHECKING:
-    from marketforge.calendars.trading_calendar import TradingCalendar
 
 # FX activity windows (UTC minutes-of-day).
 _FX_ASIAN = (0, 420)  # 00:00-07:00
@@ -96,3 +94,9 @@ class SessionSeasonality:
                 )
                 shape = diurnal * np.where(weekday >= 5, _CRYPTO_WEEKEND, 1.0)
         return np.asarray(np.maximum(shape, 1e-3), dtype=float)
+
+
+@cache
+def get_seasonality(market: MarketType) -> SessionSeasonality:
+    """Shared seasonality of a market (normalised once over a reference year)."""
+    return SessionSeasonality(get_calendar(market))

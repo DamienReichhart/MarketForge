@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from marketforge.core.kernels import (
+from marketforge.simulation.kernels import (
     ar1,
     bar_arguments,
     bridge_extremes,

@@ -9,7 +9,9 @@ from marketforge.config.loader import load_market_config
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
-from marketforge.engine import MarketSimulator, build_market_spec
+from marketforge.simulation.simulator import MarketSimulator
+from marketforge.simulation.spec import build_market_spec
+from tests.support import simulate_days
 
 
 def _ts(s: str) -> int:
@@ -22,10 +24,7 @@ def _iso(t) -> str:
 
 def _days(market: str, start: int, end: int, seed: int = 1) -> list[Bars]:
     sim = MarketSimulator(build_market_spec(load_market_config(market)), seed)
-    return [
-        Bars(d.timestamps, d.open, d.high, d.low, d.close, d.volume, d.regime)
-        for d in sim.run(start, end)
-    ]
+    return simulate_days(sim, start, end)
 
 
 def _aggregate(market: str, tf: Timeframe, start: str, end: str) -> tuple[Bars, Bars]:

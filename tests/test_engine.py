@@ -5,8 +5,11 @@ import pytest
 
 from marketforge.config.loader import load_market_config
 from marketforge.domain.anomalies import AnomalyType
+from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
-from marketforge.engine import DayResult, MarketSimulator, build_market_spec
+from marketforge.simulation.simulator import MarketSimulator
+from marketforge.simulation.spec import build_market_spec
+from tests.support import simulate_days
 
 JAN_1_2024 = 1704067200
 DAY = 86400
@@ -15,18 +18,9 @@ DAY = 86400
 MID_SESSION = 16 * 3600 + 600
 
 
-def _run(market: str, seed: int, start: int, end: int, anomalies=frozenset()) -> DayResult:
+def _run(market: str, seed: int, start: int, end: int, anomalies=frozenset()) -> Bars:
     spec = build_market_spec(load_market_config(market), anomalies)
-    days = list(MarketSimulator(spec, seed).run(start, end))
-    return DayResult(
-        timestamps=np.concatenate([d.timestamps for d in days]),
-        open=np.vstack([d.open for d in days]),
-        high=np.vstack([d.high for d in days]),
-        low=np.vstack([d.low for d in days]),
-        close=np.vstack([d.close for d in days]),
-        volume=np.vstack([d.volume for d in days]),
-        regime=np.concatenate([d.regime for d in days]),
-    )
+    return Bars.concat(simulate_days(MarketSimulator(spec, seed), start, end))
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +62,8 @@ def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
     platform: perturb every BLAS-backed product by its row count. If the engine
     ever multiplied a range-dependent number of rows, extending the range would
     change earlier candles here, as it did on macOS 15 before 3.1.1."""
-    import marketforge.engine as engine
+    import marketforge.simulation.simulator as engine
+    from marketforge.simulation.projection import Projection
 
     def row_count_dependent(func):
         def wrapped(x, *args, **kwargs):
@@ -78,7 +73,7 @@ def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
 
     monkeypatch.setattr(engine, "correlated_shocks", row_count_dependent(engine.correlated_shocks))
     # Only the products that reach BLAS (matrix projection) or einsum (crosses).
-    apply, sigma = engine._Projection.apply, engine._Projection.sigma
+    apply, sigma = Projection.apply, Projection.sigma
 
     def fake_apply(self, x):
         return (
@@ -90,8 +85,8 @@ def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
     def fake_sigma(self, x):
         return row_count_dependent(lambda v: sigma(self, v))(x) if self.crosses else sigma(self, x)
 
-    monkeypatch.setattr(engine._Projection, "apply", fake_apply)
-    monkeypatch.setattr(engine._Projection, "sigma", fake_sigma)
+    monkeypatch.setattr(Projection, "apply", fake_apply)
+    monkeypatch.setattr(Projection, "sigma", fake_sigma)
 
     short = _run(market, 9, JAN_1_2024, JAN_1_2024 + 3 * DAY + MID_SESSION)
     long = _run(market, 9, JAN_1_2024, JAN_1_2024 + 6 * DAY)
@@ -178,11 +173,11 @@ def test_volume_units_per_market():
 
 
 def _subset_matches_full(spec, symbols, start, end, seed=4):
-    full = list(MarketSimulator(spec, seed).run(start, end))
+    full = simulate_days(MarketSimulator(spec, seed), start, end)
     sub = MarketSimulator(spec, seed, instruments=symbols)
     assert sub.instruments == tuple(symbols)
     cols = [spec.symbols.index(s) for s in symbols]
-    days = list(sub.run(start, end))
+    days = simulate_days(sub, start, end)
     assert len(days) == len(full)
     for a, b in zip(days, full, strict=True):
         np.testing.assert_array_equal(a.timestamps, b.timestamps)
@@ -245,8 +240,12 @@ def test_flash_crash_dips_and_recovers():
     )
     spec_base = build_market_spec(load_market_config("crypto"))
     start, end = JAN_1_2024 + DAY, JAN_1_2024 + 4 * DAY
-    crash = np.vstack([d.close for d in MarketSimulator(spec_crash, 0, ["XRPUSD"]).run(start, end)])
-    base = np.vstack([d.close for d in MarketSimulator(spec_base, 0, ["XRPUSD"]).run(start, end)])
+    crash = np.vstack(
+        [d.close for d in simulate_days(MarketSimulator(spec_crash, 0, ["XRPUSD"]), start, end)]
+    )
+    base = np.vstack(
+        [d.close for d in simulate_days(MarketSimulator(spec_base, 0, ["XRPUSD"]), start, end)]
+    )
     ratio = (crash / base)[:, 0]
     hit = np.nonzero(ratio != 1.0)[0]
     assert 0 < hit.size <= spec_crash.anomaly.flash_crash_recovery_candles

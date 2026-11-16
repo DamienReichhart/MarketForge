@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from marketforge.config.catalog.forex.instruments import INSTRUMENTS as FOREX_ASSETS_DATA
-from marketforge.core.factors import FactorStructure, forex_structure
+from marketforge.simulation.factors import FactorStructure, forex_structure
 
 
 def _row(fs: FactorStructure, symbol: str) -> dict[str, float]:

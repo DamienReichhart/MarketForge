@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from marketforge.core.innovations import correlated_shocks
+from marketforge.simulation.innovations import correlated_shocks
 
 CORR = np.array([[1.0, 0.6, 0.3], [0.6, 1.0, 0.5], [0.3, 0.5, 1.0]])
 L = np.linalg.cholesky(CORR)

@@ -39,8 +39,9 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
-from marketforge.engine import MarketSimulator, MarketSpec, build_market_spec
 from marketforge.output.writers import CandleWriter, OutputFormat, ensure_open_file_capacity
+from marketforge.simulation.simulator import MarketSimulator
+from marketforge.simulation.spec import MarketSpec, build_market_spec
 
 TimeLike = int | float | str | dt.datetime | dt.date
 DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
@@ -236,12 +237,9 @@ def _run_market(
     first = request.start // SECONDS_PER_DAY
     last = (request.end - 1) // SECONDS_PER_DAY
     for day in range(first, last + 1):
-        res = sim.simulate_day(day, request.start, request.end)
-        if res is not None:
-            m1 = Bars(
-                res.timestamps, res.open, res.high, res.low, res.close, res.volume, res.regime
-            )
-            anchor = cal.anchor_minutes(res.timestamps)  # shared by every timeframe
+        m1 = sim.simulate_day(day, request.start, request.end)
+        if m1 is not None:
+            anchor = cal.anchor_minutes(m1.timestamps)  # shared by every timeframe
             for tf, agg in aggs.items():
                 sink(plan, tf, agg.push(m1, anchor))
         if on_day is not None:
