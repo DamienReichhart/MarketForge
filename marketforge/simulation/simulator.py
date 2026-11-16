@@ -38,6 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -177,6 +178,47 @@ class MarketSimulator:
             drift_mult=float(self._regime_drift[r0]),
             vol_mult=float(self._regime_vol[r0]),
             volume_memory=np.zeros(inst.size),
+        )
+
+    # ---------------------------------------------------------- checkpoint
+    def snapshot(self) -> dict[str, Any]:
+        """
+        The simulator's state between two days, as plain JSON-serialisable values.
+
+        A simulator of the same market, seed and instruments that is given this
+        state with :meth:`restore` continues exactly as this one would (floats
+        survive JSON unchanged).
+        """
+        st = self._state
+        return {
+            "log_price": st.log_price.tolist(),
+            "garch_variance": st.garch_variance.tolist(),
+            "garch_shock": st.garch_shock.tolist(),
+            "regime": int(st.regime),
+            "drift_mult": float(st.drift_mult),
+            "vol_mult": float(st.vol_mult),
+            "volume_memory": st.volume_memory.tolist(),
+            "last_timestamp": st.last_timestamp,
+        }
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        """Continue from a state saved by :meth:`snapshot`."""
+        st = self._state
+        arrays = {
+            name: np.asarray(snapshot[name], dtype=float)
+            for name in ("log_price", "garch_variance", "garch_shock", "volume_memory")
+        }
+        for name, values in arrays.items():
+            if values.shape != getattr(st, name).shape:
+                raise ValueError(
+                    f"checkpoint does not match the instruments of this simulator ({name})"
+                )
+        self._state = _State(
+            regime=int(snapshot["regime"]),
+            drift_mult=float(snapshot["drift_mult"]),
+            vol_mult=float(snapshot["vol_mult"]),
+            last_timestamp=snapshot["last_timestamp"],
+            **arrays,
         )
 
     # ------------------------------------------------------------- helpers

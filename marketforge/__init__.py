@@ -12,19 +12,13 @@ stress testing, and development purposes. Supports multi-instrument generation
 with correlations, realistic market behavior, and multiple timeframes.
 """
 
-from importlib import metadata as _metadata
-
+from marketforge._version import __version__
 from marketforge.api.catalog import instruments
 from marketforge.api.disk import generate_to_disk
 from marketforge.api.memory import GeneratedData, generate
 from marketforge.api.parsing import parse_time
 from marketforge.api.validating import validate
 
-try:
-    # pyproject.toml is the single source of truth for the version.
-    __version__ = _metadata.version("marketforge")
-except _metadata.PackageNotFoundError:  # pragma: no cover - uninstalled checkout
-    __version__ = "0.0.0+unknown"
 __author__ = "REICHHART Damien"
 
 __all__ = [

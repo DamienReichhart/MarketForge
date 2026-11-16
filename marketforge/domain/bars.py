@@ -28,6 +28,11 @@ class Bars:
     def __len__(self) -> int:
         return int(self.timestamps.size)
 
+    def after(self, timestamp: int) -> Bars:
+        """The candles that start after ``timestamp``."""
+        k = int(np.searchsorted(self.timestamps, timestamp, side="right"))
+        return self if k == 0 else Bars(*(getattr(self, f)[k:] for f in self.__dataclass_fields__))
+
     @classmethod
     def concat(cls, parts: list[Bars]) -> Bars:
         return cls(

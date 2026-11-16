@@ -268,3 +268,24 @@ def test_a_flash_crash_does_not_move_with_the_end_of_the_range(cut_hours):
     n = len(cut)
     for field in ("open", "high", "low", "close", "volume"):
         np.testing.assert_array_equal(getattr(cut, field), getattr(whole, field)[:n])
+
+
+@pytest.mark.parametrize("market", ["crypto", "forex", "stocks"])
+def test_a_restored_snapshot_continues_bit_for_bit(market):
+    import json
+
+    spec = build_market_spec(load_market_config(market), frozenset(AnomalyType))
+    symbols = list(spec.symbols[:3])
+    start, middle, end = JAN_1_2024, JAN_1_2024 + 4 * DAY, JAN_1_2024 + 9 * DAY
+    days = range(middle // DAY, end // DAY)
+    straight = MarketSimulator(spec, 5, symbols)
+    simulate_days(straight, start, middle)
+    snapshot = json.loads(json.dumps(straight.snapshot()))  # as stored in a manifest
+    expected = Bars.concat([b for d in days if (b := straight.simulate_day(d, start, end))])
+    resumed = MarketSimulator(spec, 5, symbols)
+    resumed.restore(snapshot)
+    got = Bars.concat([b for d in days if (b := resumed.simulate_day(d, start, end))])
+    for field in ("timestamps", "open", "high", "low", "close", "volume", "regime"):
+        np.testing.assert_array_equal(getattr(got, field), getattr(expected, field))
+    with pytest.raises(ValueError, match="does not match the instruments"):
+        MarketSimulator(spec, 5, symbols[:1]).restore(snapshot)
