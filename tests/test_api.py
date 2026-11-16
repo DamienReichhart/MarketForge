@@ -62,7 +62,7 @@ def test_market_filter_and_errors():
         mf.generate(["NOPE"], start="2024-01-01", end="2024-01-02")
     with pytest.raises(ValueError, match="belong to the requested markets"):
         mf.generate(["AAPL"], markets=["crypto"], start="2024-01-01", end="2024-01-02")
-    with pytest.raises(ValueError, match=r"removed in 3\.0"):
+    with pytest.raises(ValueError, match="Unknown anomaly"):
         mf.generate(["AAPL"], start="2024-01-01", end="2024-01-02", anomalies=["gaps"])
     with pytest.raises(ValueError, match="before end"):
         mf.generate(["AAPL"], start="2024-01-02", end="2024-01-01")

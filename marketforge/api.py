@@ -37,6 +37,7 @@ from marketforge.config.loader import load_catalog
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
+from marketforge.domain.regimes import RegimeType
 from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.file_limits import ensure_open_file_capacity
@@ -47,14 +48,6 @@ from marketforge.simulation.spec import MarketSpec, build_market_spec
 
 TimeLike = int | float | str | dt.datetime | dt.date
 DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
-REGIME_NAMES = ("trend_up", "trend_down", "range", "high_volatility", "crash")
-
-_ANOMALY_ALIASES = {
-    "spike": "spikes",
-    "flash": "flash_crash",
-    "crash": "flash_crash",
-    "flashcrash": "flash_crash",
-}
 
 
 # ----------------------------------------------------------------- parsing
@@ -112,14 +105,8 @@ def parse_timeframes(values: Iterable[str]) -> list[Timeframe]:
 def parse_anomalies(values: Iterable[str]) -> frozenset[AnomalyType]:
     out = set()
     for v in values:
-        key = _ANOMALY_ALIASES.get(v.strip().lower(), v.strip().lower())
-        if key in ("gap", "gaps"):
-            raise ValueError(
-                "The 'gaps' anomaly was removed in 3.0: overnight and weekend gaps now "
-                "come from market closures automatically."
-            )
         try:
-            out.add(AnomalyType(key))
+            out.add(AnomalyType(v.strip().lower()))
         except ValueError:
             raise ValueError(f"Unknown anomaly {v!r}; choose from spikes, flash_crash") from None
     return frozenset(out)
@@ -367,7 +354,9 @@ def _frames(chunks: list[Bars], n_instruments: int, include_regime: bool) -> lis
     for j in range(n_instruments):
         df = pd.DataFrame(block[j].T, index=index, columns=list(_FRAME_COLUMNS), copy=False)
         if include_regime:
-            df["regime"] = pd.Categorical.from_codes(codes, categories=list(REGIME_NAMES))
+            df["regime"] = pd.Categorical.from_codes(
+                codes, categories=[r.value for r in RegimeType]
+            )
         frames.append(df)
     return frames
 
