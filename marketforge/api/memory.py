@@ -26,6 +26,35 @@ class GeneratedData(dict):
 
     seed: int
 
+    def panel(self, column: str = "close", timeframe: str | None = None) -> pd.DataFrame:
+        """
+        One column of every instrument side by side, for one timeframe.
+
+        Args:
+            column: ``open``, ``high``, ``low``, ``close``, ``volume`` or any other
+                column the frames have.
+            timeframe: Which timeframe; may be omitted when only one was generated.
+
+        Returns:
+            A DataFrame with one column per instrument. Its index is the union of
+            the instruments' candle times, so a value is NaN where that
+            instrument's market was closed; nothing is forward-filled.
+        """
+        available = list(dict.fromkeys(tf for frames in self.values() for tf in frames))
+        if timeframe is None:
+            if len(available) != 1:
+                raise ValueError(f"Choose a timeframe: {', '.join(available)}")
+            name = available[0]
+        else:
+            name = Timeframe.from_string(timeframe).name
+            if name not in available:
+                raise ValueError(
+                    f"Timeframe {name} was not generated; available: {', '.join(available)}"
+                )
+        return pd.concat(
+            {symbol: frames[name][column] for symbol, frames in self.items()}, axis=1, sort=True
+        )
+
 
 def generate(
     instruments: Names | None = None,

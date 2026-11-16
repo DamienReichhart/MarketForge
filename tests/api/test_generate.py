@@ -148,3 +148,22 @@ def test_outputs_without_a_candle_are_warned_about(tmp_path):
         mf.generate("EURUSD,AAPL", **kwargs)
     with pytest.warns(UserWarning, match="No candles for EURUSD D1, AAPL m1, AAPL D1"):
         mf.generate_to_disk(tmp_path, "EURUSD,AAPL", **kwargs)
+
+
+def test_panel_puts_one_column_per_instrument_without_filling_closures():
+    data = mf.generate(
+        "BTCUSD,AAPL", start="2024-01-05", end="2024-01-09", seed=2, timeframes="H1,D1"
+    )
+    closes = data.panel("close", "h1")
+    assert list(closes.columns) == ["BTCUSD", "AAPL"]
+    # Stock hours start at :30, crypto hours at :00: the index is the union of both.
+    assert len(closes) == len(data["BTCUSD"]["H1"]) + len(data["AAPL"]["H1"])
+    assert closes.index.is_monotonic_increasing
+    assert closes.loc["2024-01-06", "AAPL"].isna().all()  # a Saturday
+    pd.testing.assert_series_equal(
+        closes["AAPL"].dropna(), data["AAPL"]["H1"]["close"], check_names=False
+    )
+    with pytest.raises(ValueError, match="Choose a timeframe: H1, D1"):
+        data.panel()
+    with pytest.raises(ValueError, match="Timeframe m1 was not generated"):
+        data.panel("volume", "m1")
