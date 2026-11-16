@@ -32,7 +32,6 @@ class AssetParams:
         volume_base: Mean volume per open minute, in the market's unit:
             base-asset units (crypto), ticks (forex), shares (stocks).
         volume_volatility: Lognormal sigma of the volume noise.
-        category: Optional category for grouping (e.g., 'major', 'tech').
     """
 
     symbol: str
@@ -41,7 +40,6 @@ class AssetParams:
     drift: float = 0.0
     volume_base: float = 1000.0
     volume_volatility: float = 0.5
-    category: str | None = None
 
     def __post_init__(self) -> None:
         """Validate asset parameters."""
