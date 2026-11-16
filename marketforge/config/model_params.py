@@ -145,21 +145,29 @@ class SpreadParams:
                    * lognormal noise
 
     where m_t counts the open minutes since the market last reopened, and the
-    result is never below one ``tick`` in price units.
+    result is never below one ``tick`` in price units. With ``fixed_scale`` the
+    fraction applies to the instrument's start price instead of its current
+    price: the spread is a number of price increments that does not shrink
+    when the price falls.
 
     ``base`` is the instrument's catalog ``spread_bps``. Instruments without
     one get ``reference_bps * (volatility / reference_volatility) **
-    volatility_exponent``, at least ``minimum_bps``: within a market, the more
-    volatile instruments are the less liquid ones. These levels are estimates
-    of typical quoted spreads, not measurements.
+    volatility_exponent * price ** price_exponent``, at least ``minimum_bps``.
+    In forex and stocks the more volatile instruments are the less liquid
+    ones, and the levels are estimates, not measurements. In crypto the spread
+    is pinned to the exchange's tick, which is coarser, relative to the price,
+    the cheaper the coin; that rule is fitted to measured quotes.
 
     Attributes:
         reference_bps: Default spread, in basis points of the price, of an
             instrument whose annual volatility is ``reference_volatility``.
         reference_volatility: See ``reference_bps``.
         volatility_exponent: How fast the default spread grows with volatility.
+        price_exponent: How the default spread, in basis points, depends on
+            the instrument's price (negative: cheap instruments are wider).
         minimum_bps: Floor of the default spread.
         tick: Smallest quoted spread in price units (one cent for US stocks).
+        fixed_scale: Quote the spread against the start price, not the current one.
         turbulence_exponent: Elasticity to the volatility level (GARCH x regime).
         liquidity_exponent: Elasticity to intraday seasonality: spreads widen
             in the quiet hours.
@@ -173,7 +181,9 @@ class SpreadParams:
     reference_volatility: float
     volatility_exponent: float
     minimum_bps: float
+    price_exponent: float = 0.0
     tick: float = 0.0
+    fixed_scale: bool = False
     turbulence_exponent: float = 0.5
     liquidity_exponent: float = 0.5
     reopen_widening: float = 0.0
@@ -188,10 +198,12 @@ class SpreadParams:
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be non-negative, got {getattr(self, name)}")
 
-    def default_bps(self, volatility: float) -> float:
+    def default_bps(self, volatility: float, price: float) -> float:
         """Spread, in basis points, of an instrument that does not set its own."""
-        scaled = self.reference_bps * (volatility / self.reference_volatility) ** (
-            self.volatility_exponent
+        scaled = (
+            self.reference_bps
+            * (volatility / self.reference_volatility) ** self.volatility_exponent
+            * price**self.price_exponent
         )
         return float(max(self.minimum_bps, scaled))
 

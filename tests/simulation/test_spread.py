@@ -76,11 +76,23 @@ def test_forex_spreads_widen_when_the_week_opens():
 
 
 def test_spread_widens_with_turbulence():
-    bars = _run("crypto", ["BTCUSD"], days=30)
+    bars = _run("forex", ["EURUSD"], days=30)
     relative = bars.spread[:, 0] / bars.close[:, 0]
     calm, wild = np.isin(bars.regime, [2]), np.isin(bars.regime, [3, 4])  # range vs high vol/crash
     assert calm.any() and wild.any()
     assert relative[wild].mean() > 1.3 * relative[calm].mean()
+
+
+def test_crypto_spreads_sit_on_a_tick_like_the_measured_ones():
+    # Binance futures, Feb 2024: 0.024 bp on BTC (at 43k), 1.2 bp on DOGE, and
+    # a 99th percentile within 1.02-2.2 times the median.
+    bars = _run("crypto", ["BTCUSD", "DOGEUSD"], days=30)
+    btc, doge = 1e4 * np.median(bars.spread / bars.close, axis=0)
+    assert 0.012 < btc < 0.04 and 0.6 < doge < 2.4
+    assert np.all(np.quantile(bars.spread, 0.99, axis=0) < 1.5 * np.median(bars.spread, axis=0))
+    # A tick is a price increment: the spread does not follow the price down.
+    cheap = bars.close[:, 1] < np.quantile(bars.close[:, 1], 0.2)
+    assert np.median(bars.spread[cheap, 1]) == pytest.approx(np.median(bars.spread[:, 1]), rel=0.05)
 
 
 def test_minutes_since_reopen_counts_from_the_first_open_minute():

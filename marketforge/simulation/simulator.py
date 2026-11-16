@@ -176,13 +176,17 @@ class MarketSimulator:
         self._base_volume = np.array([by_symbol[s].volume_base for s in symbols])[inst]
 
         # Typical spread of each selected instrument, as a fraction of its price:
-        # its own catalog value, else the market's rule from its annual volatility.
+        # its own catalog value, else the market's rule from its annual volatility
+        # and its price.
         self._spread = spread
         sp = d.spread_params
         annual = self._sigma_ref * np.sqrt(minutes_per_year)
+        self._spread_scale = (
+            np.array([by_symbol[s].start_price for s in selected]) if sp.fixed_scale else None
+        )
         self._spread_base = 1e-4 * np.array(
             [
-                by_symbol[s].spread_bps or sp.default_bps(float(v))
+                by_symbol[s].spread_bps or sp.default_bps(float(v), by_symbol[s].start_price)
                 for s, v in zip(selected, annual, strict=True)
             ]
         )
@@ -404,7 +408,7 @@ class MarketSimulator:
             result.spread = quoted_spread(
                 self.spec.defaults.spread_params,
                 self._spread_base,
-                result.close,
+                result.close if self._spread_scale is None else self._spread_scale,
                 level_i,  # holds the log of the turbulence by now
                 season,
                 minutes_since_reopen(self.calendar, day)[rows],

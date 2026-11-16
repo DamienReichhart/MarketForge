@@ -33,7 +33,7 @@ def minutes_since_reopen(calendar: TradingCalendar, day: int) -> np.ndarray:
 def quoted_spread(
     params: SpreadParams,
     base: np.ndarray,
-    mid: np.ndarray,
+    scale: np.ndarray,
     log_turbulence: np.ndarray,
     season: np.ndarray,
     since_reopen: np.ndarray,
@@ -44,7 +44,8 @@ def quoted_spread(
 
     Args:
         base: (I,) typical spread of each instrument as a fraction of its price.
-        mid: (n, I) mid price the spread is quoted around.
+        scale: (n, I) or (I,) price the fraction applies to: the mid price, or
+            the instrument's start price when spreads are fixed price increments.
         log_turbulence: (n, I) log of the volatility level relative to normal.
         season: (n,) intraday seasonality multiplier.
         since_reopen: (n,) open minutes since the market last reopened.
@@ -55,4 +56,4 @@ def quoted_spread(
     relative = base * np.exp(
         params.turbulence_exponent * log_turbulence + params.noise * noise - 0.5 * params.noise**2
     )
-    return np.asarray(np.maximum(mid * relative * by_minute[:, None], params.tick))
+    return np.asarray(np.maximum(scale * relative * by_minute[:, None], params.tick))

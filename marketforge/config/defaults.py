@@ -95,9 +95,21 @@ CRYPTO_DEFAULTS = MarketDefaults(
     # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
     innovation_nu=6.0,
     volume_params=VolumeParams(phi=0.45, lam=0.35, kappa=0.4),
-    # Estimate: ~1.5 bp on BTCUSD, ~5 bp on the most volatile coins.
+    # Fitted to Binance USDT-futures best bid/ask, Feb 2024 (see
+    # validation/reference.py): spreads sit on the tick, which is 0.02 bp of
+    # the price for BTC and 1-2 bp for coins under a dollar, and barely move
+    # with volatility (the most turbulent minutes are 0-35% wider) or with the
+    # price (a tick is a fixed price increment).
     spread_params=SpreadParams(
-        reference_bps=1.5, reference_volatility=0.55, volatility_exponent=2.0, minimum_bps=0.5
+        reference_bps=0.6,
+        reference_volatility=1.0,
+        volatility_exponent=0.0,
+        price_exponent=-0.30,
+        minimum_bps=0.015,
+        fixed_scale=True,
+        turbulence_exponent=0.1,
+        liquidity_exponent=0.05,
+        noise=0.05,
     ),
     intrabar_volatility_ratio=0.62,
 )
