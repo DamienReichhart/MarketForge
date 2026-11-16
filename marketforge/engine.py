@@ -36,7 +36,7 @@ independent of which instruments are written and of the end of the range.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
 from functools import cache, lru_cache
 
@@ -338,10 +338,17 @@ class MarketSimulator:
     def simulate_day(self, day: int, start: int, end: int) -> DayResult | None:
         """Simulate the open minutes of UTC day `day` that fall within [start, end)."""
         day_ts = day * SECONDS_PER_DAY + 60 * np.arange(MINUTES_PER_DAY, dtype=np.int64)
-        mask = self.calendar.open_mask(day_ts) & (day_ts >= start) & (day_ts < end)
-        rows = np.nonzero(mask)[0]
+        session_mask = self.calendar.open_mask(day_ts)
+        rows = np.nonzero(session_mask & (day_ts >= start) & (day_ts < end))[0]
         if rows.size == 0:
             return None
+        # Matrix products go through BLAS, and some BLAS builds (Accelerate on
+        # macOS 15) round a row differently depending on how many rows the
+        # matrix has. So a day cut short by the range is computed in the shape
+        # of the whole session (its rows at their own positions), exactly like
+        # the full day, and extending a range never changes earlier candles.
+        # Whole days are unaffected: there, rows *is* the session.
+        session = SessionShape.of(np.nonzero(session_mask)[0], rows)
         ts = day_ts[rows]
         st = self._state
         n_f = self._n_factors
@@ -359,7 +366,7 @@ class MarketSimulator:
         u_low = rng.random((MINUTES_PER_DAY, n_i))
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
 
-        z = self._correlated(z_all[rows], chi_all[rows])
+        z = session.rows_of(self._correlated(z_all[session.rows], chi_all[session.rows]))
 
         regimes, drift_m, vol_m, st.regime, st.drift_mult, st.vol_mult = regime_chain(
             u_regime[rows],
@@ -405,10 +412,15 @@ class MarketSimulator:
         st.log_price = log_close_f[-1].copy()
         st.last_timestamp = int(ts[-1])
         proj = self._projection
-        log_open = proj.apply(log_open_f)
-        log_close = proj.apply(log_close_f)
-        body = proj.apply(returns_f)
-        sigma_i = proj.sigma(sigma_f)
+        if proj.kind == "matrix":  # the only projection that goes through BLAS
+            log_open = session.apply(proj.apply, log_open_f)
+            log_close = session.apply(proj.apply, log_close_f)
+            body = session.apply(proj.apply, returns_f)
+        else:
+            log_open = proj.apply(log_open_f)
+            log_close = proj.apply(log_close_f)
+            body = proj.apply(returns_f)
+        sigma_i = session.apply(proj.sigma, sigma_f) if proj.crosses else proj.sigma(sigma_f)
 
         # Intrabar extremes, prices and volume. Transcendentals stay in NumPy
         # (bit-exactness, see docs/adr/0007); everything else is fused.
@@ -590,6 +602,39 @@ class _Projection:
             s = factor_sigma[:, idx] * w
             out[:, j] = np.sqrt(np.maximum(np.einsum("nj,jk,nk->n", s, corr, s), 0.0))
         return out
+
+
+@dataclass(frozen=True)
+class SessionShape:
+    """Where a day's simulated minutes sit inside its whole trading session.
+
+    Row-wise matrix products are evaluated on session-shaped arrays so that
+    BLAS sees the same shape for a minute whether or not the requested range
+    cuts its day short (see :meth:`MarketSimulator.simulate_day`).
+    """
+
+    rows: np.ndarray  # minute-of-day indices of the whole session
+    positions: np.ndarray | None  # positions of the simulated minutes in it; None = all
+
+    @classmethod
+    def of(cls, session_rows: np.ndarray, simulated_rows: np.ndarray) -> SessionShape:
+        if simulated_rows.size == session_rows.size:
+            return cls(simulated_rows, None)
+        return cls(session_rows, np.searchsorted(session_rows, simulated_rows))
+
+    def rows_of(self, session_values: np.ndarray) -> np.ndarray:
+        """The simulated minutes' rows of a session-shaped array."""
+        if self.positions is None:
+            return session_values
+        return np.ascontiguousarray(session_values[self.positions])
+
+    def apply(self, func: Callable[[np.ndarray], np.ndarray], values: np.ndarray) -> np.ndarray:
+        """``func(values)``, evaluated with ``values`` embedded in the session's shape."""
+        if self.positions is None:
+            return func(values)
+        padded = np.zeros((self.rows.size, *values.shape[1:]), dtype=values.dtype)
+        padded[self.positions] = values
+        return self.rows_of(func(padded))
 
 
 def _flash_crash_envelope(length: int, magnitude: float) -> np.ndarray:
