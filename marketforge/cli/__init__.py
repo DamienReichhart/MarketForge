@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
 
-"""CLI module for MarketForge."""
+"""Command-line interface for MarketForge."""
 
-from marketforge.cli.parser import create_cli
-from marketforge.cli.runner import run_generation
+from marketforge.cli.app import cli, main
 
-__all__ = ["create_cli", "run_generation"]
+__all__ = ["cli", "main"]
