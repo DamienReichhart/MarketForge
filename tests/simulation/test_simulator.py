@@ -62,7 +62,7 @@ def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
     platform: perturb every BLAS-backed product by its row count. If the engine
     ever multiplied a range-dependent number of rows, extending the range would
     change earlier candles here, as it did on macOS 15 before 3.1.1."""
-    import marketforge.simulation.simulator as engine
+    import marketforge.simulation.simulator as simulator
     from marketforge.simulation.projection import Projection
 
     def row_count_dependent(func):
@@ -71,7 +71,9 @@ def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
 
         return wrapped
 
-    monkeypatch.setattr(engine, "correlated_shocks", row_count_dependent(engine.correlated_shocks))
+    monkeypatch.setattr(
+        simulator, "correlated_shocks", row_count_dependent(simulator.correlated_shocks)
+    )
     # Only the products that reach BLAS (matrix projection) or einsum (crosses).
     apply, sigma = Projection.apply, Projection.sigma
 

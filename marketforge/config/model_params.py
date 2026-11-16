@@ -55,9 +55,9 @@ class RegimeParams:
     Markov regime-switching parameters.
 
     The transition matrix applies once per ``minutes_per_step`` open minutes;
-    the engine runs the equivalent per-minute chain, I + (P - I) / minutes_per_step,
+    the simulator runs the equivalent per-minute chain, I + (P - I) / minutes_per_step,
     so regime *i* lasts ``minutes_per_step / (1 - P[i][i])`` open minutes on
-    average. Multipliers are rescaled by the engine so that, over the long run,
+    average. Multipliers are rescaled by the simulator so that, over the long run,
     the mean drift multiplier is 1 and the mean squared volatility multiplier
     is 1: regimes reshape *when* drift and volatility happen, not how much.
 

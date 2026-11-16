@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from marketforge.config.catalog.forex.instruments import INSTRUMENTS as FOREX_ASSETS_DATA
+from marketforge.config.catalog.forex.instruments import INSTRUMENTS
 from marketforge.simulation.factors import FactorStructure, forex_structure
 
 
@@ -36,12 +36,12 @@ def test_unreachable_code_is_rejected():
 
 
 def test_full_forex_catalog_derives_every_cross_consistently():
-    symbols = list(FOREX_ASSETS_DATA)
+    symbols = list(INSTRUMENTS)
     fs = forex_structure(symbols)
     assert len(fs.factors) < len(symbols)
-    log_start = np.log([FOREX_ASSETS_DATA[s].start_price for s in fs.factors])
+    log_start = np.log([INSTRUMENTS[s].start_price for s in fs.factors])
     derived = np.exp(fs.weights @ log_start)
     implied = dict(zip(fs.instruments, derived, strict=True))
     # Derived start prices agree with the catalog to within a few percent.
-    assert abs(implied["EURJPY"] / FOREX_ASSETS_DATA["EURJPY"].start_price - 1) < 0.02
-    assert abs(implied["EURGBP"] / FOREX_ASSETS_DATA["EURGBP"].start_price - 1) < 0.02
+    assert abs(implied["EURJPY"] / INSTRUMENTS["EURJPY"].start_price - 1) < 0.02
+    assert abs(implied["EURGBP"] / INSTRUMENTS["EURGBP"].start_price - 1) < 0.02
