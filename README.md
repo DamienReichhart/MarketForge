@@ -243,8 +243,8 @@ half-built.
 (GRXEUR, SPXUSD, WTIUSD, ...) trade on the forex calendar, nearly 24/5. Their
 real sessions and daily maintenance breaks are not modelled. Forex is open on
 Christmas and New Year's Day. NYSE one-off closures (9/11, Hurricane Sandy,
-national days of mourning) are not modelled. Forex tick-volume levels and
-every spread level are estimates, not measurements.
+national days of mourning) are not modelled. Forex tick-volume levels, and
+forex and stock spread levels, are estimates, not measurements.
 
 `start_price` is the price at the start of the range, whatever date that is: a
 range starting in 2015 starts at the same prices as one starting in 2024.
@@ -318,22 +318,25 @@ With `--with-spread`, each candle carries the mean quoted bid-ask spread of
 its minutes, in price units. Per minute, the spread is the instrument's
 typical level multiplied by:
 
-- the volatility level (GARCH and regime) to the power 0.5, so spreads widen
+- the volatility level (GARCH and regime) raised to a power, so spreads widen
   in turbulent markets;
-- the inverse of intraday seasonality to the power 0.5, so they widen in quiet
-  hours;
+- the inverse of intraday seasonality raised to a power, so they widen in
+  quiet hours;
 - a reopening term: forex spreads are about five times wider when the week
   opens and stock spreads four times wider at the open, decaying within
   minutes;
 - lognormal noise.
 
-Stock spreads are never below one cent, so a liquid large cap quotes exactly
-one cent wide most of the day.
-
 The typical level is the instrument's `spread_bps`. Built-in instruments have
-none of their own: each market derives it from the instrument's volatility,
-giving about half a pip on EURUSD, 13 basis points on USDTRY and 1.3 basis points
-on BTCUSD. **These levels are estimates, not measurements**; set `spread_bps`
+none of their own; each market derives it:
+
+| Market | Typical level | Reaction to volatility | Basis |
+| --- | --- | --- | --- |
+| crypto | Set by the price: 0.02 basis points on BTCUSD, about 1 on coins under a dollar. A fixed price increment, like an exchange tick: it does not shrink when the price falls. | Weak (power 0.1): the most turbulent minutes are 3 to 11% wider. | **Fitted to measured quotes**: Binance USDT-futures best bid/ask, February 2024. |
+| forex | Set by volatility: about half a pip on EURUSD, 13 basis points on USDTRY. | Power 0.5. | Estimate. |
+| stocks | Set by volatility, never below one cent: a liquid large cap quotes exactly one cent wide most of the day. | Power 0.5. | Estimate. |
+
+**Forex and stock levels are estimates, not measurements**; set `spread_bps`
 in an override file to match your broker. Asking for the spread changes no
 other column. See [ADR 0008](docs/adr/0008-spread-is-an-opt-in-column-around-mid-prices.md).
 
@@ -356,33 +359,41 @@ and weekend gaps excluded) against per-market bands:
   20 minutes is significant.
 - **Long memory**: |returns| are still autocorrelated an hour later.
 - **Leverage effect**: returns are not positively correlated with next-period
-  volatility. The band allows for sampling noise, and is looser for forex,
-  where crosses have no natural "down".
+  volatility. The band is looser for forex, where crosses have no natural
+  "down".
 - **Range efficiency**: mean(high − low) / mean(|close − open|). A pure random
   walk gives 2.0.
-- **Spread** (when the file has a `spread` column): the median spread is
-  between 0.05 and 40 basis points, and spreads do not narrow in the most
-  turbulent minutes. These two bands are provisional for every market.
+- **Spread** (when the file has a `spread` column): the median spread, in
+  basis points, is in a realistic range, and the most turbulent minutes are
+  about as much wider than the median as in real quotes.
+
+Heavy tails, long memory and the leverage effect allow two standard errors of
+sampling noise, estimated from the sample itself. The textbook formulas
+assume independent normal data and are 2.5 times too small on minute returns.
+See [ADR 0010](docs/adr/0010-noise-allowances-use-the-samples-own-standard-errors.md).
 
 The bands are anchored to the same statistics measured on real m1 data. See
 [`marketforge/validation/reference.py`](marketforge/validation/reference.py)
 and [ADR 0006](docs/adr/0006-validation-bands-are-the-realism-contract.md).
 
-- **Crypto** is anchored on Binance BTC/ETH/SOL 1-minute klines (Feb 2024).
-  Generated crypto data falls inside the measured real range for |r|
-  autocorrelation from 15 minutes to 1 day, clustering, leverage, range
-  efficiency and volume dynamics.
-- **Forex and stocks** use *provisional* bands until real reference data is
-  measured for them, and their reports say so.
+- **Crypto** is anchored on Binance 1-minute klines of seven coins (BTC, ETH,
+  SOL, XRP, DOGE, TRX, LINK; February 2024), and its spread bands on Binance
+  USDT-futures best bid/ask for the same coins. Generated crypto data falls
+  inside the measured real range for |r| autocorrelation from 15 minutes to
+  1 day, clustering, leverage, range efficiency, volume dynamics and spread.
+- **Forex and stocks** use *provisional* bands, for spread too, until real
+  reference data is measured for them, and their reports say so. No free
+  source of forex or stock quotes was reachable when this was calibrated.
 
 To anchor them, or to compare against your own data:
 
 ```bash
-python scripts/measure_real_data.py --name EURUSD ./my_eurusd_m1/*.csv   # timestamp,open,high,low,close,volume
+python scripts/measure_real_data.py --name EURUSD ./my_eurusd_m1/*.csv   # timestamp,open,high,low,close[,volume,spread]
 ```
 
-With two-week windows and three seeds, 621 of 624 instrument checks pass. All
-3 failures are stocks, on the provisional bands, at the edge of sampling noise.
+With two-week windows and three seeds, all 624 instrument checks pass. Across
+30 seeds, 6237 of 6240 pass; the three failures are stock fortnights in which
+volatility shows no memory at all, which is what that check is there to flag.
 
 ## Reproducibility contract
 

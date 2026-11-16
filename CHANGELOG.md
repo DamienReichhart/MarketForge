@@ -41,10 +41,26 @@ The major version is for the renamed options and parameters.
   quoted spread of the candle, in price units, around prices that are mid
   prices. It widens in turbulent markets, in quiet hours and when a market
   reopens, and is never below one cent for stocks.
-- Spread levels are **estimates**, derived per market from each instrument's
-  volatility. Set `spread_bps` in an override file to match your broker.
+- **Crypto spreads are fitted to measured quotes** (Binance USDT-futures best
+  bid/ask, February 2024): 0.02 basis points on BTCUSD, about 1 on coins
+  under a dollar, barely widening with volatility. Forex and stock levels are
+  **estimates**, derived from each instrument's volatility. Set `spread_bps`
+  in an override file to match your broker.
 - Asking for the spread changes no other column. See
   [ADR 0008](docs/adr/0008-spread-is-an-opt-in-column-around-mid-prices.md).
+
+### Validation
+- **Sampling noise is allowed for with standard errors that fit minute
+  returns.** The validator assumed 1/sqrt(n), which is 2.5 times too small on
+  heavy-tailed, clustered data, so sound two-week samples failed by chance.
+  With two-week windows and three seeds, all 624 instrument checks now pass
+  (621 before). See
+  [ADR 0010](docs/adr/0010-noise-allowances-use-the-samples-own-standard-errors.md).
+- **The crypto bands are anchored on seven coins instead of three.** A
+  fortnight of XRP reaches an excess kurtosis of 1331, so the ceiling for
+  the catalog's alt-coins was too low.
+- `scripts/measure_real_data.py` reads Binance best bid/ask archives and
+  reports spread statistics.
 
 ### Python API
 - `mf.validate(data, market)` checks a DataFrame or a file against the
@@ -65,7 +81,8 @@ The major version is for the renamed options and parameters.
   "target [None, 0.26]".
 - Timeframes are accepted in any letter case (`-t h1,d1`).
 - An unknown instrument suggests the closest symbol (`APPL (did you mean
-  AAPL?)`).
+  AAPL?)`), and a mistake like that no longer ends with a hint about
+  `--debug` tracebacks.
 - A file that receives no candle now comes with a warning instead of silence.
 - `generate` asks for `--output-dir` before it plans anything.
 
