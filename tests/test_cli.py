@@ -1,7 +1,7 @@
 import pandas as pd
 from click.testing import CliRunner
 
-from marketforge.cli import cli
+from marketforge.cli.main import cli
 
 
 def _run(*args: str):

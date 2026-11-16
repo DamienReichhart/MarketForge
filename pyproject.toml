@@ -45,7 +45,7 @@ dependencies = [
 ]
 
 [project.scripts]
-marketforge = "marketforge.cli:main"
+marketforge = "marketforge.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/DamienReichhart/MarketForge"

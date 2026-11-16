@@ -6,7 +6,7 @@
 
 """Allow ``python -m marketforge generate ...``."""
 
-from marketforge.cli import main
+from marketforge.cli.main import main
 
 if __name__ == "__main__":
     main()

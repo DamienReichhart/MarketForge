@@ -1,0 +1,57 @@
+# MarketForge
+# Copyright (c) 2026 REICHHART Damien
+#
+# Licensed under the MIT License. See the LICENSE file in the project
+# root for full license information.
+
+"""
+Command-line interface.
+
+    marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD --seed 42
+    marketforge list-assets --market forex
+    marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import click
+
+from marketforge import __version__
+from marketforge.cli.commands.generate import generate
+from marketforge.cli.commands.list_assets import list_assets
+from marketforge.cli.commands.validate import validate
+
+
+class _Group(click.Group):
+    """Prints unexpected errors as one line unless ``--debug`` is given."""
+
+    def invoke(self, ctx: click.Context) -> Any:
+        try:
+            return super().invoke(ctx)
+        except (click.ClickException, click.exceptions.Exit, click.exceptions.Abort, SystemExit):
+            raise
+        except Exception as e:  # user-facing errors: one line unless --debug
+            if ctx.params.get("debug"):
+                raise
+            click.secho(f"Error: {e}", fg="red", err=True)
+            click.echo("Run again with --debug for the full traceback.", err=True)
+            ctx.exit(1)
+
+
+@click.group(cls=_Group, context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--debug", is_flag=True, help="Show full tracebacks on errors.")
+@click.version_option(version=__version__, prog_name="marketforge")
+def cli(debug: bool) -> None:
+    """MarketForge: realistic synthetic OHLCV data for crypto, forex and stocks."""
+
+
+cli.add_command(generate)
+cli.add_command(list_assets)
+cli.add_command(validate)
+
+
+def main() -> None:
+    """Console-script entry point."""
+    cli()
