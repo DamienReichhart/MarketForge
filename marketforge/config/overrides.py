@@ -29,6 +29,7 @@ unspecified pairs of a new instrument default to 0).
 
 from __future__ import annotations
 
+import os
 import sys
 import warnings
 from dataclasses import replace
@@ -53,7 +54,7 @@ class OverrideError(ValueError):
     """An override file is malformed or inconsistent with the catalog."""
 
 
-def read_overrides(path: Union[str, Path]) -> dict[str, dict[str, Any]]:
+def read_overrides(path: Union[str, "os.PathLike[str]"]) -> dict[str, dict[str, Any]]:
     """Parse an override file into {SYMBOL: {key: value}}."""
     p = Path(path)
     try:
@@ -125,7 +126,7 @@ def apply_overrides(
             market = declared
         if market is None:
             raise OverrideError(f"{symbol} is a new instrument: set market = \"crypto\" | \"forex\" | \"stocks\"")
-        values = {k: float(body[k]) for k in _FIELDS if k in body}
+        values: dict[str, Any] = {k: float(body[k]) for k in _FIELDS if k in body}
         try:
             if symbol in assets[market]:
                 assets[market][symbol] = replace(assets[market][symbol], **values)

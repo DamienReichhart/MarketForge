@@ -47,7 +47,8 @@ class _Group(click.Group):
             )
             i = args.index(rest[0])
             args = args[:i] + ["generate"] + args[i:]
-        return super().parse_args(ctx, args)
+        rest_args: list[str] = super().parse_args(ctx, args)
+        return rest_args
 
     def invoke(self, ctx: click.Context) -> Any:
         try:
