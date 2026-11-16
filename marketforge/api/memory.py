@@ -66,6 +66,7 @@ def generate(
     timeframes: Names = ("m1",),
     anomalies: Names = (),
     include_regime: bool = False,
+    include_spread: bool = False,
     overrides: Overrides | None = None,
 ) -> GeneratedData:
     """
@@ -82,13 +83,16 @@ def generate(
         timeframes: Any of m1, m5, m15, m30, H1, H4, D1, W1.
         anomalies: Optional ``spikes`` and/or ``flash_crash``.
         include_regime: Add a ``regime`` column (market regime name at candle close).
+        include_spread: Add a ``spread`` column: the mean quoted bid-ask spread
+            over the candle, in price units. ``open``, ``high``, ``low`` and
+            ``close`` are mid prices, so bid = price - spread / 2.
         overrides: Path to a TOML override file, or the same content as
             ``{SYMBOL: {key: value}}`` (custom prices, new instruments).
 
     Returns:
         :class:`GeneratedData` mapping symbol -> timeframe -> DataFrame with a
         UTC ``DatetimeIndex`` named ``time`` and columns open, high, low, close,
-        volume (and regime).
+        volume (and spread, regime).
     """
     request = plan_request(
         instruments,
@@ -99,6 +103,7 @@ def generate(
         timeframes=timeframes,
         anomalies=anomalies,
         include_regime=include_regime,
+        include_spread=include_spread,
         overrides=overrides,
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
@@ -112,7 +117,9 @@ def generate(
     for plan in request.plans:
         for tf in request.timeframes:
             chunks = parts.get((plan.market, tf))
-            frames = _frames(chunks or [], len(plan.selected), request.include_regime)
+            frames = _frames(
+                chunks or [], len(plan.selected), request.include_regime, request.include_spread
+            )
             for symbol, frame in zip(plan.selected, frames, strict=True):
                 out.setdefault(symbol, {})[tf.name] = frame
     warn_about_empty(
@@ -124,7 +131,9 @@ def generate(
 _FRAME_COLUMNS = ("open", "high", "low", "close", "volume")
 
 
-def _frames(chunks: list[Bars], n_instruments: int, include_regime: bool) -> list[pd.DataFrame]:
+def _frames(
+    chunks: list[Bars], n_instruments: int, include_regime: bool, include_spread: bool
+) -> list[pd.DataFrame]:
     """
     One DataFrame per instrument from a market's candle chunks.
 
@@ -132,14 +141,15 @@ def _frames(chunks: list[Bars], n_instruments: int, include_regime: bool) -> lis
     (instrument, column, row) block; each frame then wraps its own slice
     without another copy, and all frames share one (immutable) time index.
     """
+    columns = (*_FRAME_COLUMNS, "spread") if include_spread else _FRAME_COLUMNS
     n = sum(len(c) for c in chunks)
-    block = np.empty((n_instruments, len(_FRAME_COLUMNS), n))
+    block = np.empty((n_instruments, len(columns), n))
     ts = np.empty(n, dtype=np.int64)
     regime = np.empty(n, dtype=np.int8)
     row = 0
     for c in chunks:
         k = len(c)
-        for i, name in enumerate(_FRAME_COLUMNS):
+        for i, name in enumerate(columns):
             block[:, i, row : row + k] = getattr(c, name).T
         ts[row : row + k] = c.timestamps
         regime[row : row + k] = c.regime
@@ -148,7 +158,7 @@ def _frames(chunks: list[Bars], n_instruments: int, include_regime: bool) -> lis
     codes = regime.astype(int)
     frames = []
     for j in range(n_instruments):
-        df = pd.DataFrame(block[j].T, index=index, columns=list(_FRAME_COLUMNS), copy=False)
+        df = pd.DataFrame(block[j].T, index=index, columns=list(columns), copy=False)
         if include_regime:
             df["regime"] = pd.Categorical.from_codes(
                 codes, categories=[r.value for r in RegimeType]

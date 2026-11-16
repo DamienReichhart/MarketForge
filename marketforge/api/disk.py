@@ -68,6 +68,7 @@ def generate_to_disk(
     timeframes: Names = DEFAULT_TIMEFRAMES,
     anomalies: Names = (),
     include_regime: bool = False,
+    include_spread: bool = False,
     overrides: Overrides | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
     jobs: int = 1,
@@ -91,6 +92,7 @@ def generate_to_disk(
         timeframes=timeframes,
         anomalies=anomalies,
         include_regime=include_regime,
+        include_spread=include_spread,
         overrides=overrides,
     )
     return write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=on_day)
@@ -140,6 +142,7 @@ def plan_extension(dataset: str | os.PathLike[str], end: TimeLike) -> tuple[Requ
         timeframes=manifest.timeframes,
         anomalies=manifest.anomalies,
         include_regime=manifest.include_regime,
+        include_spread=manifest.include_spread,
         overrides=manifest.overrides,
     )
     request.extends_from = manifest.end
@@ -176,6 +179,7 @@ def write_request(
             fmt,
             request.include_regime,
             extend=extending,
+            include_spread=request.include_spread,
         )
         for plan in request.plans
     }
@@ -219,6 +223,7 @@ def write_request(
         timeframes=[tf.name for tf in request.timeframes],
         anomalies=sorted(request.anomalies),
         include_regime=request.include_regime,
+        include_spread=request.include_spread,
         instruments={plan.market.value: plan.selected for plan in request.plans},
         overrides=request.overrides,
         checkpoint={

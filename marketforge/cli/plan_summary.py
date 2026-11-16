@@ -44,7 +44,9 @@ def print_plan(request: Request, fmt: str, output_dir: str | None, random_seed: 
         click.echo(
             f"  {plan.market.value:<11} {len(plan.selected)} instrument(s), {open_minutes:,} open minutes: {names}"
         )
-    bytes_per_row = 68 if fmt == "csv" else 33
+    bytes_per_row = (68 if fmt == "csv" else 33) + request.include_spread * (
+        11 if fmt == "csv" else 6
+    )
     seconds += rows * (_CSV_ROW_SECONDS if fmt == "csv" else _PARQUET_ROW_SECONDS)
     n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
     click.echo(

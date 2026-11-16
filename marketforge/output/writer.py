@@ -55,6 +55,7 @@ class CandleWriter:
         include_regime: bool = False,
         max_buffered_rows: int = MAX_BUFFERED_ROWS,
         extend: bool = False,
+        include_spread: bool = False,
     ) -> None:
         """
         With ``extend``, candles are added to the files a dataset already has:
@@ -66,7 +67,7 @@ class CandleWriter:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fmt = OutputFormat(fmt)
         self.include_regime = include_regime
-        self.schema = candle_schema(include_regime)
+        self.schema = candle_schema(include_regime, include_spread)
         self._symbols = list(symbols)
         self._columns = list(columns)
         if len(self._symbols) != len(self._columns):
@@ -157,7 +158,7 @@ class CandleWriter:
                 self.schema,
                 compression="zstd",
                 use_dictionary=["timestamp"],
-                use_byte_stream_split=["open", "high", "low", "close", "volume"],
+                use_byte_stream_split=[f.name for f in self.schema if f.type == pa.float64()],
             )
             self._parquet[path] = writer
             if self._extend:

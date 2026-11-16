@@ -16,7 +16,12 @@ pytestmark = pytest.mark.filterwarnings("ignore:No candles for")
 INSTRUMENTS = "EURUSD,EURJPY,XAUUSD,AAPL,BRK.B,BTCUSD,XRPUSD"
 START = "2024-01-03T10:00"  # mid-week, mid-session
 END = "2024-02-02T15:17"
-OPTIONS = {"seed": 0, "anomalies": "spikes,flash_crash", "include_regime": True}
+OPTIONS = {
+    "seed": 0,
+    "anomalies": "spikes,flash_crash",
+    "include_regime": True,
+    "include_spread": True,
+}
 
 
 def _files(root: Path) -> dict[str, Path]:
@@ -102,6 +107,7 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
         "timeframes": ["H1"],
         "anomalies": [],
         "include_regime": False,
+        "include_spread": False,
         "instruments": {"crypto": ["MYCOIN"], "forex": ["EURUSD"]},
         "overrides": overrides,
     }

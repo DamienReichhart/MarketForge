@@ -76,6 +76,11 @@ from marketforge.cli.running import days_option, end_of_range, jobs_option, prog
     help="TOML override file to change or add instruments.",
 )
 @click.option(
+    "--with-spread",
+    is_flag=True,
+    help="Add a 'spread' column: the mean quoted bid-ask spread of the candle, in price units.",
+)
+@click.option(
     "--with-regime",
     is_flag=True,
     help="Add a 'regime' column (0=trend_up 1=trend_down 2=range 3=high_volatility 4=crash).",
@@ -99,6 +104,7 @@ def generate(
     anomalies: str | None,
     fmt: str,
     overrides: str | None,
+    with_spread: bool,
     with_regime: bool,
     jobs: int | None,
     dry_run: bool,
@@ -116,6 +122,7 @@ def generate(
         timeframes=timeframes,
         anomalies=anomalies or (),
         include_regime=with_regime,
+        include_spread=with_spread,
         overrides=overrides,
     )
     print_plan(request, fmt, output_dir, seed is None)

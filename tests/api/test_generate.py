@@ -1,5 +1,6 @@
 import datetime as dt
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -167,3 +168,34 @@ def test_panel_puts_one_column_per_instrument_without_filling_closures():
         data.panel()
     with pytest.raises(ValueError, match="Timeframe m1 was not generated"):
         data.panel("volume", "m1")
+
+
+def test_spread_column_in_memory_and_on_disk(tmp_path):
+    kwargs = {"start": "2024-01-02", "end": "2024-01-04", "seed": 9, "timeframes": "m1,H1"}
+    plain = mf.generate("EURUSD", **kwargs)["EURUSD"]
+    data = mf.generate("EURUSD", include_spread=True, include_regime=True, **kwargs)["EURUSD"]
+    assert list(data["m1"].columns) == [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "spread",
+        "regime",
+    ]
+    pd.testing.assert_frame_equal(data["m1"][list(plain["m1"].columns)], plain["m1"])
+    # A candle's spread is the mean spread of its minutes.
+    first = data["H1"].index[0]
+    minutes = data["m1"].loc[first : first + pd.Timedelta(minutes=59), "spread"]
+    assert data["H1"]["spread"].iloc[0] == pytest.approx(minutes.mean(), rel=1e-12)
+
+    for fmt in ("csv", "parquet"):
+        report = mf.generate_to_disk(
+            tmp_path / fmt, "EURUSD", include_spread=True, include_regime=True, fmt=fmt, **kwargs
+        )
+        path = report.paths["forex"]["EURUSD"]["H1"]
+        df = pd.read_csv(path) if fmt == "csv" else pd.read_parquet(path)
+        assert list(df.columns) == [
+            "timestamp", "open", "high", "low", "close", "volume", "spread", "regime",
+        ]  # fmt: skip
+        np.testing.assert_allclose(df["spread"], data["H1"]["spread"], atol=5e-9)

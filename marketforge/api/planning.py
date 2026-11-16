@@ -74,6 +74,7 @@ class Request:
     include_regime: bool = False
     anomalies: frozenset[AnomalyType] = frozenset()
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    include_spread: bool = False
     extends_from: int | None = None  # the end of the dataset this request extends
 
     @property
@@ -101,6 +102,7 @@ def plan_request(
     timeframes: Names = DEFAULT_TIMEFRAMES,
     anomalies: Names = (),
     include_regime: bool = False,
+    include_spread: bool = False,
     overrides: Overrides | None = None,
 ) -> Request:
     """
@@ -150,7 +152,9 @@ def plan_request(
         MarketPlan(build_market_spec(catalog[m], anomaly_types), selected)
         for m, selected in by_market.items()
     ]
-    return Request(plans, t0, t1, seed, tfs, include_regime, anomaly_types, resolved)
+    return Request(
+        plans, t0, t1, seed, tfs, include_regime, anomaly_types, resolved, include_spread
+    )
 
 
 def _unknown_instruments(unknown: list[str], known: list[str]) -> str:

@@ -191,3 +191,14 @@ def test_the_end_of_a_range_is_given_exactly_once(tmp_path):
         assert res.exit_code == 2 and "exactly one of '--to' and '--days'" in res.output
     res = _run("extend", str(tmp_path), "--days", "2")
     assert res.exit_code == 1 and "is not a MarketForge dataset" in res.output
+
+
+def test_with_spread_adds_a_spread_column(tmp_path):
+    res = _run(
+        "generate", "-o", str(tmp_path), "--from", "2024-01-02", "--days", "1",
+        "--instruments", "BTCUSD", "-t", "H1", "--with-spread", "--seed", "1", "--no-progress",
+    )  # fmt: skip
+    assert res.exit_code == 0, res.output
+    df = pd.read_csv(tmp_path / "crypto" / "BTCUSD_H1.csv")
+    assert list(df.columns) == ["timestamp", "open", "high", "low", "close", "volume", "spread"]
+    assert (df["spread"] > 0).all()

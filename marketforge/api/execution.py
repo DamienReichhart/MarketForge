@@ -34,7 +34,9 @@ def _run_market(
 ) -> Checkpoint:
     # Random draws are market-wide; everything after them runs only for the
     # selected instruments, whose columns come back in plan.selected order.
-    sim = MarketSimulator(plan.spec, request.seed, instruments=plan.selected)
+    sim = MarketSimulator(
+        plan.spec, request.seed, instruments=plan.selected, spread=request.include_spread
+    )
     cal = get_calendar(plan.market)
     aggs = {tf: BarAggregator(cal, tf, request.start, request.end) for tf in request.timeframes}
     # An extension re-simulates the last days of the dataset to rebuild the

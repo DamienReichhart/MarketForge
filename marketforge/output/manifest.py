@@ -45,6 +45,7 @@ class Manifest:
     timeframes: list[str]
     anomalies: list[str]
     include_regime: bool
+    include_spread: bool
     instruments: dict[str, list[str]]  # market -> symbols, in file order
     overrides: dict[str, dict[str, Any]]
     checkpoint: dict[str, dict[str, Any]]  # market -> where to resume
@@ -59,6 +60,7 @@ class Manifest:
             "timeframes": self.timeframes,
             "anomalies": self.anomalies,
             "include_regime": self.include_regime,
+            "include_spread": self.include_spread,
             "instruments": self.instruments,
             "overrides": self.overrides,
             "checkpoint": self.checkpoint,
@@ -77,6 +79,7 @@ class Manifest:
             timeframes=doc["timeframes"],
             anomalies=doc["anomalies"],
             include_regime=doc["include_regime"],
+            include_spread=doc["include_spread"],
             instruments=doc["instruments"],
             overrides=doc["overrides"],
             checkpoint=doc["checkpoint"],
