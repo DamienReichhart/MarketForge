@@ -29,6 +29,7 @@ explicitly.
 | Test (py3.15 preview, non-blocking) | `pytest` on the next CPython (3.15, in beta) with binary wheels only. **Not** part of CI OK: an early warning, never a merge blocker. Promote it into the test matrix once 3.15 is final |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Seed reproducibility | On Linux, macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
+| Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Uploads the `dist` and `sbom` artifacts |
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
@@ -50,6 +51,28 @@ mypy marketforge
 pytest --cov
 uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
 ```
+
+### Performance gate
+
+`.github/scripts/perf.py` compares the code under test with the latest
+release (`perf.py run` times both, `perf.py compare` judges). Workloads are
+warmed up first, so Numba compilation is not timed, except by the cold-start
+workload, which is meant to catch a slow import or a lost `cache=True`.
+
+A slowdown can be the price of a fix. Then say so in a commit message, with
+a trailer, and the gate allows up to that much on every workload until the
+next release becomes the baseline:
+
+```
+fix(simulation): sum returns exactly
+
+Accept-Slowdown: 25%
+```
+
+To measure locally, make two virtual environments with the same dependencies
+(one with the wheel, one with the release) as the CI job does, then run
+`perf.py run perf.json --head HEAD_VENV/bin/python --base BASE_VENV/bin/python`
+and `perf.py compare perf.json`.
 
 ## CD: how a release happens
 

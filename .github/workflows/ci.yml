@@ -239,6 +239,61 @@ jobs:
       - name: Compare
         run: python .github/scripts/repro.py compare "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json"
 
+  performance:
+    # Speed is part of the contract (docs/adr/0003, 0007): fails when the code
+    # under test is more than 15% slower than the latest release on any fixed
+    # workload. Like the seed gate, both versions run on this one runner with
+    # the same dependencies, interleaved, so the runner's speed cancels out.
+    # An intended slowdown is declared with an `Accept-Slowdown: N%` commit
+    # trailer (read from the commits since the release, hence fetch-depth 0).
+    name: Performance
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          activate-environment: "true"
+          enable-cache: "true"
+          cache-dependency-glob: pyproject.toml
+      - name: Download the distributions CI built
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Install the code under test and the latest release, with the same dependencies
+        run: |
+          baseline="$(python .github/scripts/repro.py baseline)"
+          echo "Baseline: marketforge ${baseline}"
+          wheel="$(realpath dist/*.whl)"
+          cd "$RUNNER_TEMP"
+          uv venv head --python "$DEFAULT_PYTHON"
+          uv pip install --python head/bin/python "$wheel"
+          uv pip freeze --python head/bin/python | grep -v '^marketforge' > dependencies.txt
+          uv venv base --python "$DEFAULT_PYTHON"
+          uv pip install --python base/bin/python -r dependencies.txt
+          uv pip install --python base/bin/python --no-deps "marketforge==${baseline}"
+      - name: Time both versions, interleaved
+        run: >-
+          python .github/scripts/perf.py run "$RUNNER_TEMP/perf.json"
+          --head "$RUNNER_TEMP/head/bin/python" --base "$RUNNER_TEMP/base/bin/python"
+      - name: Compare
+        run: python .github/scripts/perf.py compare "$RUNNER_TEMP/perf.json"
+      - name: Upload the timings
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: performance
+          path: ${{ runner.temp }}/perf.json
+          retention-days: 30
+          if-no-files-found: ignore
+
   build:
     name: Build & verify distributions
     runs-on: ubuntu-24.04
@@ -448,6 +503,7 @@ jobs:
       - test
       - min-deps
       - reproducibility
+      - performance
       - build
       - audit
       - workflows
