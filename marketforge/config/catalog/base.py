@@ -135,6 +135,5 @@ def ensure_positive_semidefinite(matrix: np.ndarray, epsilon: float = 1e-6) -> n
     # Ensure perfect symmetry
     adjusted = (adjusted + adjusted.T) / 2
     np.fill_diagonal(adjusted, 1.0)
-    
-    return adjusted
+    return np.asarray(adjusted)
 

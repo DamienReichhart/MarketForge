@@ -214,7 +214,7 @@ class TradingCalendar:
         """Timestamps (UTC seconds, minute-aligned) of open minutes in [start, end)."""
         first = -(-int(start) // 60) * 60
         ts = np.arange(first, int(end), 60, dtype=np.int64)
-        return ts[self.open_mask(ts)]
+        return np.asarray(ts[self.open_mask(ts)])
 
     def count_open_minutes(self, start: int, end: int, chunk_days: int = 366) -> int:
         """Number of open minutes in [start, end), computed in bounded memory."""

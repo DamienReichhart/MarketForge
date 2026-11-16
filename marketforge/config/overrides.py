@@ -164,7 +164,7 @@ def apply_overrides(
         for a, b, rho in corr_edits[market]:
             i, j = syms.index(a), syms.index(b)
             mat[i, j] = mat[j, i] = rho
-        if np.linalg.eigvalsh(mat).min() < 1e-8:
+        if float(np.min(np.linalg.eigvalsh(mat))) < 1e-8:
             warnings.warn(
                 f"{market.value}: overridden correlations are not jointly consistent; "
                 "adjusted to the nearest valid correlation matrix",
