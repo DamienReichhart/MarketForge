@@ -234,3 +234,45 @@ def test_guard_passes_and_marks_a_release(monkeypatch, tmp_path):
 
 def raw_version():
     return release.read_project(ROOT / "pyproject.toml")[1]
+
+
+def _bom(**overrides):
+    bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+        "metadata": {"component": {"name": "marketforge", "version": "3.1.1"}},
+        "components": [{"name": "numpy"}, {"name": "Python_Dateutil"}],
+    }
+    bom.update(overrides)
+    return bom
+
+
+def test_check_sbom_accepts_a_complete_sbom():
+    deps = {"numpy", "python-dateutil"}
+    assert release.check_sbom(_bom(), "marketforge", "3.1.1", deps) == 2
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        # What --output-reproducible produces; actions/attest rejects it.
+        ({"serialNumber": None}, "serialNumber"),
+        ({"serialNumber": "not-a-urn"}, "serialNumber"),
+        ({"bomFormat": "SPDX"}, "not CycloneDX"),
+        ({"specVersion": ""}, "not CycloneDX"),
+        ({"metadata": {"component": {"name": "marketforge", "version": "3.1.0"}}}, "describes"),
+        ({"metadata": {}}, "describes"),
+        ({"components": [{"name": "numpy"}]}, "python-dateutil"),
+    ],
+)
+def test_check_sbom_rejects_what_attest_or_users_cannot_use(overrides, message):
+    bom = {k: v for k, v in _bom(**overrides).items() if v is not None}
+    with pytest.raises(release.ReleaseError, match=message):
+        release.check_sbom(bom, "marketforge", "3.1.1", {"numpy", "python-dateutil"})
+
+
+def test_runtime_dependencies_reads_pyproject_names():
+    deps = release.runtime_dependencies(ROOT / "pyproject.toml")
+    assert {"numpy", "numba", "pandas", "threadpoolctl"} <= deps
+    assert all(d == d.lower() and ">" not in d for d in deps)

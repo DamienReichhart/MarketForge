@@ -10,6 +10,8 @@ Subcommands:
                  `prerelease` to $GITHUB_OUTPUT. With --if-unreleased, an
                  already tagged version is not an error: `release=false`.
     check-dist   Check that dist/ holds exactly the sdist and wheel of a version.
+    check-sbom   Check that a CycloneDX SBOM describes this release, lists every
+                 runtime dependency, and will be accepted by actions/attest.
     notes        Print the CHANGELOG.md section of a version (release notes).
 
 Every failure is reported as a GitHub `::error::` annotation and exits 1.
@@ -191,6 +193,55 @@ def check_dist(dist: Path, name: str, version: str) -> list[str]:
     return found
 
 
+def _normalize(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def runtime_dependencies(pyproject: Path) -> set[str]:
+    """Normalized names of the [project].dependencies of a pyproject.toml."""
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    return {
+        _normalize(re.match(r"[A-Za-z0-9._-]+", req.strip()).group())  # type: ignore[union-attr]
+        for req in data.get("project", {}).get("dependencies", [])
+    }
+
+
+_SERIAL_NUMBER = re.compile(
+    r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
+)
+
+
+def check_sbom(bom: dict[str, object], name: str, version: str, dependencies: set[str]) -> int:
+    """Validate a CycloneDX SBOM for name==version; return its component count.
+
+    The format checks mirror what actions/attest requires before it will
+    attest an SBOM (bomFormat, specVersion and serialNumber all present), so
+    a bad SBOM fails CI on the pull request instead of the release.
+    """
+    if bom.get("bomFormat") != "CycloneDX" or not bom.get("specVersion"):
+        raise ReleaseError("the SBOM is not CycloneDX JSON (bomFormat/specVersion missing)")
+    if not _SERIAL_NUMBER.fullmatch(str(bom.get("serialNumber", ""))):
+        raise ReleaseError(
+            "the SBOM has no 'urn:uuid:' serialNumber, so actions/attest rejects it "
+            "('Unsupported SBOM format'). Do not generate it with --output-reproducible"
+        )
+    metadata = bom.get("metadata")
+    root = metadata.get("component", {}) if isinstance(metadata, dict) else {}
+    if (_normalize(str(root.get("name", ""))), root.get("version")) != (_normalize(name), version):
+        raise ReleaseError(
+            f"the SBOM describes {root.get('name')} {root.get('version')}, not {name} {version}"
+        )
+    components = bom.get("components")
+    listed = {
+        _normalize(str(c.get("name", "")))
+        for c in (components if isinstance(components, list) else [])
+        if isinstance(c, dict)
+    }
+    if missing := sorted(dependencies - listed):
+        raise ReleaseError(f"the SBOM does not list the runtime dependencies {missing}")
+    return len(listed)
+
+
 # --------------------------------------------------------------------------- #
 # Side effects: git, PyPI, GitHub Actions I/O
 # --------------------------------------------------------------------------- #
@@ -335,6 +386,14 @@ def cmd_check_dist(args: argparse.Namespace) -> None:
         print(f"ok  {file_name}")
 
 
+def cmd_check_sbom(args: argparse.Namespace) -> None:
+    name, version = read_project(ROOT / "pyproject.toml")
+    path = Path(args.sbom)
+    bom = json.loads(path.read_text(encoding="utf-8"))
+    count = check_sbom(bom, name, version, runtime_dependencies(ROOT / "pyproject.toml"))
+    print(f"ok  {path.name}: CycloneDX {bom['specVersion']}, {name} {version}, {count} components")
+
+
 def cmd_notes(args: argparse.Namespace) -> None:
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     print(changelog_section(text, args.version))
@@ -357,6 +416,10 @@ def main(argv: list[str] | None = None) -> int:
     dist.add_argument("dist", nargs="?", default="dist")
     dist.add_argument("--version", help="expected version (default: pyproject's)")
     dist.set_defaults(func=cmd_check_dist)
+
+    sbom = sub.add_parser("check-sbom", help="validate a release's CycloneDX SBOM")
+    sbom.add_argument("sbom")
+    sbom.set_defaults(func=cmd_check_sbom)
 
     notes = sub.add_parser("notes", help="print a version's CHANGELOG section")
     notes.add_argument("version")
