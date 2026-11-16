@@ -35,6 +35,10 @@ _REFERENCE_END = 1704067200
 _FX_ASIAN = (0, 420)           # 00:00-07:00
 _FX_LONDON = (420, 960)        # 07:00-16:00
 _FX_NY_OVERLAP = (780, 960)    # 13:00-16:00
+# Crypto diurnal cycle: amplitude, peak minute (UTC) and weekend factor.
+_CRYPTO_AMPLITUDE = 0.3
+_CRYPTO_PEAK = 900
+_CRYPTO_WEEKEND = 0.75
 # NYSE session landmarks (New York minutes-of-day).
 _NY_OPEN = 570
 _NY_LUNCH = 750
@@ -47,7 +51,7 @@ class SessionSeasonality:
     - Stocks: U-shape over the New York session (open and close bumps, lunch
       lull), honouring early closes.
     - Forex: Asian / London / London-New York overlap activity (UTC).
-    - Crypto: mild diurnal cycle and quieter weekends (UTC).
+    - Crypto: diurnal cycle peaking near the US open and quieter weekends (UTC).
     """
 
     def __init__(self, calendar: TradingCalendar) -> None:
@@ -88,6 +92,9 @@ class SessionSeasonality:
                 shape[(minutes >= _FX_LONDON[0]) & (minutes < _FX_LONDON[1])] = 1.2
                 shape[(minutes >= _FX_NY_OVERLAP[0]) & (minutes < _FX_NY_OVERLAP[1])] = 1.5
             else:
+                # Activity peaks around the US open (~15:00 UTC) and is roughly
+                # half as volatile in the Asian night; weekends are quieter.
                 weekday = ((ts // SECONDS_PER_DAY) + 3) % 7
-                shape = (1.0 + 0.12 * np.sin((minutes / 1440.0) * 2 * np.pi - 1.0)) * np.where(weekday >= 5, 0.82, 1.0)
+                diurnal = 1.0 + _CRYPTO_AMPLITUDE * np.cos(2 * np.pi * (minutes - _CRYPTO_PEAK) / 1440.0)
+                shape = diurnal * np.where(weekday >= 5, _CRYPTO_WEEKEND, 1.0)
         return np.asarray(np.maximum(shape, 1e-3), dtype=float)

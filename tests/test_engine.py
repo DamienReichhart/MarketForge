@@ -110,3 +110,9 @@ def test_negative_seed_is_rejected():
     spec = build_market_spec(load_market_config(MarketType.CRYPTO))
     with pytest.raises(ValueError):
         MarketSimulator(spec, -1)
+
+
+def test_regimes_persist_for_hours():
+    r = _run("crypto", 8, JAN_1_2024, JAN_1_2024 + 14 * DAY)
+    switches = np.count_nonzero(np.diff(r.regime))
+    assert r.regime.size / max(switches, 1) > 120  # mean regime length > 2 h
