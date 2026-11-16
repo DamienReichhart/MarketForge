@@ -31,7 +31,7 @@ unspecified pairs of a new instrument default to 0).
 from __future__ import annotations
 
 import os
-import sys
+import tomllib
 import warnings
 from dataclasses import replace
 from pathlib import Path
@@ -41,11 +41,6 @@ import numpy as np
 
 from marketforge.config.catalog.base import AssetParams, MarketConfig, ensure_positive_semidefinite
 from marketforge.config.settings import MarketType
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 _FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility")
 _KEYS = set(_FIELDS) | {"market", "correlations"}

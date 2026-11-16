@@ -8,6 +8,13 @@ anomalies including flash crashes, DST, holidays, subsets and overrides, on
 both the newest dependencies and the declared floors). The rules that keep it that
 way are recorded in `docs/adr/0007-optimise-without-changing-a-single-bit.md`.
 
+### Breaking: Python 3.12 or newer
+- Python 3.10 and 3.11 are no longer supported (`requires-python = ">=3.12"`).
+  pip on those versions keeps resolving to 3.0.0. NumPy itself already dropped
+  3.10 after 2.2 and 3.11 after 2.4, which left 3.10 users stuck on numpy 2.2.
+  The `tomli` dependency is gone: TOML is read with the standard library's
+  `tomllib`.
+
 ### Performance
 | Workload (best of 3, one core unless noted) | 3.0.0 | 3.1.0 |
 | --- | --- | --- |

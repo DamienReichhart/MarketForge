@@ -38,7 +38,7 @@ marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD
 
 ## Installation
 
-Python 3.10 or newer.
+Python 3.12 or newer.
 
 ```bash
 pip install marketforge

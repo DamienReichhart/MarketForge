@@ -34,7 +34,7 @@ from marketforge.config.settings import MarketType
 MINUTES_PER_DAY = 1440
 SECONDS_PER_DAY = 86400
 NEW_YORK = ZoneInfo("America/New_York")
-_UTC = dt.timezone.utc
+_UTC = dt.UTC
 _EPOCH = dt.date(1970, 1, 1)
 
 # NYSE regular session, in New York minutes-of-day.
