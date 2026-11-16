@@ -38,6 +38,7 @@ This site lives in `website/` (Astro and Starlight). The changelog, the glossary
 cd website
 npm ci
 npm run dev        # http://localhost:4321/MarketForge/
+npm run check      # astro check: what CI type-checks
 ```
 
 The landing page's chart is real output, written by `website/scripts/hero_sample.py`.

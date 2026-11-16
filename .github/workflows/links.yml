@@ -1,0 +1,46 @@
+name: External links
+
+# Weekly check that the website's links to other sites still work. Not run
+# on pull requests: whether a remote page exists says nothing about a change,
+# and a remote outage must never block a merge. A failing scheduled run opens
+# an issue (scheduled-alerts.yml).
+#
+# Only definite breakage fails (404, 410, a host that no longer resolves);
+# sites that refuse robots, err or time out are listed as warnings in the run.
+
+on:
+  schedule:
+    - cron: "37 6 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: links-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-links:
+    name: Check external links
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: website/.nvmrc
+          package-manager-cache: false
+      - name: Install (lockfile only)
+        working-directory: website
+        run: npm ci --no-audit --no-fund
+      - name: Build the site
+        working-directory: website
+        run: npm run build
+      - name: Check every external link
+        working-directory: website
+        run: npm run check-external-links

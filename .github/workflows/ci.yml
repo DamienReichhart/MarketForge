@@ -558,6 +558,9 @@ jobs:
       - name: Install (lockfile only)
         working-directory: website
         run: npm ci --no-audit --no-fund
+      - name: Type-check (astro check)
+        working-directory: website
+        run: npm run check
       - name: Build the site
         working-directory: website
         run: npm run build

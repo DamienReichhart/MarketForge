@@ -8,7 +8,8 @@ These workflows live in `.github/workflows/`:
 | `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, release to PyPI and GitHub when the version is new, and deployment of the website to GitHub Pages |
 | `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
 | `scorecard.yml` (**Scorecard**) | push to `main`, weekly, branch-protection changes | OpenSSF Scorecard: grades supply-chain practices; findings go to code scanning, results feed the public badge |
-| `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
+| `links.yml` (**External links**) | weekly, manual | Builds the website and checks every link to another site: fails on a page that is gone (404, 410) or a host that no longer resolves, and lists sites that refuse robots, err or time out as warnings. Not run on pull requests: a remote site's state says nothing about a change, and an outage elsewhere must never block a merge |
+| `scheduled-alerts.yml` | a scheduled CI, CodeQL, Scorecard or External links run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
 
 All third-party actions are pinned to a commit SHA, and runner images to a
 version (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `windows-2025`), not `-latest`: the
@@ -36,7 +37,7 @@ explicitly.
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
-| Website | Builds the Astro/Starlight site in `website/` from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
+| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
