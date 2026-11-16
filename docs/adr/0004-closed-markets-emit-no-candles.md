@@ -1,0 +1,3 @@
+# Closed markets emit no candles; gaps come from closures
+
+Stocks and forex used to print a candle for every minute, weekends included, with "gaps" injected as a random anomaly. Real data feeds publish nothing while a market is closed, so MarketForge now only produces candles for minutes its trading calendar marks open, and the price change accumulated over a closure appears as a gap on the next session's first open. The `gaps` anomaly was removed because closures now produce gaps on their own. We chose omission over flat zero-volume candles because flat candles corrupt every indicator that averages over bars.
