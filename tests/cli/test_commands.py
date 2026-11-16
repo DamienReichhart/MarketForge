@@ -71,6 +71,7 @@ def test_errors_are_one_line_unless_debug(tmp_path):
     )
     assert res.exit_code == 1
     assert "Error: Unknown instrument(s): NOPE" in res.output
+    assert "--debug" not in res.output  # a typo needs no traceback
     debug = _run(
         "--debug",
         "generate",
@@ -202,3 +203,16 @@ def test_with_spread_adds_a_spread_column(tmp_path):
     df = pd.read_csv(tmp_path / "crypto" / "BTCUSD_H1.csv")
     assert list(df.columns) == ["timestamp", "open", "high", "low", "close", "volume", "spread"]
     assert (df["spread"] > 0).all()
+
+
+def test_an_unexpected_error_points_to_debug(tmp_path, monkeypatch):
+    from marketforge.cli.commands import generate
+
+    def breaks(*args, **kwargs):
+        raise RuntimeError("kernel went missing")
+
+    monkeypatch.setattr(generate, "plan_request", breaks)
+    res = _run("generate", "-o", str(tmp_path), "--from", "2024-01-01", "--days", "1")
+    assert res.exit_code == 1
+    assert "Error: kernel went missing" in res.output
+    assert "Run again with --debug for the full traceback." in res.output

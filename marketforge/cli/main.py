@@ -27,18 +27,25 @@ from marketforge.cli.commands.validate import validate
 
 
 class _Group(click.Group):
-    """Prints unexpected errors as one line unless ``--debug`` is given."""
+    """
+    Prints errors as one line unless ``--debug`` is given.
+
+    A mistake in what the user asked for (an unknown instrument, a bad date, a
+    directory that is not a dataset) is explained and nothing more. Only an
+    error MarketForge did not expect points to ``--debug``.
+    """
 
     def invoke(self, ctx: click.Context) -> Any:
         try:
             return super().invoke(ctx)
         except (click.ClickException, click.exceptions.Exit, click.exceptions.Abort, SystemExit):
             raise
-        except Exception as e:  # user-facing errors: one line unless --debug
+        except Exception as e:
             if ctx.params.get("debug"):
                 raise
             click.secho(f"Error: {e}", fg="red", err=True)
-            click.echo("Run again with --debug for the full traceback.", err=True)
+            if not isinstance(e, (ValueError, OSError)):
+                click.echo("Run again with --debug for the full traceback.", err=True)
             ctx.exit(1)
 
 
