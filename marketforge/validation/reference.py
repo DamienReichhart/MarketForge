@@ -18,7 +18,7 @@ Replace them by measuring real data for that market and adding it here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from marketforge.domain.markets import MarketType
 
@@ -33,19 +33,31 @@ class Reference:
     leverage: tuple[float, float]
     range_efficiency: tuple[float, float]
     abs_acf_60: tuple[float, float]
+    # Quoted spread, where best bid/ask data has been measured.
+    spread_source: str = ""
+    spread_bps: tuple[float, float] | None = None
+    spread_widening: tuple[float, float] | None = None
 
 
 REFERENCES: dict[MarketType, Reference] = {
     MarketType.CRYPTO: Reference(
         source=(
-            "Binance spot 1m klines BTCUSDT, ETHUSDT, SOLUSDT, 2024-02-01..2024-02-29 "
-            "(data.binance.vision), two 14-day windows each"
+            "Binance spot 1m klines BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, DOGEUSDT, TRXUSDT, "
+            "LINKUSDT, 2024-02-01..2024-02-28 (data.binance.vision), two 14-day windows each"
         ),
-        excess_kurtosis=(7.0, 649.3),
-        vol_clustering=(0.131, 0.357),
-        leverage=(-0.189, 0.001),
+        # The three majors alone span 7.0-649.3; a fortnight of XRP reaches 1331.
+        excess_kurtosis=(7.0, 1331.0),
+        vol_clustering=(0.128, 0.404),
+        leverage=(-0.189, 0.057),
         range_efficiency=(1.504, 1.746),
-        abs_acf_60=(0.065, 0.249),
+        abs_acf_60=(0.064, 0.335),
+        spread_source=(
+            "Binance USDT-futures best bid/ask (bookTicker), mean spread per minute: "
+            "XRPUSDT, DOGEUSDT, TRXUSDT, LINKUSDT 2024-02-01..2024-02-28 (two 14-day windows "
+            "each); BTCUSDT, ETHUSDT, SOLUSDT 2024-02-01 only (one day each)"
+        ),
+        spread_bps=(0.024, 1.946),
+        spread_widening=(1.004, 1.347),
     ),
 }
 
@@ -60,10 +72,12 @@ class Bands:
     range_efficiency: tuple[float, float]
     long_memory_min: float
     anchored: bool
-    # Spread bands are provisional for every market: no quote data has been
-    # measured yet. They only rule out the absurd (docs/adr/0008).
+    # Spread bands. Without measured quotes they are provisional and only rule
+    # out the absurd (docs/adr/0008): a median outside 0.05-40 basis points, or
+    # spreads that clearly narrow in the most turbulent minutes.
     spread_bps: tuple[float, float] = (0.05, 40.0)
-    spread_widening_min: float = 0.95
+    spread_widening: tuple[float, float | None] = (0.9, None)
+    spread_anchored: bool = False
 
 
 def _from_reference(ref: Reference) -> Bands:
@@ -71,15 +85,25 @@ def _from_reference(ref: Reference) -> Bands:
     Bands with a margin around the real range: generated data must be at least
     half as fat-tailed and clustered as the least extreme real window, at most
     1.5x as fat-tailed as the most extreme, and within 0.25 of the measured
-    range efficiency.
+    range efficiency. Where quotes were measured, the median spread must be
+    within a factor two of the measured range, and spreads must widen in
+    turbulence no less than 0.1 below and no more than 0.25 above it.
     """
-    return Bands(
+    bands = Bands(
         excess_kurtosis=(0.5 * ref.excess_kurtosis[0], 1.5 * ref.excess_kurtosis[1]),
         vol_clustering_min=0.5 * ref.vol_clustering[0],
         leverage_max=max(0.02, ref.leverage[1]),
         range_efficiency=(ref.range_efficiency[0] - 0.25, ref.range_efficiency[1] + 0.25),
         long_memory_min=0.5 * ref.abs_acf_60[0],
         anchored=True,
+    )
+    if ref.spread_bps is None or ref.spread_widening is None:
+        return bands
+    return replace(
+        bands,
+        spread_bps=(0.5 * ref.spread_bps[0], 2.0 * ref.spread_bps[1]),
+        spread_widening=(ref.spread_widening[0] - 0.1, ref.spread_widening[1] + 0.25),
+        spread_anchored=True,
     )
 
 

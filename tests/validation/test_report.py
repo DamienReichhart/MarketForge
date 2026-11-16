@@ -2,6 +2,7 @@ import numpy as np
 
 import marketforge as mf
 from marketforge.domain.markets import MarketType
+from marketforge.validation.reference import REFERENCES, bands_for
 from marketforge.validation.report import ValidationReport, validate_returns
 
 
@@ -23,8 +24,6 @@ def test_report_overall_pass_property_aggregates():
 
 
 def test_crypto_bands_are_anchored_to_real_data_and_others_marked_provisional():
-    from marketforge.validation.reference import REFERENCES, bands_for
-
     assert bands_for(MarketType.CRYPTO).anchored
     assert MarketType.CRYPTO in REFERENCES
     assert not bands_for(MarketType.STOCKS).anchored
@@ -44,11 +43,14 @@ def test_spread_checks_flag_absurd_levels_and_spreads_that_narrow_in_turbulence(
         "BTCUSD", start="2024-01-01", end="2024-01-15", seed=1, include_spread=True
     )["BTCUSD"]["m1"]
     good = mf.validate(frame, "crypto")
-    assert good.passed and good.get("spread_widening").value > 1.1
-    assert "spread_bps" in good.summary() and "provisional" in good.summary()
+    assert good.passed and 1.0 < good.get("spread_widening").value < 1.35  # as measured
+    # Crypto spread bands are anchored to measured quotes; the others are not.
+    assert "spread_bps" in good.summary() and "provisional" not in good.summary()
+    assert bands_for(MarketType.CRYPTO).spread_anchored
+    assert not bands_for(MarketType.FOREX).spread_anchored
     assert "spread_bps" not in mf.validate(frame.drop(columns="spread"), "crypto").metrics
 
-    wide = mf.validate(frame.assign(spread=frame["spread"] * 100), "crypto")
+    wide = mf.validate(frame.assign(spread=frame["spread"] * 1000), "crypto")
     assert not wide.get("spread_bps").passed
     moves = np.log(frame["close"] / frame["open"]).abs().rolling(30).mean().fillna(0)
     inverted = frame.assign(spread=frame["close"] * 1e-4 / (1 + 2000 * moves))

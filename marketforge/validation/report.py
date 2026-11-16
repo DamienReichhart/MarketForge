@@ -134,14 +134,17 @@ def validate_ohlcv(
     )
     if spread is not None:
         bands = bands_for(market_type)
+        provisional = not bands.spread_anchored
         report.metrics["spread_bps"] = _check(
-            "spread_bps", sf.median_spread_bps(spread, close), *bands.spread_bps, provisional=True
+            "spread_bps",
+            sf.median_spread_bps(spread, close),
+            *bands.spread_bps,
+            provisional=provisional,
         )
         report.metrics["spread_widening"] = _check(
             "spread_widening",
             sf.spread_widening(spread, r),
-            bands.spread_widening_min,
-            None,
-            provisional=True,
+            *bands.spread_widening,
+            provisional=provisional,
         )
     return report
