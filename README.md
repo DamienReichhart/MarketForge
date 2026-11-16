@@ -43,13 +43,20 @@ Python 3.10 or newer.
 pip install marketforge
 ```
 
-From source, with test and type-checking tools:
+From source, with the test, type-checking and lint tools (a
+[PEP 735](https://peps.python.org/pep-0735/) dependency group, pip 25.1 or
+newer):
 
 ```bash
 git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
-pip install -e ".[dev]"
+pip install -e . --group dev
 pytest
+mypy marketforge
+ruff check . && ruff format --check .
 ```
+
+These are the same checks CI runs. See [`docs/ci-cd.md`](docs/ci-cd.md) for
+the pipeline and the release process.
 
 ## Command line
 
