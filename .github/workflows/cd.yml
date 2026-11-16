@@ -189,7 +189,7 @@ jobs:
           echo "Released [${TAG}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG})" >> "$GITHUB_STEP_SUMMARY"
 
   verify:
-    name: Verify the PyPI release installs (${{ matrix.os }})
+    name: Verify the PyPI release installs
     needs: [guard, publish]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
