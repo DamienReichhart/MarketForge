@@ -28,6 +28,7 @@ import re
 import sys
 import tempfile
 import urllib.request
+from inspect import signature
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +51,7 @@ DISK_SCENARIOS: dict[str, dict[str, Any]] = {
 }
 MEMORY_SCENARIOS: dict[str, dict[str, Any]] = {
     "mem-mixed-eu-dst": {
-        "assets": ["EURUSD", "GBPJPY", "EURGBP", "BTCUSD", "ETHUSD", "AAPL", "MSFT"],
+        "instruments": ["EURUSD", "GBPJPY", "EURGBP", "BTCUSD", "ETHUSD", "AAPL", "MSFT"],
         "start": "2024-10-24",
         "end": "2024-11-06",
         "seed": 42,
@@ -105,7 +106,12 @@ def capture(out: Path) -> None:
                 sys.exit(f"::error::scenario {name} wrote no files")
             for path in files:
                 digests[f"{name}/{path.relative_to(tmp).as_posix()}"] = _sha256(path.read_bytes())
-    for name, kwargs in MEMORY_SCENARIOS.items():
+    for name, scenario in MEMORY_SCENARIOS.items():
+        kwargs = dict(scenario)
+        # Releases before 4.0 call the instruments parameter `assets`. Drop this
+        # once the baseline release is 4.0 or newer.
+        if "instruments" in kwargs and "instruments" not in signature(mf.generate).parameters:
+            kwargs["assets"] = kwargs.pop("instruments")
         data = mf.generate(**kwargs)
         for symbol in sorted(data):
             for timeframe in sorted(data[symbol]):

@@ -29,7 +29,7 @@ class GeneratedData(dict):
 
 
 def generate(
-    assets: Names | None = None,
+    instruments: Names | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
@@ -44,7 +44,7 @@ def generate(
     Generate candles in memory.
 
     Args:
-        assets: Instruments to return (e.g. ``["EURUSD", "AAPL"]``). If omitted,
+        instruments: Instruments to return (e.g. ``["EURUSD", "AAPL"]``). If omitted,
             every instrument of ``markets`` (default: all markets).
         start, end: Range ``[start, end)`` as Unix seconds, ISO 8601 strings or
             date/datetime objects (naive = UTC).
@@ -62,7 +62,7 @@ def generate(
         volume (and regime).
     """
     request = plan_request(
-        assets,
+        instruments,
         markets,
         start=start,
         end=end,

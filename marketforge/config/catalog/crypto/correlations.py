@@ -16,7 +16,7 @@ from marketforge.config.catalog.crypto.instruments import INSTRUMENTS
 
 def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
     """
-    Build the correlation matrix for crypto assets.
+    Build the correlation matrix for crypto instruments.
 
     Correlations are based on:
     - BTC dominance (all alts correlated with BTC)

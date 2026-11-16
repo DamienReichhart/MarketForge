@@ -12,7 +12,7 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
-from marketforge.config.catalog.schema import AssetParams, MarketConfig
+from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
 from marketforge.config.model_params import AnomalyConfig
 from marketforge.domain.anomalies import AnomalyType
@@ -25,7 +25,7 @@ class MarketSpec:
     """Everything needed to simulate one market."""
 
     market: MarketType
-    instruments: tuple[AssetParams, ...]
+    instruments: tuple[InstrumentParams, ...]
     structure: FactorStructure
     factor_correlation: np.ndarray
     defaults: MarketDefaults
@@ -54,7 +54,7 @@ def build_market_spec(
     anomaly = replace(defaults.anomaly_config, types=frozenset(anomalies))
     return MarketSpec(
         market=market,
-        instruments=tuple(config.get_asset(s) for s in symbols),
+        instruments=tuple(config.get_instrument(s) for s in symbols),
         structure=structure,
         factor_correlation=corr,
         defaults=defaults,

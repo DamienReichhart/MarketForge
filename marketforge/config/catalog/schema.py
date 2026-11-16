@@ -5,7 +5,7 @@
 # root for full license information.
 
 """
-Base configuration structures for market assets.
+Base configuration structures for market instruments.
 
 Defines the core dataclasses used across all market configurations.
 """
@@ -20,7 +20,7 @@ from marketforge.domain.markets import MarketType
 
 
 @dataclass
-class AssetParams:
+class InstrumentParams:
     """
     Parameters for a single instrument.
 
@@ -42,7 +42,7 @@ class AssetParams:
     volume_volatility: float = 0.5
 
     def __post_init__(self) -> None:
-        """Validate asset parameters."""
+        """Validate instrument parameters."""
         if self.start_price <= 0:
             raise ValueError(f"start_price must be positive, got {self.start_price}")
         if self.volatility <= 0:
@@ -56,31 +56,31 @@ class MarketConfig:
     """
     Complete configuration for a market.
 
-    Contains all assets and their correlation matrix for a specific market type.
+    Contains all instruments and their correlation matrix for a specific market type.
 
     Attributes:
         market_type: Type of market (forex, crypto, stocks).
-        assets: Dictionary mapping symbol to AssetParams.
-        correlation_matrix: Full correlation matrix for all assets.
-        asset_order: List of symbols defining matrix row/column order.
+        instruments: Dictionary mapping symbol to InstrumentParams.
+        correlation_matrix: Full correlation matrix for all instruments.
+        symbol_order: List of symbols defining matrix row/column order.
     """
 
     market_type: MarketType
-    assets: dict[str, AssetParams]
+    instruments: dict[str, InstrumentParams]
     correlation_matrix: np.ndarray
-    asset_order: list[str] = field(default_factory=list)
+    symbol_order: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Validate market configuration."""
-        if not self.asset_order:
-            self.asset_order = list(self.assets.keys())
+        if not self.symbol_order:
+            self.symbol_order = list(self.instruments.keys())
 
-        n_assets = len(self.assets)
+        n_instruments = len(self.instruments)
 
-        if self.correlation_matrix.shape != (n_assets, n_assets):
+        if self.correlation_matrix.shape != (n_instruments, n_instruments):
             raise ValueError(
                 f"Correlation matrix shape {self.correlation_matrix.shape} "
-                f"doesn't match number of assets ({n_assets})"
+                f"doesn't match number of instruments ({n_instruments})"
             )
 
         # Verify matrix is symmetric
@@ -92,15 +92,15 @@ class MarketConfig:
             raise ValueError("Correlation matrix diagonal must be 1.0")
 
     @property
-    def n_assets(self) -> int:
-        """Return number of assets."""
-        return len(self.assets)
+    def n_instruments(self) -> int:
+        """Return number of instruments."""
+        return len(self.instruments)
 
     @property
     def symbols(self) -> list[str]:
-        """Return list of asset symbols in order."""
-        return self.asset_order
+        """Return the instrument symbols in order."""
+        return self.symbol_order
 
-    def get_asset(self, symbol: str) -> AssetParams:
-        """Get asset parameters by symbol."""
-        return self.assets[symbol]
+    def get_instrument(self, symbol: str) -> InstrumentParams:
+        """Get instrument parameters by symbol."""
+        return self.instruments[symbol]

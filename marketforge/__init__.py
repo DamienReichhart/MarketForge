@@ -8,7 +8,7 @@
 MarketForge
 
 A professional-grade synthetic OHLCV data generator for backtesting,
-stress testing, and development purposes. Supports multi-asset generation
+stress testing, and development purposes. Supports multi-instrument generation
 with correlations, realistic market behavior, and multiple timeframes.
 """
 

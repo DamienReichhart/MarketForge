@@ -60,7 +60,7 @@ class Request:
 
 
 def plan_request(
-    assets: Names | None = None,
+    instruments: Names | None = None,
     markets: Names | None = None,
     *,
     start: TimeLike,
@@ -74,16 +74,16 @@ def plan_request(
     """
     Resolve user input into a :class:`Request`.
 
-    With ``assets`` only, their markets are inferred; with ``markets`` only,
+    With ``instruments`` only, their markets are inferred; with ``markets`` only,
     every instrument of those markets is produced; with both, only the listed
-    assets that belong to the listed markets are produced. With neither, all
+    instruments that belong to the listed markets are produced. With neither, all
     markets are produced.
 
-    Names (assets, markets, timeframes, anomalies) may be given as a list or
+    Names (instruments, markets, timeframes, anomalies) may be given as a list or
     as one comma-separated string, in any letter case.
 
     Raises:
-        ValueError: on unknown assets or markets, an empty selection, or an
+        ValueError: on unknown instruments or markets, an empty selection, or an
             invalid time range.
         TypeError: on a seed that is not an integer.
     """
@@ -98,7 +98,7 @@ def plan_request(
     wanted_markets = parse_markets(markets)
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
     by_market: dict[MarketType, list[str]] = {}
-    requested = [a.upper() for a in as_names(assets)]
+    requested = [a.upper() for a in as_names(instruments)]
     if requested:
         unknown = [a for a in requested if a not in symbol_market]
         if unknown:
@@ -126,4 +126,4 @@ def _unknown_instruments(unknown: list[str], known: list[str]) -> str:
     for symbol in unknown:
         close = difflib.get_close_matches(symbol, known, n=1, cutoff=0.7)
         parts.append(f"{symbol} (did you mean {close[0]}?)" if close else symbol)
-    return f"Unknown instrument(s): {', '.join(parts)}. Run 'marketforge list-assets'."
+    return f"Unknown instrument(s): {', '.join(parts)}. Run 'marketforge list-instruments'."

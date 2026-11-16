@@ -40,7 +40,7 @@ from typing import Any
 import numpy as np
 
 from marketforge.config.catalog.correlation import ensure_positive_semidefinite
-from marketforge.config.catalog.schema import AssetParams, MarketConfig
+from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.domain.markets import MarketType
 
 _FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility")
@@ -111,7 +111,7 @@ def apply_overrides(
 ) -> dict[MarketType, MarketConfig]:
     """Return a new catalog with the overrides applied (the input is not modified)."""
     owner = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
-    assets = {m: dict(cfg.assets) for m, cfg in catalog.items()}
+    instruments = {m: dict(cfg.instruments) for m, cfg in catalog.items()}
     order = {m: list(cfg.symbols) for m, cfg in catalog.items()}
     corr_edits: dict[MarketType, list[tuple[str, str, float]]] = {m: [] for m in catalog}
 
@@ -133,13 +133,13 @@ def apply_overrides(
             )
         values: dict[str, Any] = {k: float(body[k]) for k in _FIELDS if k in body}
         try:
-            if symbol in assets[market]:
-                assets[market][symbol] = replace(assets[market][symbol], **values)
+            if symbol in instruments[market]:
+                instruments[market][symbol] = replace(instruments[market][symbol], **values)
             else:
                 missing = [k for k in ("start_price", "volatility") if k not in values]
                 if missing:
                     raise OverrideError(f"New instrument {symbol} needs {', '.join(missing)}")
-                assets[market][symbol] = AssetParams(symbol=symbol, **values)
+                instruments[market][symbol] = InstrumentParams(symbol=symbol, **values)
                 order[market].append(symbol)
                 owner[symbol] = market
         except ValueError as e:
@@ -150,7 +150,11 @@ def apply_overrides(
     out: dict[MarketType, MarketConfig] = {}
     for market, cfg in catalog.items():
         syms = order[market]
-        if syms == list(cfg.symbols) and not corr_edits[market] and assets[market] == cfg.assets:
+        if (
+            syms == list(cfg.symbols)
+            and not corr_edits[market]
+            and instruments[market] == cfg.instruments
+        ):
             out[market] = cfg
             continue
         n = len(syms)
@@ -180,8 +184,8 @@ def apply_overrides(
             mat = ensure_positive_semidefinite(mat)
         out[market] = MarketConfig(
             market_type=market,
-            assets={s: assets[market][s] for s in syms},
+            instruments={s: instruments[market][s] for s in syms},
             correlation_matrix=mat,
-            asset_order=syms,
+            symbol_order=syms,
         )
     return out

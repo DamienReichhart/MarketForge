@@ -16,10 +16,10 @@ def test_override_existing_instrument(tmp_path):
     cat = load_catalog(
         _write(tmp_path, "[instruments.btcusd]\nstart_price = 42000\nvolatility = 0.7\n")
     )
-    btc = cat[MarketType.CRYPTO].get_asset("BTCUSD")
+    btc = cat[MarketType.CRYPTO].get_instrument("BTCUSD")
     assert btc.start_price == 42000 and btc.volatility == 0.7
     # The cached built-in catalog is untouched.
-    assert load_catalog()[MarketType.CRYPTO].get_asset("BTCUSD").start_price != 42000
+    assert load_catalog()[MarketType.CRYPTO].get_instrument("BTCUSD").start_price != 42000
 
 
 def test_add_new_instrument_with_correlations(tmp_path):

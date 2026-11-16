@@ -7,8 +7,8 @@
 """
 Command-line interface.
 
-    marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD --seed 42
-    marketforge list-assets --market forex
+    marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
+    marketforge list-instruments --market forex
     marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 """
 
@@ -20,7 +20,7 @@ import click
 
 from marketforge import __version__
 from marketforge.cli.commands.generate import generate
-from marketforge.cli.commands.list_assets import list_assets
+from marketforge.cli.commands.list_instruments import list_instruments
 from marketforge.cli.commands.validate import validate
 
 
@@ -48,7 +48,7 @@ def cli(debug: bool) -> None:
 
 
 cli.add_command(generate)
-cli.add_command(list_assets)
+cli.add_command(list_instruments)
 cli.add_command(validate)
 
 

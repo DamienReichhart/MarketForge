@@ -11,7 +11,7 @@ def _run(*args: str):
 def test_help_lists_subcommands():
     res = _run("--help")
     assert res.exit_code == 0
-    for cmd in ("generate", "validate", "list-assets"):
+    for cmd in ("generate", "validate", "list-instruments"):
         assert cmd in res.output
 
 
@@ -24,7 +24,7 @@ def test_generate_writes_files_and_reports_seed(tmp_path):
         "2024-01-02",
         "--to",
         "2024-01-04",
-        "--assets",
+        "--instruments",
         "aapl,EURUSD",
         "-t",
         "m1,D1",
@@ -66,7 +66,7 @@ def test_errors_are_one_line_unless_debug(tmp_path):
         "2024-01-01",
         "--to",
         "2024-01-02",
-        "--assets",
+        "--instruments",
         "NOPE",
     )
     assert res.exit_code == 1
@@ -80,14 +80,14 @@ def test_errors_are_one_line_unless_debug(tmp_path):
         "2024-01-01",
         "--to",
         "2024-01-02",
-        "--assets",
+        "--instruments",
         "NOPE",
     )
     assert isinstance(debug.exception, ValueError)
 
 
-def test_list_assets_marks_forex_crosses():
-    res = _run("list-assets", "--market", "forex")
+def test_list_instruments_marks_forex_crosses():
+    res = _run("list-instruments", "--market", "forex")
     assert res.exit_code == 0
     line = next(l for l in res.output.splitlines() if l.strip().startswith("EURJPY"))
     assert "cross" in line
@@ -102,7 +102,7 @@ def test_validate_generated_parquet(tmp_path):
         "2024-01-01",
         "--to",
         "2024-01-15",
-        "--assets",
+        "--instruments",
         "BTCUSD",
         "-t",
         "m1",
@@ -129,7 +129,7 @@ def test_generate_takes_lowercase_timeframes_and_warns_about_empty_files(tmp_pat
         "2024-01-01",
         "--to",
         "2024-01-01T12:00",
-        "--assets",
+        "--instruments",
         "AAPL",
         "-t",
         "d1",
@@ -142,6 +142,6 @@ def test_generate_takes_lowercase_timeframes_and_warns_about_empty_files(tmp_pat
 
 
 def test_generate_asks_for_an_output_directory_before_planning():
-    res = _run("generate", "--from", "2024-01-01", "--to", "2024-01-02", "--assets", "AAPL")
+    res = _run("generate", "--from", "2024-01-01", "--to", "2024-01-02", "--instruments", "AAPL")
     assert res.exit_code == 2
     assert "Missing option '--output-dir'" in res.output and "Range" not in res.output

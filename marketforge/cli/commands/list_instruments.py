@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
 
-"""``marketforge list-assets``."""
+"""``marketforge list-instruments``."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from marketforge.domain.markets import MarketType
 from marketforge.simulation.spec import build_market_spec
 
 
-@click.command("list-assets")
+@click.command("list-instruments")
 @click.option(
     "--market", "-m", type=click.Choice([m.value for m in MarketType]), help="Only this market."
 )
@@ -25,7 +25,7 @@ from marketforge.simulation.spec import build_market_spec
     type=click.Path(exists=True, dir_okay=False),
     help="TOML override file to apply first.",
 )
-def list_assets(market: str | None, overrides: str | None) -> None:
+def list_instruments(market: str | None, overrides: str | None) -> None:
     """List available instruments with their start price and volatility."""
     catalog = load_catalog(overrides)
     for m, cfg in catalog.items():
@@ -33,10 +33,10 @@ def list_assets(market: str | None, overrides: str | None) -> None:
             continue
         spec = build_market_spec(cfg)
         anchors = set(spec.structure.factors)
-        click.secho(f"\n{m.value} ({cfg.n_assets} instruments)", bold=True)
+        click.secho(f"\n{m.value} ({cfg.n_instruments} instruments)", bold=True)
         click.echo(f"  {'SYMBOL':<10}{'START':>14}{'VOL':>8}{'DRIFT':>8}  NOTE")
         for s in cfg.symbols:
-            a = cfg.get_asset(s)
+            a = cfg.get_instrument(s)
             note = (
                 ""
                 if spec.structure.is_identity

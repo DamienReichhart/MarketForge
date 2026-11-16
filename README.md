@@ -7,7 +7,7 @@ candles from `m1` to `W1` as CSV, Parquet or pandas DataFrames.
 
 ```bash
 pip install marketforge
-marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD,AAPL,BTCUSD --seed 42
+marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD,AAPL,BTCUSD --seed 42
 ```
 
 ## Why MarketForge
@@ -63,7 +63,7 @@ the pipeline and the release process.
 
 ```bash
 # One year of EURUSD, every timeframe, reproducible
-marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD --seed 42
+marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
 # A whole market as Parquet, with regime labels
 marketforge generate -o ./data --from 2024-01-01 --to 2024-07-01 --market crypto \
@@ -73,7 +73,7 @@ marketforge generate -o ./data --from 2024-01-01 --to 2024-07-01 --market crypto
 marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 
 # List instruments (forex crosses are marked as derived)
-marketforge list-assets --market forex
+marketforge list-instruments --market forex
 
 # Check a file against real-market stylized facts (exit code 1 on failure)
 marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
@@ -85,8 +85,8 @@ marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 | --- | --- |
 | `-o, --output-dir` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv\|parquet}`. |
 | `--from`, `--to` | Range `[from, to)`. Accepts `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds. UTC unless an offset is given. |
-| `-a, --assets` | Comma-separated instruments. Their markets are inferred. |
-| `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--assets` is not given. With `--assets`, it keeps only the assets in these markets. |
+| `-a, --instruments` | Comma-separated instruments. Their markets are inferred. |
+| `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--instruments` is not given. With `--instruments`, it keeps only the instruments in these markets. |
 | `-s, --seed` | Non-negative integer. When omitted, a random seed is used and printed so the run can be reproduced. |
 | `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`. Default: all. |
 | `--format` | `csv` (default) or `parquet`. Parquet files are about half the size and load much faster. |
@@ -208,7 +208,7 @@ correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
 ```
 
 ```bash
-marketforge generate -o ./data --from 2024-01-01 --to 2024-03-01 --assets MYCOIN,BTCUSD --config my_instruments.toml
+marketforge generate -o ./data --from 2024-01-01 --to 2024-03-01 --instruments MYCOIN,BTCUSD --config my_instruments.toml
 ```
 
 Correlations you do not specify for a new instrument are implied from the ones

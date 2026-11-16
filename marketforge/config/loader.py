@@ -43,9 +43,9 @@ def load_market_config(market_type: MarketType | str) -> MarketConfig:
     correlation_matrix, symbol_order = build_correlation_matrix()
     return MarketConfig(
         market_type=market,
-        assets=instruments,
+        instruments=instruments,
         correlation_matrix=correlation_matrix,
-        asset_order=symbol_order,
+        symbol_order=symbol_order,
     )
 
 

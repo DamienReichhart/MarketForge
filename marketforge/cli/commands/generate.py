@@ -42,8 +42,8 @@ from marketforge.domain.markets import MarketType
     "--to", "end", required=True, metavar="TIME", help="End (exclusive), same formats as --from."
 )
 @click.option(
-    "--assets",
-    "-a",
+    "--instruments",
+    "-i",
     metavar="LIST",
     help="Comma-separated instruments, e.g. EURUSD,AAPL,BTCUSD. Markets are inferred.",
 )
@@ -52,7 +52,7 @@ from marketforge.domain.markets import MarketType
     "-m",
     "markets",
     metavar="LIST",
-    help="Comma-separated markets: crypto, forex, stocks, or all (default when --assets is not given).",
+    help="Comma-separated markets: crypto, forex, stocks, or all (default when --instruments is not given).",
 )
 @click.option(
     "--seed",
@@ -108,7 +108,7 @@ def generate(
     output_dir: str | None,
     start: str,
     end: str,
-    assets: str | None,
+    instruments: str | None,
     markets: str | None,
     seed: int | None,
     timeframes: str,
@@ -124,7 +124,7 @@ def generate(
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
     request = plan_request(
-        assets,
+        instruments,
         markets,
         start=start,
         end=end,

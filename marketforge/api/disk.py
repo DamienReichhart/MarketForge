@@ -39,7 +39,7 @@ class DiskReport:
 
 def generate_to_disk(
     output_dir: str | Path,
-    assets: Names | None = None,
+    instruments: Names | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
@@ -61,7 +61,7 @@ def generate_to_disk(
     not grow with the length of the range.
     """
     request = plan_request(
-        assets,
+        instruments,
         markets,
         start=start,
         end=end,

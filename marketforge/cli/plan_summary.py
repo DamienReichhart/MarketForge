@@ -32,8 +32,10 @@ def print_plan(request: Request, fmt: str, output_dir: str | None, random_seed: 
     seconds = 0.0
     for plan in request.plans:
         open_minutes = get_calendar(plan.market).count_open_minutes(request.start, request.end)
-        per_asset = sum(open_minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes)
-        rows += per_asset * len(plan.selected)
+        per_instrument = sum(
+            open_minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes
+        )
+        rows += per_instrument * len(plan.selected)
         seconds += _simulation_seconds(plan, request.n_days, open_minutes)
         names = ", ".join(plan.selected[:6]) + (
             f" (+{len(plan.selected) - 6} more)" if len(plan.selected) > 6 else ""

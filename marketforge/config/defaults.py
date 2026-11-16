@@ -81,7 +81,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
         flash_crash_magnitude=0.20,
         flash_crash_recovery_candles=20,
     ),
-    # The Student-t mixing variable is shared by every crypto asset (tail
+    # The Student-t mixing variable is shared by every crypto instrument (tail
     # dependence), so a rare draw hits the whole market at once. With nu=5 that
     # produced 20-80 sigma minutes and sample kurtosis in the thousands on some
     # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
