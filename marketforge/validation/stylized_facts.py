@@ -19,6 +19,71 @@ def excess_kurtosis(returns: np.ndarray) -> float:
     return float(kurtosis(np.asarray(returns, dtype=float), fisher=True, bias=False))
 
 
+# Standard errors of the statistics above, for the sampling-noise allowance of
+# the validation bands. The textbook 1/sqrt(n) (and sqrt(24/n) for kurtosis)
+# hold for independent normal data only; minute returns are heavy-tailed and
+# their volatility clusters, and on generated stock data the leverage
+# correlation scatters 2.5 times more than 1/sqrt(n) says. These use the
+# sample's own moments instead, so they widen exactly where a few large or
+# clustered minutes dominate the statistic.
+
+
+def _standardised(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    spread = x.std()
+    return (x - x.mean()) / spread if spread > 0 else np.zeros_like(x)
+
+
+def _correlation_standard_error(x: np.ndarray, y: np.ndarray, overlap: int = 0) -> float:
+    """
+    Standard error of corr(x, y), robust to heavy tails and to clustering: the
+    Newey-West variance of the mean of the standardised products. The
+    bandwidth is the usual 4 * (n / 100) ** (2 / 9), and at least ``overlap``:
+    the number of steps over which consecutive products share data (the lag,
+    for an autocorrelation). It is 1/sqrt(n) for independent normal data.
+
+    For the autocorrelation of |returns| it is still an underestimate: how
+    much volatility persists over an hour depends on a handful of regime
+    changes, which no two-week sample can measure.
+    """
+    n = x.size
+    if n < 2:
+        return 0.0
+    product = _standardised(x) * _standardised(y)
+    product = product - product.mean()
+    lags = min(n - 1, max(overlap, int(4.0 * (n / 100.0) ** (2.0 / 9.0))))
+    variance = float(np.dot(product, product)) / n
+    for k in range(1, lags + 1):
+        weight = 1.0 - k / (lags + 1.0)
+        variance += 2.0 * weight * float(np.dot(product[:-k], product[k:])) / n
+    return float(np.sqrt(max(variance, 0.0) / n))
+
+
+def excess_kurtosis_standard_error(returns: np.ndarray) -> float:
+    """
+    Standard error of the sample kurtosis of a symmetric distribution, from the
+    sample's fourth, sixth and eighth moments (sqrt(24/n) for normal data).
+    """
+    z = _standardised(returns)
+    if z.size < 2:
+        return 0.0
+    m4, m6, m8 = (float(np.mean(z**k)) for k in (4, 6, 8))
+    variance = m8 - 4.0 * m4 * m6 + 4.0 * m4**3 - m4**2
+    return float(np.sqrt(max(variance, 24.0) / z.size))
+
+
+def leverage_standard_error(returns: np.ndarray) -> float:
+    """Standard error of :func:`leverage_correlation`."""
+    r = np.asarray(returns, dtype=float)
+    return _correlation_standard_error(r[:-1], np.abs(r[1:]))
+
+
+def abs_autocorrelation_standard_error(returns: np.ndarray, lag: int) -> float:
+    """Standard error of the autocorrelation of |returns| at ``lag``."""
+    a = np.abs(np.asarray(returns, dtype=float))
+    return _correlation_standard_error(a[:-lag], a[lag:], overlap=lag)
+
+
 def _acf(x: np.ndarray, lag: int) -> float:
     x = np.asarray(x, dtype=float)
     x = x - x.mean()

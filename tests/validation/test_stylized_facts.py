@@ -1,5 +1,8 @@
 import numpy as np
+import pytest
 
+import marketforge as mf
+from marketforge.validation import stylized_facts as sf
 from marketforge.validation.stylized_facts import (
     excess_kurtosis,
     leverage_correlation,
@@ -49,3 +52,34 @@ def test_range_efficiency_in_unit_band():
     l = np.minimum(o, c) - np.abs(rng.normal(0, 0.05, n))
     val = range_efficiency(o, h, l, c)
     assert val > 1.0
+
+
+def test_standard_errors_match_the_textbook_for_independent_normal_data():
+    r = np.random.default_rng(0).standard_normal(20_000) * 1e-3
+    textbook = 1 / np.sqrt(r.size)
+    assert sf.leverage_standard_error(r) == pytest.approx(textbook, rel=0.05)
+    assert sf.abs_autocorrelation_standard_error(r, 60) == pytest.approx(textbook, rel=0.1)
+    assert sf.excess_kurtosis_standard_error(r) == pytest.approx(np.sqrt(24 / r.size), rel=0.2)
+
+
+def test_standard_errors_widen_for_heavy_tailed_clustered_returns():
+    m1 = mf.generate("AAPL", start="2024-01-01", end="2024-01-15", seed=1)["AAPL"]["m1"]
+    r = np.log(m1["close"] / m1["open"]).to_numpy()
+    textbook = 1 / np.sqrt(r.size)
+    assert sf.leverage_standard_error(r) > 1.3 * textbook
+    assert sf.abs_autocorrelation_standard_error(r, 60) > 1.5 * textbook
+    assert sf.excess_kurtosis_standard_error(r) > 2 * np.sqrt(24 / r.size)
+
+
+def test_the_leverage_standard_error_is_calibrated_on_generated_stocks():
+    """The spread of the statistic across seeds is what its standard error says."""
+    values, errors = [], []
+    for seed in range(1, 9):
+        data = mf.generate("AAPL,JPM,XOM,KO", start="2024-01-01", end="2024-01-15", seed=seed)
+        for frames in data.values():
+            m1 = frames["m1"]
+            r = np.log(m1["close"] / m1["open"]).to_numpy()
+            values.append(sf.leverage_correlation(r))
+            errors.append(sf.leverage_standard_error(r))
+    ratio = np.std(values) / np.median(errors)
+    assert 0.7 < ratio < 1.6  # 1/sqrt(n) gives about 2.5 here
