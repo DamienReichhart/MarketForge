@@ -86,6 +86,17 @@ The major version is for the renamed options and parameters.
 - A file that receives no candle now comes with a warning instead of silence.
 - `generate` asks for `--output-dir` before it plans anything.
 
+### Website and documentation
+- **MarketForge has a website**,
+  [damienreichhart.github.io/MarketForge](https://damienreichhart.github.io/MarketForge/),
+  with full documentation: guides for training ML models, backtesting and
+  stress testing, the command line, the Python API, the model, the spread,
+  validation and reproducibility, plus this changelog, the glossary and the
+  design decisions. It is deployed from `main` by the CD pipeline.
+- The README and the package description present MarketForge for what it
+  is used for: training and testing AI trading models and backtesters, with
+  a plain statement of what synthetic data cannot do.
+
 ## 3.1.1
 
 One fix for macOS 15; on Linux, Windows and other macOS versions every seed
