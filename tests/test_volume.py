@@ -58,3 +58,18 @@ def test_volume_with_seasonality_stays_positive_and_autocorrelated():
     assert np.all(np.isfinite(v)) and np.all(v > 0)
     lv = np.log(v)
     assert np.corrcoef(lv[:-1], lv[1:])[0, 1] > 0.3
+
+
+def test_no_single_minute_dominates_weekly_volume():
+    """Regression: v2 put ~50% of a week's BTCUSD volume into one minute."""
+    from marketforge.configs.loader import load_market_config, market_config_to_generator_config
+    from marketforge.generators.ohlcv import OHLCVBuilder
+
+    for market, symbol in (("crypto", "BTCUSD"), ("stocks", "AAPL"), ("forex", "EURUSD")):
+        mc = load_market_config(market)
+        cfg = market_config_to_generator_config(
+            mc, 1704067200, 1704067200 + 7 * 86400, seed=42, batch_symbols=[symbol],
+        )
+        v = OHLCVBuilder(cfg).build(RandomState(42))[symbol].volume
+        assert v.max() / v.sum() < 0.01, (market, v.max() / v.sum())
+        assert v.max() / np.median(v) < 1000, (market, v.max() / np.median(v))

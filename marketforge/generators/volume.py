@@ -23,6 +23,12 @@ import numpy as np
 from marketforge.config.settings import GeneratorConfig, MarketType, VolumeParams
 from marketforge.utils.random import RandomState
 
+# Moments of |z| for a standard normal z, used to centre the MDH driver.
+_MEAN_ABS_Z = float(np.sqrt(2.0 / np.pi))
+_VAR_ABS_Z = 1.0 - 2.0 / np.pi
+# Cap on the standardized absolute return fed to the volume model.
+_Z_CLIP = 10.0
+
 
 class VolumeGenerator:
     """
@@ -137,13 +143,16 @@ class VolumeGenerator:
         lam = self._volume_params.lam
         noise_sigma = self._volume_params.noise_sigma
 
-        # Standardized absolute returns (MDH driver); 0 if not provided
+        # MDH driver: the *standardized* absolute return |r_t| / sigma_t, centred
+        # on its expectation. Using raw |r| (as v2 did) lets every high-volatility
+        # stretch hit the clip, and the AR(1) then compounds it into minutes that
+        # carry half of a week's volume.
         if abs_returns is not None:
-            mean_abs = abs_returns.mean()
-            if mean_abs > 0:
-                z = np.clip(abs_returns / mean_abs, 0.0, 20.0)
+            if volatilities is not None:
+                z = abs_returns / np.maximum(volatilities, 1e-300)
             else:
-                z = np.zeros(n_steps)
+                z = np.asarray(abs_returns, dtype=float)
+            z = np.clip(z, 0.0, _Z_CLIP) - _MEAN_ABS_Z
         else:
             z = np.zeros(n_steps)
 
@@ -156,11 +165,13 @@ class VolumeGenerator:
         # Stationary AR(1): y_t = phi*y_{t-1} + u_t  (zero-mean fluctuation of log-vol)
         y = lfilter([1.0], [1.0, -phi], u)
 
-        log_v = np.log(base_volume) + y
-        volumes = np.exp(log_v)
-        # Re-center the level to base_volume (AR + |z| inject a positive mean shift)
-        volumes *= base_volume / (volumes.mean() + 1e-12)
-        return np.maximum(volumes, 1.0)
+        # Lognormal mean correction computed from the model, not from the
+        # sample: E[exp(y)] = exp(Var(y)/2), so base_volume is the expected
+        # volume without letting a few extreme minutes rescale every other one.
+        var_u = lam ** 2 * _VAR_ABS_Z + noise_sigma ** 2 + float(np.var(log_s))
+        var_y = var_u / (1.0 - phi ** 2)
+        volumes = base_volume * np.exp(y - 0.5 * var_y)
+        return np.maximum(volumes, 1e-12)
 
 
 class SimpleVolumeGenerator:
