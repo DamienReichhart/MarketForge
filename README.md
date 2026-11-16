@@ -71,12 +71,11 @@ For developers who want to modify the code or install the latest development ver
 # Clone or download the repository
 cd marketforge
 
-# Install in development mode
-pip install -e .
-
-# Or install dependencies directly
-pip install -r requirements.txt
+# Install in development mode (with test and type-checking tools)
+pip install -e ".[dev]"
 ```
+
+Parquet output needs the optional `parquet` extra: `pip install "marketforge[parquet]"`.
 
 ### Verify Installation
 

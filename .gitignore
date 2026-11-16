@@ -1,4 +1,4 @@
-marketforge.egg-info/
+*.egg-info/
 ohlcv_generator.egg-info/
 build/
 dist/
