@@ -44,6 +44,7 @@ from marketforge.config.catalog.base import AssetParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
 from marketforge.config.settings import AnomalyConfig, AnomalyType, MarketType
 from marketforge.core.factors import FactorStructure, forex_structure
+from marketforge.core.innovations import correlated_shocks
 from marketforge.core.kernels import ar1, bridge_extremes, gjr_garch, regime_chain
 from marketforge.core.seasonality import SessionSeasonality
 from marketforge.trading_calendar import (
@@ -258,11 +259,7 @@ class MarketSimulator:
         return np.asarray(out)
 
     def _correlated(self, z: np.ndarray, chi2: np.ndarray) -> np.ndarray:
-        x = z @ self._cholesky.T
-        if self._nu is None:
-            return np.asarray(x)
-        nu = self._nu
-        return np.asarray(x / np.sqrt(chi2 / nu)[:, None] * np.sqrt((nu - 2.0) / nu))
+        return correlated_shocks(z, chi2, self._cholesky, self._nu)
 
     def _day_rng(self, day: int, stream: int) -> np.random.Generator:
         seq = np.random.SeedSequence([self.seed, _MARKET_STREAM[self.spec.market], day, stream])

@@ -4,9 +4,9 @@
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
 
-"""Timeframe aggregation module."""
+"""Candle aggregation across timeframes."""
 
-from marketforge.aggregation.timeframes import TimeframeAggregator, Timeframe
+from marketforge.aggregation.streaming import BarAggregator, Bars
+from marketforge.aggregation.timeframes import Timeframe
 
-__all__ = ["TimeframeAggregator", "Timeframe"]
-
+__all__ = ["BarAggregator", "Bars", "Timeframe"]

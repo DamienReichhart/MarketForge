@@ -3,17 +3,16 @@
 #
 # Licensed under the MIT License. See the LICENSE file in the project
 # root for full license information.
+
 """
-Deterministic intraday and weekly volatility seasonality.
+Intraday volatility seasonality.
 
-Real markets concentrate volatility at specific times (equity open/close,
-FX session overlaps) and quieter periods (lunch, weekends for crypto). This
-module produces a strictly-positive multiplicative factor s(t) applied to the
-per-minute conditional volatility (and reused by the volume model).
-
-The factor is variance-neutralized over the generated window (mean(s²) == 1)
-so it reshapes *when* volatility occurs without changing the asset's overall
-configured volatility level.
+Real markets concentrate activity at specific times: the equity open and
+close, FX session overlaps, weekday crypto hours. :class:`SessionSeasonality`
+returns a positive factor s(t) that scales each open minute's volatility (and,
+through its log, volume). It is normalised once over a fixed reference year of
+open minutes, so mean(s^2) == 1 over a typical year and the factor at a given
+minute never depends on the requested range.
 """
 
 from __future__ import annotations
@@ -28,93 +27,25 @@ if TYPE_CHECKING:
     from marketforge.trading_calendar import TradingCalendar
 
 SECONDS_PER_DAY = 86400
+# Reference window used for normalisation: calendar year 2023.
+_REFERENCE_START = 1672531200
+_REFERENCE_END = 1704067200
 
-# US cash session in UTC minutes-of-day (EST baseline ~14:30–21:00).
-_STOCK_OPEN_MIN = 870
-_STOCK_CLOSE_MIN = 1260
-
-# FX session windows (UTC minutes-of-day).
-_FX_LONDON = (420, 960)        # 07:00–16:00
-_FX_NY_OVERLAP = (780, 960)    # 13:00–16:00
-_FX_ASIAN = (0, 420)           # 00:00–07:00
-
-
-class SeasonalityModel:
-    """Per-market deterministic volatility seasonality factor."""
-
-    def __init__(self, market_type: MarketType) -> None:
-        self._market_type = market_type
-
-    def multiplier_series(self, timestamps: np.ndarray) -> np.ndarray:
-        """
-        Return a positive, variance-neutral seasonality factor per timestamp.
-
-        Args:
-            timestamps: int64 Unix seconds, shape (n,).
-
-        Returns:
-            float array shape (n,) with mean(s²) == 1 over the window.
-        """
-        minutes = (timestamps % SECONDS_PER_DAY) // 60  # minute-of-day [0,1440)
-        # day-of-week with Monday=0 (1970-01-01 was a Thursday => +3)
-        dow = ((timestamps // SECONDS_PER_DAY) + 3) % 7
-
-        if self._market_type == MarketType.STOCKS:
-            shape = self._stock_shape(minutes)
-        elif self._market_type == MarketType.FOREX:
-            shape = self._forex_shape(minutes, dow)
-        else:
-            shape = self._crypto_shape(minutes, dow)
-
-        shape = np.maximum(shape, 1e-3)
-        # variance-neutralize over the window
-        norm = np.sqrt(np.mean(shape ** 2))
-        return np.asarray(shape / norm)
-
-    @staticmethod
-    def _stock_shape(minutes: np.ndarray) -> np.ndarray:
-        in_session = (minutes >= _STOCK_OPEN_MIN) & (minutes <= _STOCK_CLOSE_MIN)
-        base = np.where(in_session, 1.0, 0.45)
-        open_bump = 0.9 * np.exp(-((minutes - _STOCK_OPEN_MIN) / 25.0) ** 2)
-        close_bump = 0.7 * np.exp(-((minutes - _STOCK_CLOSE_MIN) / 25.0) ** 2)
-        return base + open_bump + close_bump
-
-    @staticmethod
-    def _forex_shape(minutes: np.ndarray, dow: np.ndarray) -> np.ndarray:
-        s = np.full(minutes.shape, 0.7)
-        london = (minutes >= _FX_LONDON[0]) & (minutes < _FX_LONDON[1])
-        overlap = (minutes >= _FX_NY_OVERLAP[0]) & (minutes < _FX_NY_OVERLAP[1])
-        asian = (minutes >= _FX_ASIAN[0]) & (minutes < _FX_ASIAN[1])
-        s[london] = 1.2
-        s[overlap] = 1.5
-        s[asian] = 0.8
-        s = np.where(dow >= 5, s * 0.3, s)
-        return s
-
-    @staticmethod
-    def _crypto_shape(minutes: np.ndarray, dow: np.ndarray) -> np.ndarray:
-        diurnal = 1.0 + 0.12 * np.sin((minutes / 1440.0) * 2 * np.pi - 1.0)
-        weekend = np.where(dow >= 5, 0.82, 1.0)
-        return diurnal * weekend
-
-
-# Reference window used to normalise session seasonality: a full calendar
-# year, so the scale never depends on the requested range or chunking.
-_REFERENCE_START = 1672531200  # 2023-01-01T00:00:00Z
-_REFERENCE_END = 1704067200    # 2024-01-01T00:00:00Z
+# FX activity windows (UTC minutes-of-day).
+_FX_ASIAN = (0, 420)           # 00:00-07:00
+_FX_LONDON = (420, 960)        # 07:00-16:00
+_FX_NY_OVERLAP = (780, 960)    # 13:00-16:00
+# NYSE session landmarks (New York minutes-of-day).
+_NY_OPEN = 570
+_NY_LUNCH = 750
 
 
 class SessionSeasonality:
     """
-    Calendar-aware intraday volatility seasonality.
+    Calendar-aware intraday volatility seasonality for one market.
 
-    Unlike :class:`SeasonalityModel`, which normalised over whatever window it
-    was given, this model is normalised once over a fixed reference year of
-    *open* minutes, so mean(s^2) == 1 across a typical year and the factor at a
-    given minute never depends on the requested range.
-
-    - Stocks: U-shape keyed to the New York session (open and close bumps,
-      lunch lull), honouring early closes.
+    - Stocks: U-shape over the New York session (open and close bumps, lunch
+      lull), honouring early closes.
     - Forex: Asian / London / London-New York overlap activity (UTC).
     - Crypto: mild diurnal cycle and quieter weekends (UTC).
     """
@@ -141,19 +72,22 @@ class SessionSeasonality:
             local = self._calendar.local_minutes(ts)
             mod = local % 1440
             close = self._calendar.session_close_minute(local // 1440)
-            since_open = mod - 570
+            since_open = mod - _NY_OPEN
             to_close = close - 1 - mod
             shape = (
                 1.0
                 + 0.9 * np.exp(-((since_open / 25.0) ** 2))
                 + 0.7 * np.exp(-((to_close / 25.0) ** 2))
-                - 0.2 * np.exp(-(((mod - 750) / 60.0) ** 2))
+                - 0.2 * np.exp(-(((mod - _NY_LUNCH) / 60.0) ** 2))
             )
         else:
             minutes = (ts % SECONDS_PER_DAY) // 60
-            dow = ((ts // SECONDS_PER_DAY) + 3) % 7
             if market == MarketType.FOREX:
-                shape = SeasonalityModel._forex_shape(minutes, np.zeros_like(dow))
+                shape = np.full(minutes.shape, 0.7)
+                shape[(minutes >= _FX_ASIAN[0]) & (minutes < _FX_ASIAN[1])] = 0.8
+                shape[(minutes >= _FX_LONDON[0]) & (minutes < _FX_LONDON[1])] = 1.2
+                shape[(minutes >= _FX_NY_OVERLAP[0]) & (minutes < _FX_NY_OVERLAP[1])] = 1.5
             else:
-                shape = SeasonalityModel._crypto_shape(minutes, dow)
+                weekday = ((ts // SECONDS_PER_DAY) + 3) % 7
+                shape = (1.0 + 0.12 * np.sin((minutes / 1440.0) * 2 * np.pi - 1.0)) * np.where(weekday >= 5, 0.82, 1.0)
         return np.asarray(np.maximum(shape, 1e-3), dtype=float)
