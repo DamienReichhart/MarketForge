@@ -151,10 +151,14 @@ class VolumeParams:
         phi: AR(1) persistence of log-volume (volume clustering), 0 ≤ φ < 1.
         lam: Sensitivity to absolute standardized returns (MDH coupling).
         noise_sigma: Std of the idiosyncratic log-volume noise η.
+        kappa: Elasticity of volume to the volatility level (GARCH x regime):
+            volume rises when the market is turbulent, not only on the minute
+            of a large move.
     """
     phi: float = 0.7
     lam: float = 0.3
     noise_sigma: float = 0.4
+    kappa: float = 0.5
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.phi < 1.0):

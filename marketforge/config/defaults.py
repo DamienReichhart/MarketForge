@@ -58,6 +58,11 @@ class MarketDefaults:
     weekend_gaps: bool
     innovation_nu: float
     volume_params: VolumeParams
+    # Price variance accumulated over a closure of C minutes, expressed in
+    # open-minute variances: scale * C ** exponent. Produces overnight and
+    # weekend gaps; ignored for markets that never close.
+    closure_variance_scale: float = 0.0
+    closure_variance_exponent: float = 0.5
 
 
 # Crypto market defaults - 24/7 trading, high volatility
@@ -140,6 +145,9 @@ FOREX_DEFAULTS = MarketDefaults(
     weekend_gaps=True,
     innovation_nu=10.0,  # Higher nu reduces kurtosis for robust multi-seed/multi-asset behavior
     volume_params=VolumeParams(phi=0.6, lam=0.25, noise_sigma=0.35),
+    # Weekend (2880 min) gap ~ sqrt(215) open-minute stds, a few pips on EURUSD.
+    closure_variance_scale=4.0,
+    closure_variance_exponent=0.5,
 )
 
 
@@ -182,6 +190,10 @@ STOCKS_DEFAULTS = MarketDefaults(
     weekend_gaps=True,
     innovation_nu=10.0,
     volume_params=VolumeParams(phi=0.7, lam=0.3, noise_sigma=0.45),
+    # Overnight (1050 min) variance ~ 0.3 of a 390-minute session; a weekend
+    # adds ~40% more, in line with empirical overnight/weekend ratios.
+    closure_variance_scale=20.0,
+    closure_variance_exponent=0.25,
 )
 
 
