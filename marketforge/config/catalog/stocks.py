@@ -5,7 +5,7 @@
 # root for full license information.
 
 """
-US Stocks market configuration with 73 major stocks.
+US Stocks market configuration with 74 major stocks.
 
 Contains realistic start prices, volatilities, drifts, and correlation matrix
 based on typical stock market relationships and sector groupings.
@@ -27,7 +27,7 @@ from marketforge.config.settings import MarketType
 # STOCKS ASSET DEFINITIONS
 # =============================================================================
 
-# All 73 stocks with realistic parameters
+# All 74 stocks with realistic parameters
 # Prices as of late 2024, volatility based on historical behavior
 # Volume in thousands of shares
 
@@ -451,7 +451,7 @@ def get_stocks_config() -> MarketConfig:
     Get the complete US stocks market configuration.
     
     Returns:
-        MarketConfig with 73 stocks and correlation matrix.
+        MarketConfig with 74 stocks and correlation matrix.
     """
     correlation_matrix, symbol_order = _build_stocks_correlation_matrix()
     
