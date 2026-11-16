@@ -11,7 +11,7 @@ Usage: python scripts/benchmark_realism.py
 """
 from __future__ import annotations
 
-from marketforge.configs.loader import load_market_config, market_config_to_generator_config
+from marketforge.config.loader import load_market_config, market_config_to_generator_config
 from marketforge.generators.ohlcv import OHLCVBuilder
 from marketforge.utils.random import RandomState
 from marketforge.validation.report import validate_ohlcv

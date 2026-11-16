@@ -1,4 +1,4 @@
-from marketforge.configs.loader import market_config_to_generator_config, load_market_config
+from marketforge.config.loader import market_config_to_generator_config, load_market_config
 from marketforge.config.settings import MarketType
 
 

@@ -15,7 +15,7 @@ positive, and volume non-negative — both before and after anomaly injection
 import numpy as np
 import pytest
 
-from marketforge.configs.loader import load_market_config, market_config_to_generator_config
+from marketforge.config.loader import load_market_config, market_config_to_generator_config
 from marketforge.generators.ohlcv import OHLCVBuilder
 from marketforge.generators.anomalies import AnomalyInjector
 from marketforge.config.settings import AnomalyConfig, AnomalyType

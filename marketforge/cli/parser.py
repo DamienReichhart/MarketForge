@@ -19,8 +19,8 @@ from typing import Optional
 import click
 
 from marketforge import __version__
-from marketforge.configs.base import MarketType
-from marketforge.configs.loader import get_available_markets
+from marketforge.config.settings import MarketType
+from marketforge.config.loader import get_available_markets
 
 
 def parse_markets(ctx, param, value: str) -> list[MarketType]:
@@ -340,14 +340,13 @@ def create_cli(
 def validate_command(input_path: str, market: str) -> None:
     """Validate generated OHLCV data against real-market stylized facts."""
     import pandas as pd
-    from marketforge.config.settings import MarketType as SettingsMarketType
     from marketforge.validation.report import validate_ohlcv
 
     df = pd.read_csv(input_path)
     report = validate_ohlcv(
         df["open"].to_numpy(), df["high"].to_numpy(),
         df["low"].to_numpy(), df["close"].to_numpy(),
-        SettingsMarketType(market),
+        MarketType(market),
     )
     click.echo(report.summary())
     raise SystemExit(0 if report.passed else 1)
