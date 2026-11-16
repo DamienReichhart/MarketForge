@@ -5,7 +5,7 @@ These workflows live in `.github/workflows/`:
 | Workflow | Runs on | Purpose |
 | --- | --- | --- |
 | `ci.yml` (**CI**) | every PR, push to `dev`, merge queue, weekly schedule, manual; on `main` it runs inside CD | Quality gate |
-| `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, and release to PyPI and GitHub when the version is new |
+| `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, release to PyPI and GitHub when the version is new, and deployment of the website to GitHub Pages |
 | `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
 | `scorecard.yml` (**Scorecard**) | push to `main`, weekly, branch-protection changes | OpenSSF Scorecard: grades supply-chain practices; findings go to code scanning, results feed the public badge |
 | `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
@@ -33,6 +33,7 @@ explicitly.
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
+| Website | Builds the Astro/Starlight site in `website/` from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
@@ -60,7 +61,8 @@ uv pip install -e . --group test --resolution lowest-direct && pytest   # floors
 ```
 guard ─┐
 ci ────┴─► publish (PyPI) ──► github-release (tag + release)
-                         └──► verify (pip install from PyPI on Linux, macOS, Windows)
+   │                     └──► verify (pip install from PyPI on Linux, macOS, Windows)
+   └─────► pages (website on GitHub Pages)
 ```
 
 1. **guard** reads the version. If a tag for it already exists, in any
@@ -90,9 +92,14 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
 5. **verify** installs the version from PyPI in clean environments on Linux
    (Python 3.12 and 3.14), macOS and Windows (3.14), retrying while the CDN
    catches up, and runs the CLI and a generation across all three markets.
+6. **pages** deploys the website CI built and link-checked in this run (the
+   `github-pages` artifact) to GitHub Pages, at
+   <https://damienreichhart.github.io/MarketForge/>. It needs only **ci**, so
+   it runs on every push to `main`, whether or not there is a version to
+   release, and a failed PyPI release does not hold the site back.
 
 A push to `main` that does not bump the version (a docs fix, say) is a green
-no-op release. PRs into `main` are stricter: their **Release readiness** job
+no-op release that still redeploys the website. PRs into `main` are stricter: their **Release readiness** job
 runs the guard without the "nothing to release" escape, so a PR that forgets
 the bump cannot merge. Merge to `main` to release; integrate on `dev`.
 
@@ -101,7 +108,8 @@ Releases never run concurrently, and a running release is never cancelled.
 ### Dry run
 
 *Actions → CD → Run workflow* with **dry run** checked (the default) runs the
-guard, the full CI and the build on any branch, and publishes nothing. Use it
+guard, the full CI and the build (the website included) on any branch, and
+publishes and deploys nothing. Use it
 to check a release before merging. A non-dry run is refused outside `main`.
 
 ### When a release fails half-way
@@ -136,5 +144,11 @@ These are GitHub and PyPI settings; the workflows cannot apply them.
    conflicts with `codeql.yml`.
 6. **Private vulnerability reporting.** Enable it in *Settings → Code
    security*; `SECURITY.md` sends reporters there.
-7. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+7. **GitHub Pages.** In *Settings → Pages*, set *Source* to **GitHub
+   Actions**. In *Settings → Environments → github-pages* (created by that
+   switch), limit deployment branches to `main`. To serve the site from a
+   custom domain, set `site` in `website/astro.config.mjs` to it, remove
+   `base`, add `website/public/CNAME`, and configure the domain in the Pages
+   settings.
+8. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
    locally to hide the bulk reformat commit from `git blame`.
