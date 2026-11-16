@@ -1,625 +1,257 @@
 # MarketForge
 
-A professional-grade synthetic OHLCV (Open-High-Low-Close-Volume) data generator for financial markets. Designed for backtesting, algorithm development, and quantitative research, this tool generates realistic market data with proper statistical properties, correlations, and market dynamics.
+Realistic synthetic OHLCV market data for backtesting, strategy development and
+ML research. MarketForge simulates 208 instruments across crypto, forex and US
+stocks minute by minute, on each market's real trading calendar, and publishes
+candles from `m1` to `W1` as CSV, Parquet or pandas DataFrames.
 
-## Table of Contents
+```bash
+pip install marketforge
+marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD,AAPL,BTCUSD --seed 42
+```
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-- [Architecture](#architecture)
-- [Configuration](#configuration)
-- [Output Format](#output-format)
-- [Validation](#validation)
-- [Performance](#performance)
-- [Advanced Features](#advanced-features)
-- [Examples](#examples)
-- [Contributing](#contributing)
-- [License](#license)
+## Why MarketForge
 
-## Features
-
-### Core Capabilities
-
-- **Multi-Market Support**: Generate data for Forex (81 pairs), Crypto (53 assets), and Stocks (74 symbols)
-- **Realistic Price Dynamics**:
-  - Multivariate Student-t innovations (heavy tails + tail dependence — assets co-move in extremes)
-  - GJR-GARCH(1,1) asymmetric volatility (leverage effect: down-moves raise volatility more)
-  - Regime-switching (trend, range, high-vol, crash) with smooth transitions
-  - Intraday & weekly volatility seasonality (variance-neutral)
-  - Correlated multi-asset returns via Cholesky decomposition
-- **Realistic OHLCV Construction**:
-  - Intrabar High/Low via a Brownian bridge from open to close scaled by conditional volatility (statistically consistent ranges, High≥max(O,C) and Low≤min(O,C) by construction)
-  - Market-specific gap handling (overnight, weekend)
-  - Volume via a log-AR(1) process with volume clustering, volume-volatility coupling (Mixture-of-Distributions Hypothesis), and intraday seasonality
-  - Time-of-day volume patterns (session-based markets)
-- **Anomaly Injection**:
-  - Price gaps (overnight/weekend discontinuities)
-  - Spikes (fat-tail events with long wicks)
-  - Flash crashes (multi-candle V-shaped recoveries)
-- **Multiple Timeframes**: Automatic aggregation from m1 to W1 (m1, m5, m15, m30, H1, H4, D1, W1)
-- **Batch Processing**: Memory-efficient processing with configurable batch sizes
-- **Parallel Processing**: Multi-threaded batch processing for faster generation
-- **Reproducibility**: Seed-based random number generation for identical outputs
-
-### Market-Specific Features
-
-- **Crypto**: 24/7 trading, no gaps, higher volatility, flash crash events
-- **Forex**: Session-based trading, weekend gaps, lower volatility, session patterns
-- **Stocks**: Market hours, overnight/weekend gaps, U-shaped volume patterns
+- **Real trading calendars.** Stocks trade the NYSE session (09:30-16:00 New
+  York, DST-aware) and skip NYSE holidays and early closes. Forex trades from
+  Sunday 17:00 to Friday 17:00 New York time. Crypto never closes. No candles
+  are printed while a market is closed. Overnight and weekend gaps come from
+  the price moving during the closure, as they do in reality.
+- **Arbitrage-free forex.** Only one anchor pair per currency is simulated, and
+  every cross is derived from them, so `EURJPY == EURUSD * USDJPY` at every
+  minute.
+- **One market, one story.** Every instrument of a market is simulated jointly:
+  a full correlation matrix, Student-t shocks with tail dependence (sell-offs
+  hit everything at once), and a shared market regime (trend, range, high
+  volatility, crash).
+- **Stylized facts, validated.** Heavy tails, volatility clustering, the
+  leverage effect and realistic intrabar ranges are checked by a bundled
+  validation harness. Every instrument is checked, across seeds.
+- **Bit-for-bit reproducible.** A seed fixes every random shock by market and
+  minute. The same seed gives the same EURUSD whether you generate it alone or
+  with 200 other instruments. Extending `--to` never changes earlier candles.
+- **Fast and bounded in memory.** Simulation streams day by day through
+  compiled (Numba) kernels. A year of EURUSD across all 8 timeframes takes about
+  5 s. A month of all 208 instruments takes about 11 s. Memory does not grow
+  with the date range.
 
 ## Installation
 
-### Requirements
-
-- Python 3.10 or higher
-
-### Install from PyPI
-
-For basic users, install the package directly from PyPI:
+Python 3.10 or newer.
 
 ```bash
 pip install marketforge
 ```
 
-### Install from Source
-
-For developers who want to modify the code or install the latest development version:
+From source, with test and type-checking tools:
 
 ```bash
-# Clone or download the repository
-cd marketforge
-
-# Install in development mode (with test and type-checking tools)
+git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
 pip install -e ".[dev]"
+pytest
 ```
 
-### Verify Installation
+## Command line
 
 ```bash
-marketforge --help
-```
+# One year of EURUSD, every timeframe, reproducible
+marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD --seed 42
 
-## Quick Start
+# A whole market as Parquet, with regime labels
+marketforge generate -o ./data --from 2024-01-01 --to 2024-07-01 --market crypto \
+    --format parquet --with-regime --seed 7
 
-### Basic Example
+# See what a run would produce (files, rows, disk size, time) without writing anything
+marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 
-Generate one full year of fully realistic EURUSD data across all timeframes
-(1 minute through 1 week), for the period 2024-01-01 → 2025-01-01 (UTC):
+# List instruments (forex crosses are marked as derived)
+marketforge list-assets --market forex
 
-```bash
-marketforge \
-    --output-dir ./data \
-    --from 1704067200 \
-    --to 1735689600 \
-    --assets EURUSD \
-    --seed 42
-```
-
-This produces `./data/forex/EURUSD_{m1,m5,m15,m30,H1,H4,D1,W1}.csv`. The output
-reproduces the documented stylized facts of real FX returns — heavy tails,
-volatility clustering, the leverage effect, intraday/weekly seasonality, and
-realistic intrabar ranges — and is fully reproducible from the `--seed`. Verify
-it with the validation harness:
-
-```bash
+# Check a file against real-market stylized facts (exit code 1 on failure)
 marketforge validate --input ./data/forex/EURUSD_m1.csv --market forex
 ```
 
-### Generate Specific Markets
+### `generate` options
 
-```bash
-# Generate only crypto market (2 weeks, all timeframes)
-marketforge \
-    --output-dir ./data \
-    --from 1704067200 \
-    --to 1705276800 \
-    --market crypto \
-    --seed 42
+| Option | Meaning |
+| --- | --- |
+| `-o, --output-dir` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv\|parquet}`. |
+| `--from`, `--to` | Range `[from, to)`. Accepts `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds. UTC unless an offset is given. |
+| `-a, --assets` | Comma-separated instruments. Their markets are inferred. |
+| `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--assets` is not given. With `--assets`, it keeps only the assets in these markets. |
+| `-s, --seed` | Non-negative integer. When omitted, a random seed is used and printed so the run can be reproduced. |
+| `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`. Default: all. |
+| `--format` | `csv` (default) or `parquet`. Parquet files are about half the size and load much faster. |
+| `--anomalies` | Optional unrealistic events: `spikes`, `flash_crash`. |
+| `--with-regime` | Adds a `regime` column: 0 trend_up, 1 trend_down, 2 range, 3 high_volatility, 4 crash. |
+| `--config` | TOML override file (see [Custom instruments](#custom-instruments)). |
+| `-j, --jobs` | Markets simulated in parallel. Default: one per market, up to the CPU count. |
+| `--dry-run` | Print the plan and estimates, then exit. |
+| `--no-progress` | Hide the progress bar. |
+| `--debug` (before the command) | Show full tracebacks. Errors are a single line otherwise. |
 
-# Generate multiple markets
-marketforge \
-    --output-dir ./data \
-    --from 1704067200 \
-    --to 1705276800 \
-    --market forex,crypto \
-    --seed 42
+The pre-3.0 form `marketforge -o ... --from ... --to ...` still works for one
+release and prints a deprecation note.
+
+## Python API
+
+```python
+import marketforge as mf
+
+data = mf.generate(
+    ["EURUSD", "AAPL"],
+    start="2024-01-01", end="2024-02-01",
+    seed=42, timeframes=["m1", "H1", "D1"],
+)
+eurusd_h1 = data["EURUSD"]["H1"]     # DataFrame indexed by UTC time
+print(data.seed)                     # 42 (or the random seed that was chosen)
+
+# Stream large ranges to disk instead of memory
+report = mf.generate_to_disk("./data", markets=["stocks"],
+                             start="2015-01-01", end="2025-01-01",
+                             seed=1, fmt="parquet", jobs=3)
+print(report.n_files, report.paths["stocks"]["AAPL"]["D1"])
 ```
 
-> **Note:** generating the `W1` (weekly) timeframe requires at least one week of
-> data. For shorter windows, restrict `--timeframes` (e.g. `m1,m5,H1,D1`).
+`generate` returns `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a
+UTC `DatetimeIndex` named `time` and the columns `open, high, low, close,
+volume`, plus a categorical `regime` column with `include_regime=True`.
 
-### With Anomalies
-
-Inject structural anomaly events on top of the base-realistic series:
-
-```bash
-marketforge \
-    --output-dir ./data \
-    --from 1704067200 \
-    --to 1705276800 \
-    --market crypto \
-    --anomalies spikes,flash_crash \
-    --seed 42
-```
-
-## Usage
-
-### Command-Line Interface
-
-The generator provides a comprehensive CLI with the following options:
-
-#### Required Arguments
-
-- `--output-dir, -o`: Output directory where CSV files will be written
-- `--from`: Start timestamp in Unix epoch seconds (UTC)
-- `--to`: End timestamp in Unix epoch seconds (UTC)
-
-#### Optional Arguments
-
-- `--market, -m`: Markets to generate (`forex`, `crypto`, `stocks`, `all`). Default: `all`
-- `--seed, -s`: Random seed for reproducibility. Default: random
-- `--anomalies`: Comma-separated anomaly types (`gaps`, `spikes`, `flash_crash`)
-- `--timeframes, -t`: Comma-separated timeframes. Default: `m1,m5,m15,m30,H1,H4,D1,W1`
-- `--batch-size`: Number of assets per batch (memory management). Default: 25
-- `--threads, --thread-count`: Number of threads for parallel processing. Default: auto-detect
-- `--progress/--no-progress`: Show/hide progress bar. Default: enabled
-
-### Getting Unix Timestamps
-
-**Linux/Mac:**
-```bash
-date +%s                    # Current timestamp
-date -d "2024-01-01" +%s    # Specific date
-```
-
-**Windows (PowerShell):**
-```powershell
-[DateTimeOffset]::Parse("2024-01-01").ToUnixTimeSeconds()
-```
-
-**Online Tools:**
-- Use online Unix timestamp converters
-- Example: https://www.epochconverter.com/
-
-### Timeframe Options
-
-Available timeframes:
-- `m1`: 1 minute
-- `m5`: 5 minutes
-- `m15`: 15 minutes
-- `m30`: 30 minutes
-- `H1`: 1 hour
-- `H4`: 4 hours
-- `D1`: 1 day
-- `W1`: 1 week
-
-All timeframes are aggregated from m1 data using standard OHLCV aggregation rules.
-
-### Anomaly Types
-
-- `gaps`: Price discontinuities between candles (overnight, weekend, news events)
-- `spikes`: Sudden intrabar price moves (fat-tail events with long wicks)
-- `flash_crash`: Multi-candle sharp declines with V-shaped recovery
-
-**Note**: Gaps are automatically disabled for crypto markets (24/7 trading).
-
-### Batch Processing
-
-For large datasets, adjust batch size based on available memory:
-
-```bash
-# Small batch size (less memory, slower)
-marketforge ... --batch-size 10
-
-# Large batch size (more memory, faster)
-marketforge ... --batch-size 50
-```
-
-### Parallel Processing
-
-Enable multi-threaded processing for faster generation:
-
-```bash
-# Use 4 threads
-marketforge ... --threads 4
-
-# Sequential processing (no threading)
-marketforge ... --threads 1
-
-# Auto-detect (default, up to 16 threads)
-marketforge ...
-```
-
-## Architecture
-
-### Key Components
-
-#### 1. Return Generation (`core/returns.py`)
-
-Generates correlated log-returns using:
-- **Correlation Engine**: Cholesky decomposition for multi-asset correlation with Student-t innovations
-- **GJR-GARCH(1,1) Model**: Asymmetric volatility clustering with leverage effect (σ²_t = ω + (α + γ·1_{ε<0})·ε²_{t-1} + β·σ²_{t-1})
-- **Regime-Switching**: Markov chain for smooth market state transitions (trend, range, high-vol, crash)
-- **Volatility Seasonality**: Intraday and weekly variance-neutral seasonality multipliers
-
-#### 2. OHLCV Construction (`generators/ohlcv.py`)
-
-Converts price series to OHLCV candles:
-- **Open Prices**: May include gaps for non-crypto markets
-- **High/Low**: Brownian-bridge simulation from open to close scaled by conditional volatility (High≥max(O,C) and Low≤min(O,C) by construction)
-- **Volume**: Driven by the log-AR(1) MDH volume model
-
-#### 3. Volume Generation (`generators/volume.py`)
-
-Generates realistic trading volumes via a log-AR(1) MDH model:
-- **Log-AR(1) Process**: Mean-reverting autoregressive log-volume for volume clustering
-- **Volume-Volatility Coupling**: Mixture-of-Distributions Hypothesis — latent information flow drives both returns and volume
-- **Intraday Seasonality**: Time-of-day volume multipliers (session-based for stocks and forex)
-
-#### 4. Anomaly Injection (`generators/anomalies.py`)
-
-Injects market anomalies:
-- **Gaps**: Price discontinuities at session boundaries
-- **Spikes**: Fat-tail events with extended wicks
-- **Flash Crashes**: Multi-candle decline and recovery patterns
-
-#### 5. Timeframe Aggregation (`aggregation/timeframes.py`)
-
-Aggregates m1 data to higher timeframes:
-- Standard OHLCV rules: Open (first), High (max), Low (min), Close (last), Volume (sum)
-- Efficient numpy-based aggregation
-
-#### 6. Batch Processing (`processing/batch.py`)
-
-Manages memory-efficient processing:
-- Splits assets into batches
-- Maintains correlation within batches
-- Supports parallel processing via threading
-- Automatic memory management
-
-## Configuration
-
-### Market Configurations
-
-Each market has pre-configured:
-- **Asset Definitions**: Symbols, start prices, volatilities, drifts
-- **Correlation Matrices**: Realistic inter-asset correlations
-- **Volume Parameters**: Base volumes and volume volatilities
-- **Market Defaults**: GARCH params, regime params, anomaly configs
-
-### Market-Specific Defaults
-
-#### Crypto Market
-- **Assets**: 53 cryptocurrencies (BTC, ETH, SOL, etc.)
-- **Volatility**: Higher (0.55-1.00 annualized)
-- **Gaps**: Disabled (24/7 trading)
-- **Anomalies**: Spikes and flash crashes
-
-#### Forex Market
-- **Assets**: 81 currency pairs (EURUSD, GBPUSD, etc.)
-- **Volatility**: Lower (0.008-0.015 annualized)
-- **Gaps**: Enabled (weekend and session gaps)
-- **Anomalies**: Gaps and spikes
-
-#### Stocks Market
-- **Assets**: 74 stock symbols (AAPL, MSFT, etc.)
-- **Volatility**: Moderate (0.015-0.030 annualized)
-- **Gaps**: Enabled (overnight and weekend)
-- **Anomalies**: Gaps and spikes
-
-### Custom Configuration
-
-To customize market parameters, modify the configuration files:
-- `marketforge/configs/crypto_config.py`
-- `marketforge/configs/forex_config.py`
-- `marketforge/configs/stocks_config.py`
-
-## Output Format
-
-### Directory Structure
+## Output
 
 ```
-output/
-├── crypto/
-│   ├── BTCUSD_m1.csv
-│   ├── BTCUSD_m5.csv
-│   ├── BTCUSD_H1.csv
-│   ├── BTCUSD_D1.csv
-│   ├── ETHUSD_m1.csv
-│   └── ...
-├── forex/
-│   ├── EURUSD_m1.csv
-│   ├── EURUSD_m5.csv
-│   └── ...
-└── stocks/
-    ├── AAPL_m1.csv
-    ├── AAPL_m5.csv
-    └── ...
+data/
+├── crypto/BTCUSD_m1.csv, BTCUSD_H1.csv, ...
+├── forex/EURUSD_m1.csv, ...
+└── stocks/AAPL_m1.csv, ...
 ```
-
-### CSV Format
-
-Each CSV file contains:
 
 ```csv
 timestamp,open,high,low,close,volume
-1704067200,50000.00000000,50125.50000000,49875.25000000,50050.75000000,1250.5000
-1704067260,50050.75000000,50100.00000000,50025.00000000,50075.25000000,1180.2500
-...
+1704205800,185,185.04071674,184.83847841,184.845085,55469.4573
+1704205860,184.845085,185.06763059,184.83059069,185.06591938,127601.9115
 ```
 
-**Columns:**
-- `timestamp`: Unix timestamp (seconds since epoch)
-- `open`: Opening price
-- `high`: Highest price in the period
-- `low`: Lowest price in the period
-- `close`: Closing price
-- `volume`: Trading volume
+- `timestamp`: start of the candle, in Unix seconds (UTC). Parquet uses the same
+  columns, with `timestamp` stored as int64.
+- Prices are rounded to 8 decimals and volume to 4 (trailing zeros are not written).
+- `high >= max(open, close)`, `low <= min(open, close)`, all prices and volumes
+  positive.
+- Within a session, each candle opens at the previous close. The first candle
+  after a closure opens with a gap.
 
-**Precision:**
-- Prices: 8 decimal places
-- Volume: 4 decimal places
+### Candle alignment
 
-### Data Validation
+| Market | Daily candle starts | Weekly candle starts | Intraday alignment |
+| --- | --- | --- | --- |
+| crypto | 00:00 UTC | Monday 00:00 UTC | UTC clock |
+| forex | 17:00 New York (the "NY close") | Sunday 17:00 New York | New York close clock (H4: 17:00, 21:00, 01:00, ...) |
+| stocks | 09:30 New York (the open) | Monday's open | the open (H1: 09:30, 10:30, ...) |
 
-The generated data ensures:
-- `high >= max(open, close)`
-- `low <= min(open, close)`
-- `high >= low`
-- `volume >= 0`
-- No negative prices
+A candle is only written when the requested range covers every open minute of
+its bucket. Partial first or last candles are dropped, never published
+half-built.
+
+## Markets
+
+| Market | Instruments | Hours | Notes |
+| --- | --- | --- | --- |
+| crypto | 53 (BTCUSD, ETHUSD, SOLUSD, ...) | 24/7 | Heaviest tails (Student-t, 6 degrees of freedom). Weekends are quieter. |
+| forex | 81: majors, crosses, exotics, metals (XAUUSD), index and oil CFDs | Sun 17:00 to Fri 17:00 NY | 41 anchor pairs are simulated and 40 crosses derived. Weekend gaps. |
+| stocks | 74 US large caps (AAPL, MSFT, NVDA, JPM, ...) | NYSE session, holidays, early closes | Overnight and weekend gaps. U-shaped intraday volatility and volume. |
+
+Annual volatility and drift in the catalog are what you get. Regime multipliers
+are normalised so they change *when* volatility and drift happen, not how much.
+Forex crosses take their volatility and start price from their anchor pairs.
+
+## Custom instruments
+
+Change catalog instruments or add your own with a TOML file. There is no need
+to edit the package.
+
+```toml
+# my_instruments.toml
+[instruments.BTCUSD]          # change an existing instrument
+start_price = 42000
+volatility = 0.60             # annualised
+
+[instruments.MYCOIN]          # add a new one
+market = "crypto"
+start_price = 1.50
+volatility = 0.90
+drift = 0.0                   # annualised log drift
+volume_base = 20000           # typical volume per minute
+volume_volatility = 0.5       # lognormal sigma of volume noise
+correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
+```
+
+```bash
+marketforge generate -o ./data --from 2024-01-01 --to 2024-03-01 --assets MYCOIN,BTCUSD --config my_instruments.toml
+```
+
+Correlations you do not specify for a new instrument are implied from the ones
+you do: a coin 0.6-correlated with BTC is also correlated with ETH. The
+resulting matrix is always valid.
+
+## Model
+
+Per open minute *t* and simulated series *f*:
+
+- **Shocks** *z*: correlated, unit-variance Student-t shocks via a normal
+  variance mixture. The mixing variable is shared by the whole market, which
+  creates tail dependence.
+- **Volatility**: σ<sub>f</sub> · √h<sub>t</sub> · g<sub>t</sub> · s<sub>t</sub>.
+  - σ<sub>f</sub> is the per-minute level implied by the annual volatility on
+    that market's calendar.
+  - h<sub>t</sub> is a GJR-GARCH(1,1) multiplier with unit mean, which gives
+    clustering and the leverage effect.
+  - g<sub>t</sub> is the regime multiplier, smoothed so regime changes ramp in.
+  - s<sub>t</sub> is intraday seasonality.
+- **Return** (open to close): μ<sub>f</sub> · d<sub>t</sub> + volatility · *z*,
+  where d<sub>t</sub> is the regime drift multiplier.
+- **Gaps**: after a closure of *C* minutes, the open jumps by a shock whose
+  variance grows with *C*. Roughly 30% of a session's variance builds up
+  overnight for stocks; a typical EURUSD weekend gap is about 10 pips.
+- **High/low**: the exact maximum and minimum of a Brownian bridge from open to
+  close, sampled from their closed-form distribution.
+- **Volume**: a log-AR(1) process. It rises with the size of the standardized
+  move, with the volatility level and with intraday seasonality, and has its
+  own persistent noise.
+
+Design decisions and their reasons are recorded in [`docs/adr/`](docs/adr), and
+the vocabulary in [`GLOSSARY.md`](GLOSSARY.md).
 
 ## Validation
 
-MarketForge ships a validation harness that measures generated data against the
-documented "stylized facts" of real financial returns.
-
-### Stylized facts checked
-
-- **Heavy tails** — excess kurtosis of m1 returns within a realistic per-market band.
-- **Volatility clustering** — significant, slowly-decaying autocorrelation of |returns|.
-- **Leverage effect** — negative correlation between returns and next-period volatility.
-- **Range efficiency** — realistic intrabar range relative to candle body.
-
-### Validate a CSV
-
 ```bash
 marketforge validate --input ./data/crypto/BTCUSD_m1.csv --market crypto
+python scripts/benchmark_realism.py --seeds 123,7 --days 14   # every instrument
 ```
 
-This prints a per-metric report with target bands and exits non-zero if a band is
-violated. Run the bundled benchmark across all markets with:
+The validator measures open-to-close minute returns (overnight and weekend gaps
+excluded) against per-market bands:
 
-```bash
-python scripts/benchmark_realism.py
-```
+- **Heavy tails**: excess kurtosis in a realistic range.
+- **Volatility clustering**: autocorrelation of |returns| that is significant
+  and decays slowly.
+- **Leverage effect**: returns are not positively correlated with next-period
+  volatility. The band allows for sampling noise, and is looser for forex,
+  where crosses have no natural "down".
+- **Range efficiency**: mean(high − low) / mean(|close − open|). A pure random
+  walk gives 2.0.
 
-## Performance
+With two-week windows, about 99.8% of instrument checks pass across seeds. The
+rare failures are single heavy-tailed assets on a particular seed, as with real
+data.
 
-### Memory Usage
+## Reproducibility contract
 
-Memory usage depends on:
-- Number of assets per batch
-- Duration (number of m1 candles)
-- Number of timeframes
-
-**Estimation:**
-- Per asset (1 month, 8 timeframes): ~5-10 MB
-- Batch of 25 assets: ~125-250 MB
-- Full market (e.g., 53 crypto assets): ~265-530 MB per batch
-
-**Recommendations:**
-- Use `--batch-size 25` for most systems
-- Reduce to `--batch-size 10` for limited RAM (< 8 GB)
-- Increase to `--batch-size 50` for systems with > 16 GB RAM
-
-## Advanced Features
-
-### Programmatic Usage
-
-The generator can be used programmatically:
-
-```python
-from marketforge.configs.loader import ConfigRegistry
-from marketforge.processing.batch import generate_market_batched, BatchConfig
-from marketforge.configs.base import MarketType
-from marketforge.config.settings import AnomalyType
-
-# Load market configuration
-registry = ConfigRegistry()
-crypto_config = registry.get_config(MarketType.CRYPTO)
-
-# Configure batch processing
-batch_config = BatchConfig(
-    batch_size=25,
-    thread_count=4,
-    gc_between_batches=True
-)
-
-# Generate data
-output_paths = generate_market_batched(
-    market_config=crypto_config,
-    start_timestamp=1704067200,
-    end_timestamp=1704153600,
-    output_dir="./data",
-    seed=42,
-    anomaly_types=frozenset({AnomalyType.SPIKES, AnomalyType.FLASH_CRASH}),
-    timeframes=("m1", "m5", "H1", "D1"),
-    batch_config=batch_config,
-    show_progress=True
-)
-```
-
-### Custom Asset Generation
-
-To generate data for custom assets:
-
-```python
-from marketforge.config.settings import GeneratorConfig, AssetConfig, GARCHParams, MarketType
-from marketforge.generators.ohlcv import OHLCVBuilder
-from marketforge.utils.random import RandomState
-import numpy as np
-
-# Define custom assets
-assets = [
-    AssetConfig("CUSTOM1", start_price=100.0, volatility=0.02, drift=0.0001),
-    AssetConfig("CUSTOM2", start_price=50.0, volatility=0.03, drift=0.0002),
-]
-
-# Create correlation matrix
-correlation_matrix = np.array([
-    [1.0, 0.7],
-    [0.7, 1.0]
-])
-
-# Create generator config
-config = GeneratorConfig(
-    assets=assets,
-    market_type=MarketType.CRYPTO,
-    start_timestamp=1704067200,
-    end_timestamp=1704153600,
-    correlation_matrix=correlation_matrix,
-    seed=42
-)
-
-# Generate data
-rng = RandomState(42)
-builder = OHLCVBuilder(config)
-ohlcv_data = builder.build(rng)
-
-# Access data
-btc_data = ohlcv_data["CUSTOM1"]
-print(f"Generated {len(btc_data)} candles")
-```
-
-### Regime Analysis
-
-Access regime information from return generation:
-
-```python
-from marketforge.core.returns import ReturnGenerator
-
-generator = ReturnGenerator(config)
-result = generator.generate(rng)
-
-# Regime indices: 0=trend_up, 1=trend_down, 2=range, 3=high_vol, 4=crash
-regime_indices = result.regime_indices
-volatilities = result.volatilities
-```
-
-## Examples
-
-### Example 1: Generate 1 Month of Crypto Data
-
-```bash
-# January 2024 (Unix timestamps)
-marketforge \
-    --output-dir ./data/crypto_jan2024 \
-    --from 1704067200 \
-    --to 1706745599 \
-    --market crypto \
-    --seed 42 \
-    --anomalies spikes,flash_crash \
-    --timeframes m1,m5,H1,D1
-```
-
-### Example 2: Generate All Markets with Anomalies
-
-```bash
-marketforge \
-    --output-dir ./data/all_markets \
-    --from 1704067200 \
-    --to 1705276800 \
-    --market all \
-    --seed 42 \
-    --anomalies gaps,spikes \
-    --threads 8 \
-    --batch-size 25
-```
-
-### Example 3: High-Performance Generation
-
-```bash
-# Large dataset with parallel processing
-marketforge \
-    --output-dir ./data/large_dataset \
-    --from 946681200 \
-    --to 1767221999 \
-    --market all \
-    --seed 42 \
-    --threads 16 \
-    --batch-size 30 \
-    --timeframes m1,m5,m15,m30,H1,H4,D1
-```
-
-### Example 4: Minimal Generation (Testing)
-
-```bash
-# Small dataset for testing
-marketforge \
-    --output-dir ./data/test \
-    --from 1704067200 \
-    --to 1704070800 \
-    --market crypto \
-    --seed 42 \
-    --timeframes m1,H1 \
-    --batch-size 10 \
-    --threads 1
-```
-
-### Example 5: Comprehensive Generation with All Features
-
-```bash
-# Generate all markets with anomalies, parallel processing, and progress tracking
-marketforge \
-    --output-dir ./data \
-    --from 946681200 \
-    --to 1767221999 \
-    --seed 42 \
-    --anomalies gaps,spikes \
-    --market all \
-    --threads 8 \
-    --batch-size 10 \
-    --progress
-```
-
-## Contributing
-
-Contributions are welcome! Areas for improvement:
-
-- Additional market types
-- More anomaly types
-- Custom volume models
-- Additional timeframes
-- Performance optimizations
-- Documentation improvements
-
-### Development Setup
-
-```bash
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run type checking
-mypy marketforge
-```
+For a given MarketForge **major version**, `(seed, market, minute)` fully
+determines every random shock. Output is identical regardless of which
+instruments are selected, the timeframes, the output format, `--jobs`, or how
+far `--to` extends. Changes that alter output for an existing seed only ship in
+a new major version.
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Support
-
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Check existing documentation
-- Review code examples in the repository
-
----
-
-**Version**: 2.0.0  
-**Python**: 3.10+  
-**License**: MIT
-
+MIT. See [LICENSE](LICENSE).
