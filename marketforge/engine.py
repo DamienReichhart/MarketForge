@@ -231,8 +231,13 @@ class MarketSimulator:
         self._sigma_ref = ref  # (I,) unconditional per-minute sigma
 
         vp = d.volume_params
-        self._volume = (vp.phi, vp.lam, vp.noise_sigma, vp.kappa)
-        var_u = vp.lam ** 2 * _VAR_ABS_Z + vp.noise_sigma ** 2 + self.seasonality.log_variance
+        self._volume = (vp.phi, vp.lam, vp.kappa)
+        # volume_volatility is the stationary std of the noise part of log-volume;
+        # the AR(1) innovation that produces it is smaller by sqrt(1 - phi^2).
+        self._volume_noise = np.array(
+            [by_symbol[s].volume_volatility for s in structure.instruments]
+        ) * np.sqrt(1.0 - vp.phi ** 2)
+        var_u = vp.lam ** 2 * _VAR_ABS_Z + self._volume_noise ** 2 + self.seasonality.log_variance
         self._volume_log_correction = 0.5 * var_u / (1.0 - vp.phi ** 2)
         self._base_volume = np.array([by_symbol[s].volume_base for s in structure.instruments])
 
@@ -346,13 +351,13 @@ class MarketSimulator:
         low = np.minimum(np.exp(log_open + lo), np.minimum(open_, close))
 
         # Volume: log-AR(1) driven by the standardised move, turbulence and seasonality.
-        phi, lam, noise, kappa = self._volume
+        phi, lam, kappa = self._volume
         zabs = np.clip(np.abs(body) / sigma_i, 0.0, _Z_CLIP) - _MEAN_ABS_Z
         drivers = (
             lam * zabs
             + kappa * np.log(level_i)
             + np.log(season)[:, None]
-            + noise * e_volume[rows]
+            + self._volume_noise * e_volume[rows]
         )
         y, st.volume_memory = ar1(drivers, phi, st.volume_memory)
         volume = self._base_volume * np.exp(y - self._volume_log_correction)
