@@ -61,8 +61,6 @@ Changelog = "https://github.com/DamienReichhart/MarketForge/blob/main/CHANGELOG.
 test = [
     "pytest>=8.0",
     "pytest-cov>=6.0",
-    "arch>=7.0",
-    "statsmodels>=0.14.2",
 ]
 typecheck = [
     "mypy>=1.10",

@@ -14,12 +14,6 @@ import numpy as np
 from scipy.stats import kurtosis
 
 
-def log_returns(close: np.ndarray) -> np.ndarray:
-    """Close-to-close log returns."""
-    close = np.asarray(close, dtype=float)
-    return np.diff(np.log(close))
-
-
 def excess_kurtosis(returns: np.ndarray) -> float:
     """Excess kurtosis (0 for a normal distribution; > 0 = fat tails)."""
     return float(kurtosis(np.asarray(returns, dtype=float), fisher=True, bias=False))
@@ -67,20 +61,3 @@ def range_efficiency(open_, high, low, close) -> float:
     if body == 0.0:
         return float("inf")
     return float(np.mean(h - l) / body)
-
-
-def ljung_box_pvalue(x: np.ndarray, lags: int = 20) -> float:
-    """Ljung-Box p-value (small => significant autocorrelation present)."""
-    from statsmodels.stats.diagnostic import acorr_ljungbox
-
-    res = acorr_ljungbox(np.asarray(x, dtype=float), lags=[lags], return_df=True)
-    return float(res["lb_pvalue"].iloc[-1])
-
-
-def arch_lm_pvalue(returns: np.ndarray, lags: int = 12) -> float:
-    """ARCH-LM test p-value (small => volatility clustering / ARCH effects)."""
-    from statsmodels.stats.diagnostic import het_arch
-
-    r = np.asarray(returns, dtype=float)
-    r = r - r.mean()
-    return float(het_arch(r, nlags=lags)[1])
