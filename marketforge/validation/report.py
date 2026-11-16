@@ -55,10 +55,24 @@ class ValidationReport:
 # the upper bound only guards against pathological blow-ups. Sample excess
 # kurtosis grows with sample length, and real high-frequency FX/m1 returns are
 # strongly leptokurtic, so the ceilings are deliberately generous.
+# Crypto shocks are Student-t with 5 degrees of freedom, whose sample kurtosis
+# is dominated by a handful of minutes; real BTC m1 data routinely shows
+# excess kurtosis near 100 over a few weeks.
 _KURTOSIS_BANDS = {
-    MarketType.CRYPTO: (2.0, 60.0),
+    MarketType.CRYPTO: (2.0, 150.0),
     MarketType.STOCKS: (1.5, 40.0),
     MarketType.FOREX: (1.0, 50.0),
+}
+
+
+# Equities and crypto show a clear leverage effect (down-moves raise
+# volatility). FX has no natural "down": EURAUD rises when AUD sells off, so
+# crosses legitimately show mildly positive values. Only strong positive
+# leverage is rejected there.
+_LEVERAGE_CEILING = {
+    MarketType.CRYPTO: 0.02,
+    MarketType.STOCKS: 0.02,
+    MarketType.FOREX: 0.08,
 }
 
 
@@ -83,15 +97,26 @@ def validate_returns(returns: np.ndarray, market_type: MarketType) -> Validation
     report.metrics["vol_clustering"] = _check(
         "vol_clustering", sf.volatility_clustering_strength(r), 0.02, None)
 
+    # Allow two standard errors of sampling noise (~1/sqrt(n)): two weeks of
+    # stock minutes is only ~3,900 returns, where noise alone reaches 0.03.
+    ceiling = _LEVERAGE_CEILING[market_type] + 2.0 / np.sqrt(max(r.size, 1))
     report.metrics["leverage"] = _check(
-        "leverage", sf.leverage_correlation(r), None, 0.02)
+        "leverage", sf.leverage_correlation(r), None, round(ceiling, 4))
 
     return report
 
 
 def validate_ohlcv(open_, high, low, close, market_type: MarketType) -> ValidationReport:
-    """Validate an OHLC series: return-based facts plus range efficiency."""
-    report = validate_returns(sf.log_returns(close), market_type)
+    """
+    Validate an OHLC series: return-based facts plus range efficiency.
+
+    Return-based facts use each candle's open-to-close log return. Within a
+    session that equals the close-to-close return; across a market closure it
+    leaves out the overnight/weekend gap, which would otherwise dominate the
+    kurtosis of minute data (one gap ~10 minute-sizes wide per session).
+    """
+    r = np.log(np.asarray(close, dtype=float) / np.asarray(open_, dtype=float))
+    report = validate_returns(r, market_type)
     report.metrics["range_efficiency"] = _check(
         "range_efficiency", sf.range_efficiency(open_, high, low, close), 1.0, 6.0)
     return report
