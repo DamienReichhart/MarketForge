@@ -176,3 +176,36 @@ h1#_top {
 ::selection {
 	background: color-mix(in srgb, var(--sl-color-accent) 35%, transparent);
 }
+
+/* Definition lists used for key/value facts (legal notice, specs). */
+.sl-markdown-content .mf-dl {
+	display: grid;
+	grid-template-columns: minmax(7rem, max-content) 1fr;
+	gap: 0.5rem 1.5rem;
+	margin-top: 1rem;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--mf-line);
+	border-radius: 4px;
+	background: var(--mf-panel);
+}
+
+.sl-markdown-content .mf-dl dt {
+	margin: 0;
+	font-weight: 500;
+	color: var(--mf-muted);
+	font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content .mf-dl dd {
+	margin: 0;
+}
+
+@media (max-width: 40rem) {
+	.sl-markdown-content .mf-dl {
+		grid-template-columns: 1fr;
+		gap: 0.15rem;
+	}
+	.sl-markdown-content .mf-dl dd + dt {
+		margin-top: 0.6rem;
+	}
+}
