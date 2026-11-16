@@ -1,0 +1,5 @@
+---
+title: cookies
+---
+
+Stub.

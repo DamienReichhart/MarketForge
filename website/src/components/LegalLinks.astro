@@ -1,0 +1,44 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const links = [
+	['Legal notice', 'legal/notice'],
+	['Privacy', 'legal/privacy'],
+	['Terms', 'legal/terms'],
+	['Cookies', 'legal/cookies'],
+];
+const year = new Date().getUTCFullYear();
+---
+
+<nav class="mf-legal" aria-label="Legal">
+	<span>© {year} Damien REICHHART · AGPL-3.0-or-later</span>
+	<ul>
+		{links.map(([label, path]) => <li><a href={`${base}/${path}/`}>{label}</a></li>)}
+	</ul>
+</nav>
+
+<style>
+	.mf-legal {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.5rem;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.8125rem;
+		color: var(--mf-muted);
+	}
+	ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	a {
+		color: var(--mf-muted);
+		text-decoration: none;
+	}
+	a:hover {
+		color: var(--sl-color-white);
+	}
+</style>

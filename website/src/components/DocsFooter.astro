@@ -1,0 +1,17 @@
+---
+import Default from '@astrojs/starlight/components/Footer.astro';
+import LegalLinks from './LegalLinks.astro';
+---
+
+<Default />
+<div class="mf-docs-legal">
+	<LegalLinks />
+</div>
+
+<style>
+	.mf-docs-legal {
+		margin-top: 3rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--mf-line);
+	}
+</style>

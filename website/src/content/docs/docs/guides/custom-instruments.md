@@ -1,0 +1,5 @@
+---
+title: custom-instruments
+---
+
+Stub.

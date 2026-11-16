@@ -1,0 +1,178 @@
+/*
+ * MarketForge design tokens, shared by the docs (Starlight) and the landing page.
+ *
+ * One accent (amber, used sparingly), neutral graphite greys, and the two
+ * market colours (up / down) reserved for data. Dark is the default; the light
+ * theme mirrors every token.
+ */
+
+:root {
+	--sl-font: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--sl-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+	/* Dark (default) */
+	--sl-color-accent-low: #2a1f0c;
+	--sl-color-accent: #e8a33d;
+	--sl-color-accent-high: #f6d39a;
+	--sl-color-white: #f2f4f6;
+	--sl-color-gray-1: #dde1e6;
+	--sl-color-gray-2: #b4bbc3;
+	--sl-color-gray-3: #8a939d;
+	--sl-color-gray-4: #5c6670;
+	--sl-color-gray-5: #2c3238;
+	--sl-color-gray-6: #171b20;
+	--sl-color-gray-7: #0f1215;
+	--sl-color-black: #0a0c0f;
+
+	--mf-bg: #0a0c0f;
+	--mf-panel: #0f1215;
+	--mf-line: #1f252b;
+	--mf-line-strong: #2c3238;
+	--mf-text: #f2f4f6;
+	--mf-muted: #8a939d;
+	--mf-up: #2ebd85;
+	--mf-down: #e5484d;
+	--mf-regime-trend-up: rgb(46 189 133 / 0.07);
+	--mf-regime-trend-down: rgb(229 72 77 / 0.07);
+	--mf-regime-range: transparent;
+	--mf-regime-high-vol: rgb(232 163 61 / 0.09);
+	--mf-regime-crash: rgb(229 72 77 / 0.16);
+	--mf-grid: rgb(255 255 255 / 0.04);
+
+	--sl-text-h1: 2.25rem;
+	--sl-text-h2: 1.6rem;
+	--sl-text-h3: 1.25rem;
+	--sl-line-height-headings: 1.2;
+	--sl-nav-height: 3.75rem;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #fbecd2;
+	--sl-color-accent: #9a5b00;
+	--sl-color-accent-high: #4d2d00;
+	--sl-color-white: #0d1013;
+	--sl-color-gray-1: #1d2329;
+	--sl-color-gray-2: #353d45;
+	--sl-color-gray-3: #59636d;
+	--sl-color-gray-4: #8a939d;
+	--sl-color-gray-5: #cdd2d7;
+	--sl-color-gray-6: #eceef0;
+	--sl-color-gray-7: #f6f7f8;
+	--sl-color-black: #ffffff;
+
+	--mf-bg: #ffffff;
+	--mf-panel: #f6f7f8;
+	--mf-line: #e3e6e9;
+	--mf-line-strong: #cdd2d7;
+	--mf-text: #0d1013;
+	--mf-muted: #59636d;
+	--mf-up: #0f8a5f;
+	--mf-down: #c9363b;
+	--mf-regime-trend-up: rgb(15 138 95 / 0.06);
+	--mf-regime-trend-down: rgb(201 54 59 / 0.06);
+	--mf-regime-high-vol: rgb(154 91 0 / 0.08);
+	--mf-regime-crash: rgb(201 54 59 / 0.13);
+	--mf-grid: rgb(0 0 0 / 0.045);
+}
+
+/* ---------- Docs chrome ---------- */
+
+body {
+	background: var(--mf-bg);
+	font-feature-settings: 'cv11', 'ss01';
+}
+
+.page > header.header {
+	background: color-mix(in srgb, var(--mf-bg) 88%, transparent);
+	backdrop-filter: saturate(140%) blur(8px);
+	border-bottom: 1px solid var(--mf-line);
+}
+
+.site-title {
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	font-size: 1.05rem;
+}
+
+#starlight__sidebar,
+.sidebar-pane {
+	background: var(--mf-bg);
+	border-inline-end-color: var(--mf-line) !important;
+}
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+h1#_top {
+	letter-spacing: -0.02em;
+	font-weight: 650;
+}
+
+.sl-markdown-content h2 {
+	padding-top: 0.5rem;
+	border-top: 1px solid var(--mf-line);
+}
+
+.sl-markdown-content h2:first-child {
+	border-top: 0;
+}
+
+.sl-markdown-content code:not(pre code) {
+	background: var(--mf-panel);
+	border: 1px solid var(--mf-line);
+	border-radius: 3px;
+	padding: 0.05em 0.35em;
+	font-size: 0.875em;
+}
+
+.sl-markdown-content table {
+	font-size: var(--sl-text-sm);
+	font-variant-numeric: tabular-nums;
+}
+
+.sl-markdown-content th {
+	font-weight: 600;
+	color: var(--sl-color-gray-2);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-size: 0.75rem;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+	border-color: var(--mf-line);
+}
+
+.sl-markdown-content a {
+	text-underline-offset: 0.2em;
+	text-decoration-thickness: 1px;
+}
+
+/* Starlight cards: flat panels with a hairline border, no glow. */
+.card {
+	border-radius: 4px !important;
+	background: var(--mf-panel) !important;
+	border-color: var(--mf-line) !important;
+	box-shadow: none !important;
+}
+
+.sl-link-card {
+	border-radius: 4px !important;
+	box-shadow: none !important;
+	border-color: var(--mf-line) !important;
+	background: var(--mf-panel);
+}
+
+.sl-link-card:hover {
+	border-color: var(--sl-color-accent) !important;
+}
+
+/* Tabular numbers everywhere a number is a value. */
+.mf-num,
+.sl-markdown-content td code {
+	font-variant-numeric: tabular-nums;
+}
+
+::selection {
+	background: color-mix(in srgb, var(--sl-color-accent) 35%, transparent);
+}
