@@ -1,0 +1,115 @@
+# CI/CD
+
+Three workflows live in `.github/workflows/`:
+
+| Workflow | Runs on | Purpose |
+| --- | --- | --- |
+| `ci.yml` (**CI**) | every PR, push to `dev`/`main`, merge queue, weekly schedule, manual, and called by CD | Quality gate |
+| `cd.yml` (**CD**) | push to `main`, manual dry run | Release to PyPI and GitHub |
+| `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
+
+All third-party actions are pinned to a commit SHA. Dependabot
+(`.github/dependabot.yml`) opens one grouped PR a week against `dev` to bump
+them. Every job starts with a read-only token; jobs that need more ask for it
+explicitly.
+
+## CI
+
+| Job | What it checks |
+| --- | --- |
+| Lint & format | `ruff check` and `ruff format --check` |
+| Type-check | `mypy marketforge` on Python 3.10 and 3.14 (they resolve different numpy releases, whose stubs differ) |
+| Test | `pytest` on Linux for Python 3.10 to 3.14, and on macOS and Windows for 3.10 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
+| Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
+| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation. Uploads the `dist` artifact |
+| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.10 and 3.14 |
+| Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
+| Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
+| **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
+
+The weekly scheduled run tests against the newest releases of every
+dependency, so an upstream break or a new advisory shows up without waiting
+for a commit.
+
+### Running the checks locally
+
+```bash
+pip install -e . --group dev          # or: uv pip install -e . --group dev
+ruff check . && ruff format --check .
+mypy marketforge
+pytest --cov
+uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
+```
+
+## CD: how a release happens
+
+**To release: bump `[project].version` in `pyproject.toml`, add a
+`## <version>` section to `CHANGELOG.md`, and merge to `main`.** That is all.
+`pyproject.toml` is the only place the version is written;
+`marketforge.__version__` reads it back from the installed metadata.
+
+```
+guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► github-release (tag + release)
+                                                     └──► verify (pip install from PyPI)
+```
+
+1. **guard** reads the version and **stops the whole run** if:
+   - it is not a canonical PEP 440 version (`3.1.0`, `3.1.0rc1`; not `3.1.0-rc1`);
+   - a tag for it already exists, in any spelling (`v3.0.0`, `V3.0`, `3.0.0`);
+   - it is not newer than every existing version tag;
+   - PyPI already has it (PyPI never accepts the same version twice);
+   - `CHANGELOG.md` has no non-empty `## <version>` section.
+2. **ci** runs the full CI workflow on the commit. Nothing is published unless
+   all of it passes.
+3. **publish** downloads the exact `dist` artifact CI built and tested, checks
+   it holds only this version's sdist and wheel, records a signed build
+   provenance attestation, and uploads to PyPI.
+4. **github-release** creates the tag `v<version>` on the released commit and a
+   GitHub release with the CHANGELOG section as notes and the distributions
+   attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
+   marked as pre-releases.
+5. **verify** installs the version from PyPI in a clean environment (retrying
+   while the CDN catches up) and runs it.
+
+Consequence: **a push to `main` that does not bump the version fails the CD
+workflow.** That is deliberate. Merge to `main` only to release; integrate on
+`dev`.
+
+Releases never run concurrently, and a running release is never cancelled.
+
+### Dry run
+
+*Actions → CD → Run workflow* with **dry run** checked (the default) runs the
+guard, the full CI and the build on any branch, and publishes nothing. Use it
+to check a release before merging. A non-dry run is refused outside `main`.
+
+### When a release fails half-way
+
+- Failed in **guard** or **ci**: nothing was published. Fix and push again.
+- Failed in **publish** (for example a PyPI credential problem): nothing was
+  published. Fix the configuration, then *Re-run failed jobs*.
+- Failed in **github-release** or **verify** after PyPI accepted the upload:
+  use *Re-run failed jobs*. The release job is idempotent: it reuses the tag
+  if it already points at this commit. Do **not** push a new commit to retry:
+  the guard would see the version on PyPI and block it.
+
+## One-time repository setup
+
+These are GitHub and PyPI settings; the workflows cannot apply them.
+
+1. **Required check.** In *Settings → Rules → Rulesets*, protect `main` and
+   `dev`: require a pull request and the status check **CI OK**.
+2. **Trusted publishing (recommended).** On PyPI, *marketforge → Settings →
+   Publishing → Add a new publisher*: owner `DamienReichhart`, repository
+   `MarketForge`, workflow `cd.yml`, environment `Deploy`. Then delete the
+   `PYPI_API_KEY` secret and the `password:` line in `cd.yml`. Until then the
+   workflow falls back to that token, and PyPI attestations are skipped.
+3. **`Deploy` environment.** In *Settings → Environments → Deploy*, limit
+   deployment branches to `main`. Add required reviewers if you want to
+   approve each upload by hand.
+4. **Tag protection.** Add a tag ruleset for `v*` that blocks deletion and
+   updates, so a released tag can never be moved.
+5. **Code scanning.** If CodeQL *default setup* is enabled, switch it off: it
+   conflicts with `codeql.yml`.
+6. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+   locally to hide the bulk reformat commit from `git blame`.

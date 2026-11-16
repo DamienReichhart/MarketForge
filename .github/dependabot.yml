@@ -1,0 +1,23 @@
+# Keeps the SHA-pinned GitHub Actions up to date (one grouped PR a week).
+#
+# Python dependencies are deliberately not managed here: this is a library,
+# so pyproject.toml declares minimum versions, not pins. CI tests both ends
+# instead: the declared floors (min-deps job) and the newest releases
+# (every run, plus a weekly scheduled run).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    # Releases happen on every push to main, so updates land on dev first.
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
