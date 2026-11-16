@@ -17,9 +17,15 @@ def _ts(s: str) -> int:
 
 def test_nyse_holidays_2024():
     expected = {
-        dt.date(2024, 1, 1), dt.date(2024, 1, 15), dt.date(2024, 2, 19),
-        dt.date(2024, 3, 29), dt.date(2024, 5, 27), dt.date(2024, 6, 19),
-        dt.date(2024, 7, 4), dt.date(2024, 9, 2), dt.date(2024, 11, 28),
+        dt.date(2024, 1, 1),
+        dt.date(2024, 1, 15),
+        dt.date(2024, 2, 19),
+        dt.date(2024, 3, 29),
+        dt.date(2024, 5, 27),
+        dt.date(2024, 6, 19),
+        dt.date(2024, 7, 4),
+        dt.date(2024, 9, 2),
+        dt.date(2024, 11, 28),
         dt.date(2024, 12, 25),
     }
     assert nyse_holidays(2024) == expected
@@ -37,7 +43,9 @@ def test_nyse_observance_rules():
 
 def test_nyse_early_closes_2024():
     assert nyse_early_closes(2024) == {
-        dt.date(2024, 7, 3), dt.date(2024, 11, 29), dt.date(2024, 12, 24),
+        dt.date(2024, 7, 3),
+        dt.date(2024, 11, 29),
+        dt.date(2024, 12, 24),
     }
 
 
@@ -98,9 +106,9 @@ def test_forex_open_minutes_per_week():
     "market,when,anchor_midnight_utc",
     [
         (MarketType.CRYPTO, "2024-01-03T00:00", True),
-        (MarketType.FOREX, "2024-01-02T22:00", True),   # 17:00 New York (EST)
+        (MarketType.FOREX, "2024-01-02T22:00", True),  # 17:00 New York (EST)
         (MarketType.STOCKS, "2024-01-03T14:30", True),  # 09:30 New York (EST)
-        (MarketType.FOREX, "2024-07-02T21:00", True),   # 17:00 New York (EDT)
+        (MarketType.FOREX, "2024-07-02T21:00", True),  # 17:00 New York (EDT)
     ],
 )
 def test_bar_anchor_puts_session_start_at_midnight(market, when, anchor_midnight_utc):

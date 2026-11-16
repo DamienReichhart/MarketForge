@@ -14,7 +14,7 @@ def test_factor_is_positive_and_variance_neutral_over_a_year(market):
     ts = cal.open_minutes(JAN_1_2024, JAN_1_2024 + 365 * 86400)
     f = SessionSeasonality(cal).factor(ts)
     assert np.all(f > 0)
-    assert abs(np.mean(f ** 2) - 1.0) < 0.02
+    assert abs(np.mean(f**2) - 1.0) < 0.02
 
 
 def test_stocks_are_u_shaped_and_window_independent():

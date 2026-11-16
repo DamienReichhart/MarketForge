@@ -30,4 +30,3 @@ __all__ = [
     "GeneratedData",
     "__version__",
 ]
-

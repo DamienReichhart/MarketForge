@@ -21,7 +21,10 @@ def _iso(t) -> str:
 
 def _days(market: str, start: int, end: int, seed: int = 1) -> list[Bars]:
     sim = MarketSimulator(build_market_spec(load_market_config(market)), seed)
-    return [Bars(d.timestamps, d.open, d.high, d.low, d.close, d.volume, d.regime) for d in sim.run(start, end)]
+    return [
+        Bars(d.timestamps, d.open, d.high, d.low, d.close, d.volume, d.regime)
+        for d in sim.run(start, end)
+    ]
 
 
 def _aggregate(market: str, tf: Timeframe, start: str, end: str) -> tuple[Bars, Bars]:
@@ -37,7 +40,11 @@ def _aggregate(market: str, tf: Timeframe, start: str, end: str) -> tuple[Bars, 
 
 def test_crypto_daily_bars_match_utc_days():
     bars, m1 = _aggregate("crypto", Timeframe.D1, "2024-01-01T00:00", "2024-01-04T00:00")
-    assert [_iso(t) for t in bars.timestamps] == ["2024-01-01T00:00", "2024-01-02T00:00", "2024-01-03T00:00"]
+    assert [_iso(t) for t in bars.timestamps] == [
+        "2024-01-01T00:00",
+        "2024-01-02T00:00",
+        "2024-01-03T00:00",
+    ]
     day0 = slice(0, 1440)
     np.testing.assert_allclose(bars.open[0], m1.open[0])
     np.testing.assert_allclose(bars.close[0], m1.close[1439])
@@ -55,8 +62,11 @@ def test_forex_days_start_at_17h_new_york_and_weeks_have_five_days():
     bars, _ = _aggregate("forex", Timeframe.D1, "2024-01-05T00:00", "2024-01-13T00:00")
     stamps = [_iso(t) for t in bars.timestamps]
     assert stamps == [
-        "2024-01-07T22:00", "2024-01-08T22:00", "2024-01-09T22:00",
-        "2024-01-10T22:00", "2024-01-11T22:00",
+        "2024-01-07T22:00",
+        "2024-01-08T22:00",
+        "2024-01-09T22:00",
+        "2024-01-10T22:00",
+        "2024-01-11T22:00",
     ]
 
 
@@ -69,7 +79,9 @@ def test_stocks_days_start_at_the_open_and_skip_holidays():
     bars, _ = _aggregate("stocks", Timeframe.D1, "2024-01-12T00:00", "2024-01-18T00:00")
     # 2024-01-15 is Martin Luther King Jr. Day.
     assert [_iso(t) for t in bars.timestamps] == [
-        "2024-01-12T14:30", "2024-01-16T14:30", "2024-01-17T14:30",
+        "2024-01-12T14:30",
+        "2024-01-16T14:30",
+        "2024-01-17T14:30",
     ]
 
 
@@ -82,7 +94,9 @@ def test_stocks_hourly_bars_align_to_the_half_hour_open():
 
 def test_crypto_weeks_start_on_monday():
     bars, _ = _aggregate("crypto", Timeframe.W1, "2024-01-01T00:00", "2024-01-29T00:00")
-    assert [dt.datetime.fromtimestamp(int(t), dt.timezone.utc).weekday() for t in bars.timestamps] == [0] * 4
+    assert [
+        dt.datetime.fromtimestamp(int(t), dt.timezone.utc).weekday() for t in bars.timestamps
+    ] == [0] * 4
 
 
 @pytest.mark.parametrize("tf", [Timeframe.m5, Timeframe.H4, Timeframe.D1])

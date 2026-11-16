@@ -91,16 +91,16 @@ def nyse_holidays(year: int) -> frozenset[dt.date]:
     days: list[Optional[dt.date]] = [
         # New Year's Day: a Saturday holiday is not moved to Friday Dec 31.
         _observed(dt.date(year, 1, 1), saturday_to_friday=False),
-        _nth_weekday(year, 2, 0, 3),                 # Washington's Birthday
-        _easter(year) - dt.timedelta(days=2),        # Good Friday
-        _nth_weekday(year, 5, 0, -1),                # Memorial Day
-        _observed(dt.date(year, 7, 4)),              # Independence Day
-        _nth_weekday(year, 9, 0, 1),                 # Labor Day
-        _nth_weekday(year, 11, 3, 4),                # Thanksgiving
-        _observed(dt.date(year, 12, 25)),            # Christmas
+        _nth_weekday(year, 2, 0, 3),  # Washington's Birthday
+        _easter(year) - dt.timedelta(days=2),  # Good Friday
+        _nth_weekday(year, 5, 0, -1),  # Memorial Day
+        _observed(dt.date(year, 7, 4)),  # Independence Day
+        _nth_weekday(year, 9, 0, 1),  # Labor Day
+        _nth_weekday(year, 11, 3, 4),  # Thanksgiving
+        _observed(dt.date(year, 12, 25)),  # Christmas
     ]
     if year >= 1998:
-        days.append(_nth_weekday(year, 1, 0, 3))     # Martin Luther King Jr. Day
+        days.append(_nth_weekday(year, 1, 0, 3))  # Martin Luther King Jr. Day
     if year >= 2022:
         days.append(_observed(dt.date(year, 6, 19)))  # Juneteenth
     return frozenset(d for d in days if d is not None)

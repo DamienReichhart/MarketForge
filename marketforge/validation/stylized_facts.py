@@ -59,8 +59,10 @@ def range_efficiency(open_, high, low, close) -> float:
     near-doji candles; the previous mean of per-candle ratios dropped bodies
     under 1 bp and returned inf for quiet instruments such as pegged USDHKD.
     """
-    o = np.asarray(open_, float); h = np.asarray(high, float)
-    l = np.asarray(low, float); c = np.asarray(close, float)
+    o = np.asarray(open_, float)
+    h = np.asarray(high, float)
+    l = np.asarray(low, float)
+    c = np.asarray(close, float)
     body = float(np.mean(np.abs(c - o)))
     if body == 0.0:
         return float("inf")
@@ -70,6 +72,7 @@ def range_efficiency(open_, high, low, close) -> float:
 def ljung_box_pvalue(x: np.ndarray, lags: int = 20) -> float:
     """Ljung-Box p-value (small => significant autocorrelation present)."""
     from statsmodels.stats.diagnostic import acorr_ljungbox
+
     res = acorr_ljungbox(np.asarray(x, dtype=float), lags=[lags], return_df=True)
     return float(res["lb_pvalue"].iloc[-1])
 
@@ -77,6 +80,7 @@ def ljung_box_pvalue(x: np.ndarray, lags: int = 20) -> float:
 def arch_lm_pvalue(returns: np.ndarray, lags: int = 12) -> float:
     """ARCH-LM test p-value (small => volatility clustering / ARCH effects)."""
     from statsmodels.stats.diagnostic import het_arch
+
     r = np.asarray(returns, dtype=float)
     r = r - r.mean()
     return float(het_arch(r, nlags=lags)[1])

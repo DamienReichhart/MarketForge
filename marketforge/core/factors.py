@@ -86,7 +86,7 @@ def forex_structure(symbols: list[str]) -> FactorStructure:
             vec = dict(coeffs[quote])
             vec[f] = vec.get(f, 0) + 1
             coeffs[base] = vec
-        else:                # new quote: x_quote = x_base - log(pair)
+        else:  # new quote: x_quote = x_base - log(pair)
             vec = dict(coeffs[base])
             vec[f] = vec.get(f, 0) - 1
             coeffs[quote] = vec

@@ -19,18 +19,25 @@ from marketforge.config.settings import MarketType
 @lru_cache(maxsize=None)
 def load_market_config(market_type: Union[MarketType, str]) -> MarketConfig:
     """Built-in catalog of one market (cached; treat as read-only)."""
-    market = MarketType(str(market_type.value if isinstance(market_type, MarketType) else market_type).lower())
+    market = MarketType(
+        str(market_type.value if isinstance(market_type, MarketType) else market_type).lower()
+    )
     if market == MarketType.FOREX:
         from marketforge.config.catalog.forex import get_forex_config
+
         return get_forex_config()
     if market == MarketType.CRYPTO:
         from marketforge.config.catalog.crypto import get_crypto_config
+
         return get_crypto_config()
     from marketforge.config.catalog.stocks import get_stocks_config
+
     return get_stocks_config()
 
 
-def load_catalog(overrides: Optional[Union[str, "os.PathLike[str]"]] = None) -> dict[MarketType, MarketConfig]:
+def load_catalog(
+    overrides: Optional[Union[str, "os.PathLike[str]"]] = None,
+) -> dict[MarketType, MarketConfig]:
     """
     Built-in catalog for every market, with an optional TOML override file applied.
 

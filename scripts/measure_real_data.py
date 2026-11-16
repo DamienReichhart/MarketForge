@@ -36,8 +36,20 @@ import pandas as pd
 
 from marketforge.validation import stylized_facts as sf
 
-_BINANCE_COLS = ["open_time", "open", "high", "low", "close", "volume", "close_time",
-                 "quote_volume", "trades", "taker_base", "taker_quote", "ignore"]
+_BINANCE_COLS = [
+    "open_time",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "close_time",
+    "quote_volume",
+    "trades",
+    "taker_base",
+    "taker_quote",
+    "ignore",
+]
 
 
 def load(path: Path) -> pd.DataFrame:
@@ -50,11 +62,19 @@ def load(path: Path) -> pd.DataFrame:
                 df = pd.read_csv(fh, header=None, names=_BINANCE_COLS)
     else:
         head = path.read_text(encoding="ascii", errors="ignore").split("\n", 1)[0]
-        df = pd.read_csv(path) if head.startswith("timestamp") else pd.read_csv(path, header=None, names=_BINANCE_COLS)
+        df = (
+            pd.read_csv(path)
+            if head.startswith("timestamp")
+            else pd.read_csv(path, header=None, names=_BINANCE_COLS)
+        )
     if "open_time" in df.columns:
         ts = df["open_time"].astype("int64")
         df["timestamp"] = np.where(ts > 1e14, ts // 1_000_000, ts // 1000)  # us or ms
-    keep = [c for c in ("timestamp", "open", "high", "low", "close", "volume", "trades") if c in df.columns]
+    keep = [
+        c
+        for c in ("timestamp", "open", "high", "low", "close", "volume", "trades")
+        if c in df.columns
+    ]
     return df[keep]
 
 
@@ -76,19 +96,23 @@ def window_stats(df: pd.DataFrame) -> dict[str, float]:
     pos = v > 0
     if pos.mean() > 0.95:
         lv = np.log(v[pos])
-        out.update({
-            "log_volume_std": float(lv.std()),
-            "log_volume_acf1": sf._acf(lv, 1),
-            "corr_abs_return_log_volume": float(np.corrcoef(a[pos], lv)[0, 1]),
-            "max_minute_volume_share": float(v.max() / v.sum()),
-        })
+        out.update(
+            {
+                "log_volume_std": float(lv.std()),
+                "log_volume_acf1": sf._acf(lv, 1),
+                "corr_abs_return_log_volume": float(np.corrcoef(a[pos], lv)[0, 1]),
+                "max_minute_volume_share": float(v.max() / v.sum()),
+            }
+        )
     if "trades" in df.columns:
         out["median_trades_per_minute"] = float(np.median(df["trades"]))
     return out
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("files", nargs="+", type=Path)
     ap.add_argument("--name", required=True)
     ap.add_argument("--window-days", type=int, default=14)
@@ -99,7 +123,11 @@ def main() -> None:
     df = df[(df[["open", "high", "low", "close"]] > 0).all(axis=1)]
     span = args.window_days * 86400
     start = int(df["timestamp"].iloc[0])
-    windows = [g for _, g in df.groupby((df["timestamp"] - start) // span) if len(g) > 0.5 * args.window_days * 390]
+    windows = [
+        g
+        for _, g in df.groupby((df["timestamp"] - start) // span)
+        if len(g) > 0.5 * args.window_days * 390
+    ]
     stats = [window_stats(w) for w in windows]
     keys = sorted({k for s in stats for k in s})
     summary = {

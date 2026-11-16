@@ -87,7 +87,9 @@ class CandleWriter:
 
     def _open(self, path: Path) -> None:
         if self.fmt == OutputFormat.CSV:
-            header = "timestamp,open,high,low,close,volume" + (",regime" if self.include_regime else "")
+            header = "timestamp,open,high,low,close,volume" + (
+                ",regime" if self.include_regime else ""
+            )
             path.write_text(header + "\n", encoding="ascii")
         self._started.add(path)
 
@@ -116,7 +118,10 @@ class CandleWriter:
             # Random-walk doubles barely compress as-is; byte-stream-split
             # encoding makes files ~40% of the CSV size instead of ~60%.
             writer = pq.ParquetWriter(
-                path, table.schema, compression="zstd", use_dictionary=["timestamp"],
+                path,
+                table.schema,
+                compression="zstd",
+                use_dictionary=["timestamp"],
                 use_byte_stream_split=["open", "high", "low", "close", "volume"],
             )
             self._parquet[path] = writer

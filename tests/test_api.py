@@ -19,7 +19,9 @@ def test_parse_time_accepts_common_forms():
 
 
 def test_generate_returns_utc_indexed_frames():
-    data = mf.generate(["BTCUSD"], start="2024-01-01", end="2024-01-03", seed=1, timeframes=["m1", "H1", "D1"])
+    data = mf.generate(
+        ["BTCUSD"], start="2024-01-01", end="2024-01-03", seed=1, timeframes=["m1", "H1", "D1"]
+    )
     assert data.seed == 1
     h1 = data["BTCUSD"]["H1"]
     assert list(h1.columns) == ["open", "high", "low", "close", "volume"]
@@ -43,8 +45,16 @@ def test_random_seed_is_reported_and_reproduces():
 
 
 def test_regime_column():
-    df = mf.generate(["ETHUSD"], start="2024-01-01", end="2024-01-02", seed=3, include_regime=True)["ETHUSD"]["m1"]
-    assert set(df["regime"].cat.categories) == {"trend_up", "trend_down", "range", "high_volatility", "crash"}
+    df = mf.generate(["ETHUSD"], start="2024-01-01", end="2024-01-02", seed=3, include_regime=True)[
+        "ETHUSD"
+    ]["m1"]
+    assert set(df["regime"].cat.categories) == {
+        "trend_up",
+        "trend_down",
+        "range",
+        "high_volatility",
+        "crash",
+    }
 
 
 def test_market_filter_and_errors():

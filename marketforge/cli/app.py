@@ -43,7 +43,8 @@ class _Group(click.Group):
         if rest and rest[0].startswith("-") and rest[0] not in ("--help", "-h", "--version"):
             click.secho(
                 "Note: 'marketforge --from ...' is deprecated; use 'marketforge generate --from ...'.",
-                fg="yellow", err=True,
+                fg="yellow",
+                err=True,
             )
             i = args.index(rest[0])
             args = args[:i] + ["generate"] + args[i:]
@@ -72,27 +73,104 @@ def cli(debug: bool) -> None:
 
 # ------------------------------------------------------------------ generate
 @cli.command()
-@click.option("--output-dir", "-o", type=click.Path(file_okay=False), help="Directory to write {market}/{SYMBOL}_{tf}.{csv|parquet} files into.")
-@click.option("--from", "start", required=True, metavar="TIME", help="Start (inclusive): 2024-01-01, 2024-01-01T09:30, or Unix seconds. UTC unless an offset is given.")
-@click.option("--to", "end", required=True, metavar="TIME", help="End (exclusive), same formats as --from.")
-@click.option("--assets", "-a", metavar="LIST", help="Comma-separated instruments, e.g. EURUSD,AAPL,BTCUSD. Markets are inferred.")
-@click.option("--market", "-m", "markets", metavar="LIST", help="Comma-separated markets: crypto, forex, stocks, or all (default when --assets is not given).")
-@click.option("--seed", "-s", type=click.IntRange(min=0), help="Seed for reproducible output. Printed when omitted so any run can be repeated.")
-@click.option("--timeframes", "-t", default="m1,m5,m15,m30,H1,H4,D1,W1", show_default=True, help="Comma-separated: m1,m5,m15,m30,H1,H4,D1,W1.")
-@click.option("--anomalies", metavar="LIST", help="Optional unrealistic events: spikes, flash_crash.")
-@click.option("--format", "fmt", type=click.Choice(["csv", "parquet"]), default="csv", show_default=True, help="Output file format.")
-@click.option("--config", "overrides", type=click.Path(exists=True, dir_okay=False), help="TOML override file to change or add instruments.")
-@click.option("--with-regime", is_flag=True, help="Add a 'regime' column (0=trend_up 1=trend_down 2=range 3=high_volatility 4=crash).")
-@click.option("--jobs", "-j", type=click.IntRange(min=1), default=None, help="Markets simulated in parallel. Default: one per market, up to the CPU count.")
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(file_okay=False),
+    help="Directory to write {market}/{SYMBOL}_{tf}.{csv|parquet} files into.",
+)
+@click.option(
+    "--from",
+    "start",
+    required=True,
+    metavar="TIME",
+    help="Start (inclusive): 2024-01-01, 2024-01-01T09:30, or Unix seconds. UTC unless an offset is given.",
+)
+@click.option(
+    "--to", "end", required=True, metavar="TIME", help="End (exclusive), same formats as --from."
+)
+@click.option(
+    "--assets",
+    "-a",
+    metavar="LIST",
+    help="Comma-separated instruments, e.g. EURUSD,AAPL,BTCUSD. Markets are inferred.",
+)
+@click.option(
+    "--market",
+    "-m",
+    "markets",
+    metavar="LIST",
+    help="Comma-separated markets: crypto, forex, stocks, or all (default when --assets is not given).",
+)
+@click.option(
+    "--seed",
+    "-s",
+    type=click.IntRange(min=0),
+    help="Seed for reproducible output. Printed when omitted so any run can be repeated.",
+)
+@click.option(
+    "--timeframes",
+    "-t",
+    default="m1,m5,m15,m30,H1,H4,D1,W1",
+    show_default=True,
+    help="Comma-separated: m1,m5,m15,m30,H1,H4,D1,W1.",
+)
+@click.option(
+    "--anomalies", metavar="LIST", help="Optional unrealistic events: spikes, flash_crash."
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["csv", "parquet"]),
+    default="csv",
+    show_default=True,
+    help="Output file format.",
+)
+@click.option(
+    "--config",
+    "overrides",
+    type=click.Path(exists=True, dir_okay=False),
+    help="TOML override file to change or add instruments.",
+)
+@click.option(
+    "--with-regime",
+    is_flag=True,
+    help="Add a 'regime' column (0=trend_up 1=trend_down 2=range 3=high_volatility 4=crash).",
+)
+@click.option(
+    "--jobs",
+    "-j",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Markets simulated in parallel. Default: one per market, up to the CPU count.",
+)
 @click.option("--threads", "--thread-count", "legacy_threads", type=int, hidden=True)
 @click.option("--batch-size", "legacy_batch", type=int, hidden=True)
-@click.option("--dry-run", is_flag=True, help="Print what would be generated (files, rows, size, time) and exit.")
-@click.option("--progress/--no-progress", default=True, show_default=True, help="Show a progress bar.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print what would be generated (files, rows, size, time) and exit.",
+)
+@click.option(
+    "--progress/--no-progress", default=True, show_default=True, help="Show a progress bar."
+)
 def generate(
-    output_dir: Optional[str], start: str, end: str, assets: Optional[str], markets: Optional[str],
-    seed: Optional[int], timeframes: str, anomalies: Optional[str], fmt: str, overrides: Optional[str],
-    with_regime: bool, jobs: Optional[int], legacy_threads: Optional[int], legacy_batch: Optional[int],
-    dry_run: bool, progress: bool,
+    output_dir: Optional[str],
+    start: str,
+    end: str,
+    assets: Optional[str],
+    markets: Optional[str],
+    seed: Optional[int],
+    timeframes: str,
+    anomalies: Optional[str],
+    fmt: str,
+    overrides: Optional[str],
+    with_regime: bool,
+    jobs: Optional[int],
+    legacy_threads: Optional[int],
+    legacy_batch: Optional[int],
+    dry_run: bool,
+    progress: bool,
 ) -> None:
     """Generate candles and write them to disk."""
     import os
@@ -100,7 +178,11 @@ def generate(
     from marketforge.api import generate_to_disk, plan_request
 
     if legacy_batch is not None:
-        click.secho("Note: --batch-size is ignored since 3.0 (markets are simulated whole, day by day).", fg="yellow", err=True)
+        click.secho(
+            "Note: --batch-size is ignored since 3.0 (markets are simulated whole, day by day).",
+            fg="yellow",
+            err=True,
+        )
     if legacy_threads is not None:
         click.secho("Note: --threads is deprecated; use --jobs.", fg="yellow", err=True)
         jobs = jobs or max(1, legacy_threads)
@@ -108,9 +190,15 @@ def generate(
     if [m.lower() for m in market_list] == ["all"]:
         market_list = []
     request = plan_request(
-        _split(assets) or None, market_list or None, start=start, end=end, seed=seed,
-        timeframes=_split(timeframes), anomalies=_split(anomalies),
-        include_regime=with_regime, overrides=overrides,
+        _split(assets) or None,
+        market_list or None,
+        start=start,
+        end=end,
+        seed=seed,
+        timeframes=_split(timeframes),
+        anomalies=_split(anomalies),
+        include_regime=with_regime,
+        overrides=overrides,
     )
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
     _print_plan(request, fmt, output_dir, seed is None)
@@ -125,6 +213,7 @@ def generate(
     lock = threading.Lock()
     if progress:
         from tqdm import tqdm
+
         bar = tqdm(total=total, unit="day", desc="Simulating", ncols=90, file=sys.stderr)
 
     def tick(_: MarketType) -> None:
@@ -133,12 +222,17 @@ def generate(
                 bar.update(1)
 
     try:
-        report = generate_to_disk(output_dir, request=request, start=start, end=end, fmt=fmt, jobs=jobs, on_day=tick)
+        report = generate_to_disk(
+            output_dir, request=request, start=start, end=end, fmt=fmt, jobs=jobs, on_day=tick
+        )
     finally:
         if bar is not None:
             bar.close()
     elapsed = time.time() - t0
-    click.secho(f"\nDone in {elapsed:.1f}s: {report.n_files} files in {Path(output_dir).resolve()}", fg="green")
+    click.secho(
+        f"\nDone in {elapsed:.1f}s: {report.n_files} files in {Path(output_dir).resolve()}",
+        fg="green",
+    )
     click.echo(f"Reproduce with --seed {report.seed}")
 
 
@@ -152,7 +246,10 @@ def _print_plan(request: Any, fmt: str, output_dir: Optional[str], random_seed: 
 
     click.secho("MarketForge " + __version__, bold=True)
     click.echo(f"  Range       {iso(request.start)} -> {iso(request.end)}")
-    click.echo(f"  Seed        {request.seed}" + ("  (random; pass --seed to fix it)" if random_seed else ""))
+    click.echo(
+        f"  Seed        {request.seed}"
+        + ("  (random; pass --seed to fix it)" if random_seed else "")
+    )
     click.echo(f"  Timeframes  {', '.join(tf.name for tf in request.timeframes)}")
     rows = 0
     sim_work = 0
@@ -161,15 +258,21 @@ def _print_plan(request: Any, fmt: str, output_dir: Optional[str], random_seed: 
         per_asset = sum(open_minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes)
         rows += per_asset * len(plan.selected)
         sim_work += open_minutes * len(plan.spec.symbols)
-        names = ", ".join(plan.selected[:6]) + (f" (+{len(plan.selected) - 6} more)" if len(plan.selected) > 6 else "")
-        click.echo(f"  {plan.market.value:<11} {len(plan.selected)} instrument(s), {open_minutes:,} open minutes: {names}")
+        names = ", ".join(plan.selected[:6]) + (
+            f" (+{len(plan.selected) - 6} more)" if len(plan.selected) > 6 else ""
+        )
+        click.echo(
+            f"  {plan.market.value:<11} {len(plan.selected)} instrument(s), {open_minutes:,} open minutes: {names}"
+        )
     # Calibrated on a month of all markets (one core): ~68 B/row CSV, ~4M
     # simulated instrument-minutes/s, ~1.2M written rows/s.
     bytes_per_row = 68 if fmt == "csv" else 33
     seconds = sim_work / 4e6 + rows / 1.2e6
     n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
-    click.echo(f"  Output      {n_files} {fmt} files, ~{rows:,} rows, ~{_human(rows * bytes_per_row)}"
-               + (f" in {output_dir}" if output_dir else ""))
+    click.echo(
+        f"  Output      {n_files} {fmt} files, ~{rows:,} rows, ~{_human(rows * bytes_per_row)}"
+        + (f" in {output_dir}" if output_dir else "")
+    )
     click.echo(f"  Estimate    ~{_duration(seconds)} on one core")
 
 
@@ -191,8 +294,15 @@ def _duration(s: float) -> str:
 
 # --------------------------------------------------------------- list-assets
 @cli.command("list-assets")
-@click.option("--market", "-m", type=click.Choice([m.value for m in MarketType]), help="Only this market.")
-@click.option("--config", "overrides", type=click.Path(exists=True, dir_okay=False), help="TOML override file to apply first.")
+@click.option(
+    "--market", "-m", type=click.Choice([m.value for m in MarketType]), help="Only this market."
+)
+@click.option(
+    "--config",
+    "overrides",
+    type=click.Path(exists=True, dir_okay=False),
+    help="TOML override file to apply first.",
+)
 def list_assets(market: Optional[str], overrides: Optional[str]) -> None:
     """List available instruments with their start price and volatility."""
     from marketforge.config.loader import load_catalog
@@ -208,14 +318,31 @@ def list_assets(market: Optional[str], overrides: Optional[str]) -> None:
         click.echo(f"  {'SYMBOL':<10}{'START':>14}{'VOL':>8}{'DRIFT':>8}  NOTE")
         for s in cfg.symbols:
             a = cfg.get_asset(s)
-            note = "" if spec.structure.is_identity else ("anchor" if s in anchors else "cross (derived)")
-            click.echo(f"  {s:<10}{a.start_price:>14,.4f}{a.volatility:>8.3f}{a.drift:>8.3f}  {note}")
+            note = (
+                ""
+                if spec.structure.is_identity
+                else ("anchor" if s in anchors else "cross (derived)")
+            )
+            click.echo(
+                f"  {s:<10}{a.start_price:>14,.4f}{a.volatility:>8.3f}{a.drift:>8.3f}  {note}"
+            )
 
 
 # ------------------------------------------------------------------ validate
 @cli.command()
-@click.option("--input", "input_path", required=True, type=click.Path(exists=True, dir_okay=False), help="CSV or Parquet file with open/high/low/close columns.")
-@click.option("--market", required=True, type=click.Choice([m.value for m in MarketType]), help="Market whose target bands to apply.")
+@click.option(
+    "--input",
+    "input_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="CSV or Parquet file with open/high/low/close columns.",
+)
+@click.option(
+    "--market",
+    required=True,
+    type=click.Choice([m.value for m in MarketType]),
+    help="Market whose target bands to apply.",
+)
 def validate(input_path: str, market: str) -> None:
     """Check a candle file against real-market stylized facts (exit 1 on failure)."""
     import pandas as pd
@@ -228,7 +355,10 @@ def validate(input_path: str, market: str) -> None:
     if missing:
         raise click.UsageError(f"{path} lacks column(s): {', '.join(sorted(missing))}")
     report = validate_ohlcv(
-        df["open"].to_numpy(), df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy(),
+        df["open"].to_numpy(),
+        df["high"].to_numpy(),
+        df["low"].to_numpy(),
+        df["close"].to_numpy(),
         MarketType(market),
     )
     click.echo(report.summary())

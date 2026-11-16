@@ -32,9 +32,9 @@ _REFERENCE_START = 1672531200
 _REFERENCE_END = 1704067200
 
 # FX activity windows (UTC minutes-of-day).
-_FX_ASIAN = (0, 420)           # 00:00-07:00
-_FX_LONDON = (420, 960)        # 07:00-16:00
-_FX_NY_OVERLAP = (780, 960)    # 13:00-16:00
+_FX_ASIAN = (0, 420)  # 00:00-07:00
+_FX_LONDON = (420, 960)  # 07:00-16:00
+_FX_NY_OVERLAP = (780, 960)  # 13:00-16:00
 # Crypto diurnal cycle: amplitude, peak minute (UTC) and weekend factor.
 _CRYPTO_AMPLITUDE = 0.3
 _CRYPTO_PEAK = 900
@@ -58,7 +58,7 @@ class SessionSeasonality:
         self._calendar = calendar
         ref = calendar.open_minutes(_REFERENCE_START, _REFERENCE_END)
         raw = self._raw(ref)
-        self._norm = float(np.sqrt(np.mean(raw ** 2)))
+        self._norm = float(np.sqrt(np.mean(raw**2)))
         self._log_var = float(np.var(np.log(raw / self._norm)))
 
     @property
@@ -95,6 +95,8 @@ class SessionSeasonality:
                 # Activity peaks around the US open (~15:00 UTC) and is roughly
                 # half as volatile in the Asian night; weekends are quieter.
                 weekday = ((ts // SECONDS_PER_DAY) + 3) % 7
-                diurnal = 1.0 + _CRYPTO_AMPLITUDE * np.cos(2 * np.pi * (minutes - _CRYPTO_PEAK) / 1440.0)
+                diurnal = 1.0 + _CRYPTO_AMPLITUDE * np.cos(
+                    2 * np.pi * (minutes - _CRYPTO_PEAK) / 1440.0
+                )
                 shape = diurnal * np.where(weekday >= 5, _CRYPTO_WEEKEND, 1.0)
         return np.asarray(np.maximum(shape, 1e-3), dtype=float)

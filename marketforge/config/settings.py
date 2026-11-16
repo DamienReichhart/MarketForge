@@ -66,7 +66,9 @@ class GARCHParams:
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be non-negative, got {getattr(self, name)}")
         if self.persistence >= 1:
-            raise ValueError(f"alpha + beta + gamma/2 must be < 1 for stationarity, got {self.persistence}")
+            raise ValueError(
+                f"alpha + beta + gamma/2 must be < 1 for stationarity, got {self.persistence}"
+            )
 
     @property
     def persistence(self) -> float:
@@ -113,13 +115,20 @@ class RegimeParams:
     def per_minute_matrix(self) -> list[list[float]]:
         """Transition matrix for one open minute."""
         p, m = self.transition_matrix, self.minutes_per_step
-        return [[(1.0 if i == j else 0.0) + (p[i][j] - (1.0 if i == j else 0.0)) / m
-                 for j in range(len(p))] for i in range(len(p))]
+        return [
+            [
+                (1.0 if i == j else 0.0) + (p[i][j] - (1.0 if i == j else 0.0)) / m
+                for j in range(len(p))
+            ]
+            for i in range(len(p))
+        ]
 
     def expected_durations(self) -> list[float]:
         """Mean length of each regime, in open minutes."""
-        return [self.minutes_per_step / max(1e-12, 1.0 - self.transition_matrix[i][i])
-                for i in range(len(self.transition_matrix))]
+        return [
+            self.minutes_per_step / max(1e-12, 1.0 - self.transition_matrix[i][i])
+            for i in range(len(self.transition_matrix))
+        ]
 
     def get_regime_index(self, regime: RegimeType) -> int:
         return _REGIME_ORDER.index(regime)

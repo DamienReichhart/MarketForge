@@ -67,7 +67,9 @@ def read_overrides(path: Union[str, "os.PathLike[str]"]) -> dict[str, dict[str, 
         raise OverrideError(f"Invalid TOML in {p}: {e}") from None
     unknown_top = set(doc) - {"instruments"}
     if unknown_top:
-        raise OverrideError(f"{p}: unknown top-level table(s) {sorted(unknown_top)}; expected [instruments.SYMBOL]")
+        raise OverrideError(
+            f"{p}: unknown top-level table(s) {sorted(unknown_top)}; expected [instruments.SYMBOL]"
+        )
     entries = doc.get("instruments", {})
     out: dict[str, dict[str, Any]] = {}
     for symbol, body in entries.items():
@@ -75,7 +77,9 @@ def read_overrides(path: Union[str, "os.PathLike[str]"]) -> dict[str, dict[str, 
             raise OverrideError(f"{p}: [instruments.{symbol}] must be a table")
         bad = set(body) - _KEYS
         if bad:
-            raise OverrideError(f"{p}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; valid: {sorted(_KEYS)}")
+            raise OverrideError(
+                f"{p}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; valid: {sorted(_KEYS)}"
+            )
         out[symbol.upper()] = body
     return out
 
@@ -123,10 +127,14 @@ def apply_overrides(
             except ValueError:
                 raise OverrideError(f"{symbol}: unknown market {body['market']!r}") from None
             if market is not None and declared != market:
-                raise OverrideError(f"{symbol} already exists in the {market.value} market, not {declared.value}")
+                raise OverrideError(
+                    f"{symbol} already exists in the {market.value} market, not {declared.value}"
+                )
             market = declared
         if market is None:
-            raise OverrideError(f"{symbol} is a new instrument: set market = \"crypto\" | \"forex\" | \"stocks\"")
+            raise OverrideError(
+                f'{symbol} is a new instrument: set market = "crypto" | "forex" | "stocks"'
+            )
         values: dict[str, Any] = {k: float(body[k]) for k in _FIELDS if k in body}
         try:
             if symbol in assets[market]:
@@ -156,9 +164,13 @@ def apply_overrides(
         mat[:k, :k] = cfg.correlation_matrix
         for a, b, rho in corr_edits[market]:
             if b not in syms:
-                raise OverrideError(f"{a}: correlation target {b} is not a {market.value} instrument")
+                raise OverrideError(
+                    f"{a}: correlation target {b} is not a {market.value} instrument"
+                )
             if not -1.0 < rho < 1.0:
-                raise OverrideError(f"{a}-{b}: correlation must be strictly between -1 and 1, got {rho}")
+                raise OverrideError(
+                    f"{a}-{b}: correlation must be strictly between -1 and 1, got {rho}"
+                )
         for i in range(k, n):
             _imply_new_correlations(mat, i, syms, corr_edits[market])
         for a, b, rho in corr_edits[market]:
