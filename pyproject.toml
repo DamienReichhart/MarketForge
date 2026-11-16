@@ -68,6 +68,7 @@ typecheck = [
 # Pinned to a minor series: ruff's formatter output changes between minors.
 lint = [
     "ruff>=0.16,<0.17",
+    "import-linter>=2.3",
 ]
 dev = [
     {include-group = "test"},
@@ -160,3 +161,22 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["marketforge"]
+
+# Architecture contract, checked in CI by `lint-imports`: a package may import
+# from the ones listed below it, never from the ones above. Packages on the
+# same line are independent of each other.
+[tool.importlinter]
+root_package = "marketforge"
+
+[[tool.importlinter.contracts]]
+name = "Layers"
+type = "layers"
+layers = [
+    "marketforge.cli",
+    "marketforge.api",
+    "marketforge.aggregation | marketforge.output | marketforge.validation",
+    "marketforge.simulation",
+    "marketforge.config",
+    "marketforge.calendars",
+    "marketforge.domain",
+]

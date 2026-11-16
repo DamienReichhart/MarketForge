@@ -55,12 +55,14 @@ jobs:
           python-version: ${{ env.DEFAULT_PYTHON }}
           activate-environment: "true"
           enable-cache: "false"
-      - name: Install ruff
+      - name: Install linters
         run: uv pip install --group lint
       - name: ruff check
         run: ruff check --output-format=github .
       - name: ruff format
         run: ruff format --check --diff .
+      - name: Import layers
+        run: lint-imports
 
   typecheck:
     name: Type-check (py${{ matrix.python-version }}, numpy ${{ matrix.numpy }})
