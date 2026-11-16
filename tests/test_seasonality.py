@@ -36,3 +36,18 @@ def test_crypto_weekend_below_weekday():
     combo = np.concatenate([sat, wed])
     s = model.multiplier_series(combo)
     assert s[0] < s[1]
+
+
+def test_session_seasonality_is_window_independent_and_u_shaped():
+    from marketforge.core.seasonality import SessionSeasonality
+    from marketforge.trading_calendar import get_calendar
+
+    cal = get_calendar(MarketType.STOCKS)
+    model = SessionSeasonality(cal)
+    day = cal.open_minutes(1704240000, 1704326400)  # 2024-01-03, one session
+    week = cal.open_minutes(1704067200, 1704067200 + 7 * 86400)
+    # Same minute, same factor, whatever window it was requested in.
+    np.testing.assert_allclose(model.factor(day), model.factor(week[np.isin(week, day)]))
+    f = model.factor(day)
+    mid = f[len(f) // 2]
+    assert f[0] > 1.3 * mid and f[-1] > 1.2 * mid
