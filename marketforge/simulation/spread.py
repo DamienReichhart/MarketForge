@@ -55,4 +55,4 @@ def quoted_spread(
     relative = base * np.exp(
         params.turbulence_exponent * log_turbulence + params.noise * noise - 0.5 * params.noise**2
     )
-    return np.maximum(mid * relative * by_minute[:, None], params.tick)
+    return np.asarray(np.maximum(mid * relative * by_minute[:, None], params.tick))

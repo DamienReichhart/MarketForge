@@ -32,7 +32,14 @@ class Bars:
     def rows(self, s: slice) -> Bars:
         """The candles of a slice of rows."""
         return Bars(
-            *(None if (v := getattr(self, f)) is None else v[s] for f in self.__dataclass_fields__)
+            self.timestamps[s],
+            self.open[s],
+            self.high[s],
+            self.low[s],
+            self.close[s],
+            self.volume[s],
+            self.regime[s],
+            None if self.spread is None else self.spread[s],
         )
 
     def after(self, timestamp: int) -> Bars:
@@ -42,11 +49,16 @@ class Bars:
 
     @classmethod
     def concat(cls, parts: list[Bars]) -> Bars:
+        def joined(name: str) -> np.ndarray:
+            return np.concatenate([getattr(p, name) for p in parts])
+
         return cls(
-            *(
-                None
-                if getattr(parts[0], f) is None
-                else np.concatenate([getattr(p, f) for p in parts])
-                for f in cls.__dataclass_fields__
-            )
+            joined("timestamps"),
+            joined("open"),
+            joined("high"),
+            joined("low"),
+            joined("close"),
+            joined("volume"),
+            joined("regime"),
+            None if parts[0].spread is None else joined("spread"),
         )
