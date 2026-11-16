@@ -8,7 +8,7 @@ name = "marketforge"
 # `v<version>` when this changes on main; `marketforge.__version__` reads it
 # back from the installed metadata.
 version = "3.1.1"
-description = "A professional-grade synthetic OHLCV data generator"
+description = "Synthetic OHLCV market data for training AI trading models and testing backtesters: labelled regimes, real trading calendars, bit-for-bit reproducible"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE", "NOTICE"]
@@ -16,6 +16,18 @@ authors = [
     {name = "REICHHART Damien"}
 ]
 requires-python = ">=3.12"
+keywords = [
+    "synthetic data",
+    "market data",
+    "ohlcv",
+    "backtesting",
+    "machine learning",
+    "trading",
+    "quantitative finance",
+    "time series",
+    "regime",
+    "simulation",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -48,11 +60,11 @@ dependencies = [
 marketforge = "marketforge.cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/DamienReichhart/MarketForge"
-Documentation = "https://github.com/DamienReichhart/MarketForge#readme"
+Homepage = "https://damienreichhart.github.io/MarketForge/"
+Documentation = "https://damienreichhart.github.io/MarketForge/docs/"
 Repository = "https://github.com/DamienReichhart/MarketForge"
 Issues = "https://github.com/DamienReichhart/MarketForge/issues"
-Changelog = "https://github.com/DamienReichhart/MarketForge/blob/main/CHANGELOG.md"
+Changelog = "https://damienreichhart.github.io/MarketForge/changelog/"
 
 # Development tooling (PEP 735). Not published in the package metadata.
 # Install with `pip install -e . --group dev` (pip >= 25.1) or
