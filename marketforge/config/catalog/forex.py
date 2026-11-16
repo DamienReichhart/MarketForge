@@ -5,7 +5,7 @@
 # root for full license information.
 
 """
-Forex market configuration with 82 currency pairs.
+Forex market configuration with 81 instruments (currency pairs plus metal, index and oil CFDs).
 
 Contains realistic start prices, volatilities, drifts, and correlation matrix
 based on typical forex market relationships.
@@ -27,7 +27,7 @@ from marketforge.config.settings import MarketType
 # FOREX ASSET DEFINITIONS
 # =============================================================================
 
-# All 82 forex pairs with realistic parameters
+# All 81 forex instruments with realistic parameters
 # Volatility is annualized, based on typical daily ranges
 # Volume base scaled appropriately for each pair type
 
@@ -459,7 +459,7 @@ def get_forex_config() -> MarketConfig:
     Get the complete forex market configuration.
     
     Returns:
-        MarketConfig with 82 forex pairs and correlation matrix.
+        MarketConfig with 81 forex instruments and correlation matrix.
     """
     correlation_matrix, symbol_order = _build_forex_correlation_matrix()
     
