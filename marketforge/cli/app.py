@@ -21,7 +21,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 
@@ -31,7 +31,7 @@ from marketforge.config.settings import MarketType
 _LEGACY_IGNORED = ("--batch-size",)
 
 
-def _split(value: Optional[str]) -> list[str]:
+def _split(value: str | None) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()] if value else []
 
 
@@ -47,7 +47,7 @@ class _Group(click.Group):
                 err=True,
             )
             i = args.index(rest[0])
-            args = args[:i] + ["generate"] + args[i:]
+            args = [*args[:i], "generate", *args[i:]]
         rest_args: list[str] = super().parse_args(ctx, args)
         return rest_args
 
@@ -155,20 +155,20 @@ def cli(debug: bool) -> None:
     "--progress/--no-progress", default=True, show_default=True, help="Show a progress bar."
 )
 def generate(
-    output_dir: Optional[str],
+    output_dir: str | None,
     start: str,
     end: str,
-    assets: Optional[str],
-    markets: Optional[str],
-    seed: Optional[int],
+    assets: str | None,
+    markets: str | None,
+    seed: int | None,
     timeframes: str,
-    anomalies: Optional[str],
+    anomalies: str | None,
     fmt: str,
-    overrides: Optional[str],
+    overrides: str | None,
     with_regime: bool,
-    jobs: Optional[int],
-    legacy_threads: Optional[int],
-    legacy_batch: Optional[int],
+    jobs: int | None,
+    legacy_threads: int | None,
+    legacy_batch: int | None,
     dry_run: bool,
     progress: bool,
 ) -> None:
@@ -236,7 +236,7 @@ def generate(
     click.echo(f"Reproduce with --seed {report.seed}")
 
 
-def _print_plan(request: Any, fmt: str, output_dir: Optional[str], random_seed: bool) -> None:
+def _print_plan(request: Any, fmt: str, output_dir: str | None, random_seed: bool) -> None:
     import datetime as dt
 
     from marketforge.trading_calendar import get_calendar
@@ -303,7 +303,7 @@ def _duration(s: float) -> str:
     type=click.Path(exists=True, dir_okay=False),
     help="TOML override file to apply first.",
 )
-def list_assets(market: Optional[str], overrides: Optional[str]) -> None:
+def list_assets(market: str | None, overrides: str | None) -> None:
     """List available instruments with their start price and volatility."""
     from marketforge.config.loader import load_catalog
     from marketforge.engine import build_market_spec

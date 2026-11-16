@@ -19,7 +19,6 @@ requested range.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -54,7 +53,7 @@ class Bars:
         return int(self.timestamps.size)
 
     @classmethod
-    def concat(cls, parts: list["Bars"]) -> "Bars":
+    def concat(cls, parts: list[Bars]) -> Bars:
         return cls(
             *(np.concatenate([getattr(p, f) for p in parts]) for f in cls.__dataclass_fields__)
         )
@@ -91,12 +90,12 @@ class BarAggregator:
         self.timeframe = timeframe
         self.start = int(start)
         self.end = int(end)
-        self._carry: Optional[Bars] = None
+        self._carry: Bars | None = None
         self._first = True
         # One bucket can never span more than this (W1 plus slack).
         self._span = (8 if timeframe == Timeframe.W1 else 2) * 86400
 
-    def push(self, minutes: Bars) -> Optional[Bars]:
+    def push(self, minutes: Bars) -> Bars | None:
         """Add m1 candles; return the candles whose buckets are now complete."""
         data = minutes if self._carry is None else Bars.concat([self._carry, minutes])
         if len(data) == 0:
@@ -108,7 +107,7 @@ class BarAggregator:
             return None
         return self._emit(_slice(data, slice(0, last_start)), keys[:last_start])
 
-    def finish(self) -> Optional[Bars]:
+    def finish(self) -> Bars | None:
         """Flush the last bucket if the requested range covers all of it."""
         if self._carry is None or len(self._carry) == 0:
             return None
@@ -119,7 +118,7 @@ class BarAggregator:
             return self._emit(data, keys, drop_last=True)
         return self._emit(data, keys)
 
-    def _emit(self, data: Bars, keys: np.ndarray, drop_last: bool = False) -> Optional[Bars]:
+    def _emit(self, data: Bars, keys: np.ndarray, drop_last: bool = False) -> Bars | None:
         starts = np.r_[0, np.nonzero(np.diff(keys))[0] + 1]
         ends = np.r_[starts[1:], keys.size]
         if self._first:

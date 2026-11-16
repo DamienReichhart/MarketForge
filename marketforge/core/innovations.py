@@ -20,8 +20,6 @@ shocks are Gaussian.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
 
@@ -29,7 +27,7 @@ def correlated_shocks(
     normals: np.ndarray,
     chi2: np.ndarray,
     cholesky_lower: np.ndarray,
-    nu: Optional[float],
+    nu: float | None,
 ) -> np.ndarray:
     """
     Turn independent draws into correlated unit-variance shocks.

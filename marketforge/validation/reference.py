@@ -19,7 +19,6 @@ Replace them by measuring real data for that market and adding it here.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from marketforge.config.settings import MarketType
 
@@ -55,7 +54,7 @@ REFERENCES: dict[MarketType, Reference] = {
 class Bands:
     """Validation bands for one market; None = unbounded on that side."""
 
-    excess_kurtosis: tuple[Optional[float], Optional[float]]
+    excess_kurtosis: tuple[float | None, float | None]
     vol_clustering_min: float
     leverage_max: float
     range_efficiency: tuple[float, float]

@@ -34,9 +34,9 @@ independent of which instruments are written and of the end of the range.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
-from functools import lru_cache
-from typing import Iterator, Optional
+from functools import cache
 
 import numpy as np
 
@@ -85,7 +85,7 @@ class MarketSpec:
 def build_market_spec(
     config: MarketConfig,
     anomalies: frozenset[AnomalyType] = frozenset(),
-    defaults: Optional[MarketDefaults] = None,
+    defaults: MarketDefaults | None = None,
 ) -> MarketSpec:
     """Turn a catalog market configuration into a simulation spec."""
     market = MarketType(config.market_type)
@@ -130,7 +130,7 @@ class _State:
     drift_mult: float
     vol_mult: float
     volume_memory: np.ndarray  # (I,)
-    last_timestamp: Optional[int] = None
+    last_timestamp: int | None = None
 
 
 def _normalised_regime_targets(
@@ -173,7 +173,7 @@ def _closure_variance(minutes: np.ndarray, defaults: MarketDefaults) -> np.ndarr
     )
 
 
-@lru_cache(maxsize=None)
+@cache
 def _effective_minutes_per_year(market: MarketType, scale: float, exponent: float) -> float:
     """Open minutes per year plus closure variance, in open-minute units."""
     cal = get_calendar(market)
@@ -229,7 +229,6 @@ class MarketSimulator:
         )
 
         # Cross volatilities: (factor indices, weights) per derived instrument.
-        corr = spec.factor_correlation
         self._cross_terms: list[tuple[int, np.ndarray, np.ndarray]] = []
         if not self._identity:
             for i in range(n_i):
@@ -283,7 +282,7 @@ class MarketSimulator:
         return np.random.Generator(np.random.PCG64(seq))
 
     # ---------------------------------------------------------------- core
-    def simulate_day(self, day: int, start: int, end: int) -> Optional[DayResult]:
+    def simulate_day(self, day: int, start: int, end: int) -> DayResult | None:
         """Simulate the open minutes of UTC day `day` that fall within [start, end)."""
         day_ts = day * SECONDS_PER_DAY + 60 * np.arange(MINUTES_PER_DAY, dtype=np.int64)
         mask = self.calendar.open_mask(day_ts) & (day_ts >= start) & (day_ts < end)
@@ -291,7 +290,6 @@ class MarketSimulator:
         if rows.size == 0:
             return None
         ts = day_ts[rows]
-        n = rows.size
         st = self._state
         n_f = self._sigma.size
         n_i = self._base_volume.size

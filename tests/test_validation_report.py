@@ -1,6 +1,7 @@
 import numpy as np
+
 from marketforge.config.settings import MarketType
-from marketforge.validation.report import validate_returns, ValidationReport
+from marketforge.validation.report import ValidationReport, validate_returns
 
 
 def test_report_flags_gaussian_as_too_thin_for_crypto():

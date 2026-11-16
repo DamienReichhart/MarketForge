@@ -24,9 +24,9 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - uninstalled checkou
 __author__ = "REICHHART Damien"
 
 __all__ = [
+    "GeneratedData",
+    "__version__",
     "generate",
     "generate_to_disk",
     "parse_time",
-    "GeneratedData",
-    "__version__",
 ]

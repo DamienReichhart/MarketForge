@@ -14,9 +14,9 @@ Files live at ``{output_dir}/{market}/{SYMBOL}_{timeframe}.{csv|parquet}``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Sequence
 
 import numpy as np
 import pyarrow as pa
@@ -72,7 +72,7 @@ class CandleWriter:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fmt = OutputFormat(fmt)
         self.include_regime = include_regime
-        self._targets = list(zip(symbols, columns))
+        self._targets = list(zip(symbols, columns, strict=True))
         self.paths: dict[str, dict[str, Path]] = {
             s: {tf.name: self.directory / f"{s}_{tf.name}.{self.fmt.value}" for tf in timeframes}
             for s in symbols
@@ -93,7 +93,7 @@ class CandleWriter:
             path.write_text(header + "\n", encoding="ascii")
         self._started.add(path)
 
-    def write(self, timeframe: Timeframe, bars: Optional[Bars]) -> None:
+    def write(self, timeframe: Timeframe, bars: Bars | None) -> None:
         if bars is None or len(bars) == 0:
             return
         for symbol, col in self._targets:

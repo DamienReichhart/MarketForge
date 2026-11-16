@@ -57,9 +57,8 @@ def load(path: Path) -> pd.DataFrame:
     if path.suffix == ".parquet":
         df = pd.read_parquet(path)
     elif path.suffix == ".zip":
-        with zipfile.ZipFile(path) as z:
-            with z.open(z.namelist()[0]) as fh:
-                df = pd.read_csv(fh, header=None, names=_BINANCE_COLS)
+        with zipfile.ZipFile(path) as z, z.open(z.namelist()[0]) as fh:
+            df = pd.read_csv(fh, header=None, names=_BINANCE_COLS)
     else:
         head = path.read_text(encoding="ascii", errors="ignore").split("\n", 1)[0]
         df = (
@@ -133,7 +132,7 @@ def main() -> None:
     summary = {
         "name": args.name,
         "first": pd.to_datetime(start, unit="s", utc=True).isoformat(),
-        "minutes": int(len(df)),
+        "minutes": len(df),
         "windows": len(stats),
         "window_days": args.window_days,
         "metrics": {

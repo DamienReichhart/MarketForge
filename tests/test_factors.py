@@ -41,7 +41,7 @@ def test_full_forex_catalog_derives_every_cross_consistently():
     assert len(fs.factors) < len(symbols)
     log_start = np.log([FOREX_ASSETS_DATA[s].start_price for s in fs.factors])
     derived = np.exp(fs.weights @ log_start)
-    implied = dict(zip(fs.instruments, derived))
+    implied = dict(zip(fs.instruments, derived, strict=True))
     # Derived start prices agree with the catalog to within a few percent.
     assert abs(implied["EURJPY"] / FOREX_ASSETS_DATA["EURJPY"].start_price - 1) < 0.02
     assert abs(implied["EURGBP"] / FOREX_ASSETS_DATA["EURGBP"].start_price - 1) < 0.02

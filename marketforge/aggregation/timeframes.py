@@ -28,7 +28,7 @@ class Timeframe(Enum):
         return int(self.value)
 
     @classmethod
-    def from_string(cls, s: str) -> "Timeframe":
+    def from_string(cls, s: str) -> Timeframe:
         """Parse a timeframe name such as ``m5``, ``H1`` or ``D1``."""
         try:
             return cls[s]
