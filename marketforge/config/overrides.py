@@ -22,8 +22,9 @@ editing the package.
     correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
 
 Keys: market (required for new instruments), start_price, volatility
-(annualised), drift (annualised log drift), volume_base (typical volume per
-minute), volume_volatility, correlations (to instruments of the same market;
+(annualised), drift (annualised log drift), volume_base (mean volume per
+minute: coins for crypto, ticks for forex, shares for stocks),
+volume_volatility, correlations (to instruments of the same market;
 unspecified pairs of a new instrument default to 0).
 """
 

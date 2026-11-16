@@ -24,6 +24,13 @@ than 2.x**: every change below alters output, so the major version moves.
 - Calibration fixes that remove variance blow-ups (stocks GJR-GARCH, crypto
   Student-t degrees of freedom) and oversized forex weekend gaps.
 - Each instrument's `volume_volatility` is used; it was ignored before.
+- Regimes last hours to days instead of 2–8 minutes (`RegimeParams.minutes_per_step`).
+  Regime labels are therefore meaningful, and volatility keeps memory out to a
+  day, as in real data.
+- Calibrated against real Binance m1 data: intrabar range (high/low use a
+  fraction of the bar volatility), crypto intraday cycle, volume persistence.
+- Volume has defined units: base-asset units for crypto (BTC was 50,000/min,
+  now ~19/min like Binance), integer tick volume for forex, shares for stocks.
 
 ### Reproducibility
 - A seed now reproduces identical candles whatever instruments, timeframes,
@@ -53,6 +60,10 @@ than 2.x**: every change below alters output, so the major version moves.
 - The validator uses open-to-close returns, which excludes gaps. Range
   efficiency is now a ratio of means: it gave `inf` for quiet instruments
   before. Leverage bands allow for sampling noise and FX cross conventions.
+- Bands are anchored to statistics measured on real m1 data
+  (`scripts/measure_real_data.py`, `marketforge/validation/reference.py`).
+  Crypto is anchored on Binance data; forex and stocks are marked provisional.
+- New `long_memory` check: |r| autocorrelation at one hour.
 
 ### Removed / breaking
 - The `gaps` anomaly. Closures produce gaps now.
