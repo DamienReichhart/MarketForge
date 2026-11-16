@@ -17,29 +17,40 @@ const websiteDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoDir = join(websiteDir, '..');
 const contentDir = join(websiteDir, 'src', 'content', 'docs');
 
-const BASE = '/MarketForge';
 const REPO_URL = 'https://github.com/DamienReichhart/MarketForge';
 const BRANCH = 'main';
 
-/** Site URL of a repository path that is published on the site, or undefined. */
+/**
+ * Page of the site (relative to its root, e.g. `changelog/`) where a
+ * repository file is published, or undefined if it is not.
+ */
 function sitePath(repoPath) {
-	if (repoPath === 'CHANGELOG.md') return `${BASE}/changelog/`;
-	if (repoPath === 'GLOSSARY.md') return `${BASE}/docs/reference/glossary/`;
+	if (repoPath === 'CHANGELOG.md') return 'changelog/';
+	if (repoPath === 'GLOSSARY.md') return 'docs/reference/glossary/';
 	const adr = /^docs\/adr\/([^/]+)\.md$/.exec(repoPath);
-	if (adr) return `${BASE}/docs/adr/${adr[1].toLowerCase()}/`;
+	if (adr) return `docs/adr/${adr[1].toLowerCase()}/`;
 	return undefined;
 }
 
-/** Rewrites the relative Markdown links of a file found at `sourcePath` (repository-relative). */
-function rewriteLinks(markdown, sourcePath) {
+/** A link from one page of the site to another, relative so it works under any base path. */
+function pageLink(fromPage, toPage) {
+	const link = posix.relative(fromPage, toPage);
+	return link ? `${link}/` : './';
+}
+
+/**
+ * Rewrites the relative Markdown links of a file found at `sourcePath`
+ * (repository-relative) and published on the site at `page`.
+ */
+function rewriteLinks(markdown, sourcePath, page = sitePath(sourcePath)) {
 	const sourceDir = posix.dirname(sourcePath);
 	return markdown.replace(/\]\(([^)\s]+)\)/g, (match, target) => {
 		if (/^([a-z]+:|#|\/)/i.test(target)) return match;
 		const [path, anchor] = target.split('#');
 		const resolved = posix.normalize(posix.join(sourceDir, path)).replace(/\/$/, '');
 		const hash = anchor ? `#${anchor}` : '';
-		const page = sitePath(resolved);
-		if (page) return `](${page}${hash})`;
+		const published = sitePath(resolved);
+		if (published) return `](${pageLink(page, published)}${hash})`;
 		const kind = /\.[a-z0-9]+$/i.test(resolved) ? 'blob' : 'tree';
 		return `](${REPO_URL}/${kind}/${BRANCH}/${resolved}${hash})`;
 	});
@@ -83,7 +94,7 @@ const notice = (repoPath) =>
 			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 2 },
 		}) +
 			notice('CHANGELOG.md') +
-			`Releases follow [semantic versioning](https://semver.org/). A seed's candles only change in a new **major** version: see the [reproducibility contract](${BASE}/docs/reference/reproducibility/). Packages are on [PyPI](https://pypi.org/project/marketforge/#history) and [GitHub releases](${REPO_URL}/releases).\n\n` +
+			`Releases follow [semantic versioning](https://semver.org/). A seed's candles only change in a new **major** version: see the [reproducibility contract](${pageLink('changelog/', 'docs/reference/reproducibility/')}). Packages are on [PyPI](https://pypi.org/project/marketforge/#history) and [GitHub releases](${REPO_URL}/releases).\n\n` +
 			rewriteLinks(body, 'CHANGELOG.md'),
 	);
 }
