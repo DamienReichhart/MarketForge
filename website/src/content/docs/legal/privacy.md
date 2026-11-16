@@ -47,7 +47,7 @@ MarketForge itself runs entirely on your machine. It makes no network connection
 
 Under the GDPR you have the right to access, rectify and erase your personal data, to restrict or object to its processing, and to data portability. Write to [contact@damien-reichhart.fr](mailto:contact@damien-reichhart.fr); you will get an answer within one month. For data held by GitHub in its server logs, the publisher will forward your request, and you can also contact GitHub directly through its [privacy contact form](https://support.github.com/contact/privacy).
 
-You may lodge a complaint with the French data protection authority, the **CNIL** (3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07, France; [cnil.fr](https://www.cnil.fr/en/complaints)), or with the authority of the EU country where you live.
+You may lodge a complaint with the French data protection authority, the **CNIL** (3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07, France; [cnil.fr/fr/plaintes](https://www.cnil.fr/fr/plaintes), in French), or with the authority of the EU country where you live.
 
 ## Changes
 
