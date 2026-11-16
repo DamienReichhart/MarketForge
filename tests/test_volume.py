@@ -62,7 +62,7 @@ def test_volume_with_seasonality_stays_positive_and_autocorrelated():
 
 def test_no_single_minute_dominates_weekly_volume():
     """Regression: v2 put ~50% of a week's BTCUSD volume into one minute."""
-    from marketforge.configs.loader import load_market_config, market_config_to_generator_config
+    from marketforge.config.loader import load_market_config, market_config_to_generator_config
     from marketforge.generators.ohlcv import OHLCVBuilder
 
     for market, symbol in (("crypto", "BTCUSD"), ("stocks", "AAPL"), ("forex", "EURUSD")):

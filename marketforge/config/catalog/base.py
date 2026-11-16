@@ -13,16 +13,10 @@ Defines the core dataclasses used across all market configurations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Optional
 import numpy as np
 
-
-class MarketType(str, Enum):
-    """Supported market types."""
-    FOREX = "forex"
-    CRYPTO = "crypto"
-    STOCKS = "stocks"
+from marketforge.config.settings import MarketType
 
 
 @dataclass

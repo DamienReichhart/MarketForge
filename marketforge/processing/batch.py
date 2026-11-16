@@ -25,8 +25,9 @@ import click
 import numpy as np
 from tqdm import tqdm
 
-from marketforge.configs.base import MarketConfig, MarketType
-from marketforge.configs.loader import (
+from marketforge.config.catalog.base import MarketConfig
+from marketforge.config.settings import MarketType
+from marketforge.config.loader import (
     ConfigRegistry,
     market_config_to_generator_config,
 )

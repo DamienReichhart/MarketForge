@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Optional
 import numpy as np
 
-from marketforge.configs.base import MarketConfig, MarketType, AssetParams
+from marketforge.config.catalog.base import MarketConfig, AssetParams
 from marketforge.config.settings import (
+    MarketType,
     GeneratorConfig,
     AssetConfig,
     GARCHParams,
@@ -66,13 +67,13 @@ class ConfigRegistry:
     def _load_config(self, market_type: MarketType) -> MarketConfig:
         """Load configuration for a market type."""
         if market_type == MarketType.FOREX:
-            from marketforge.configs.forex_config import get_forex_config
+            from marketforge.config.catalog.forex import get_forex_config
             return get_forex_config()
         elif market_type == MarketType.CRYPTO:
-            from marketforge.configs.crypto_config import get_crypto_config
+            from marketforge.config.catalog.crypto import get_crypto_config
             return get_crypto_config()
         elif market_type == MarketType.STOCKS:
-            from marketforge.configs.stocks_config import get_stocks_config
+            from marketforge.config.catalog.stocks import get_stocks_config
             return get_stocks_config()
         else:
             raise ValueError(f"Unknown market type: {market_type}")
@@ -246,8 +247,7 @@ def market_config_to_generator_config(
     correlation_matrix = market_config.get_correlation_submatrix(symbols)
     
     # Get market defaults for GARCH and regime params
-    from marketforge.config.settings import MarketType as SettingsMarketType
-    settings_market_type = SettingsMarketType(market_config.market_type.value)
+    settings_market_type = market_config.market_type
     market_defaults = get_market_defaults(settings_market_type)
     
     # Build anomaly config

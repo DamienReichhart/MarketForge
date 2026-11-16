@@ -15,12 +15,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from marketforge.configs.base import (
+from marketforge.config.catalog.base import (
     AssetParams,
     MarketConfig,
-    MarketType,
     ensure_positive_semidefinite,
 )
+from marketforge.config.settings import MarketType
 
 
 # =============================================================================

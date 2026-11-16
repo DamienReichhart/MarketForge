@@ -18,8 +18,8 @@ from typing import Optional
 
 import click
 
-from marketforge.configs.base import MarketType
-from marketforge.configs.loader import (
+from marketforge.config.settings import MarketType
+from marketforge.config.loader import (
     ConfigRegistry,
     get_asset_market_mapping,
     filter_market_config,
