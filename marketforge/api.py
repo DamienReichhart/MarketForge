@@ -36,7 +36,7 @@ from marketforge.aggregation.timeframes import Timeframe
 from marketforge.config.loader import load_catalog
 from marketforge.config.settings import AnomalyType, MarketType
 from marketforge.engine import MarketSimulator, MarketSpec, build_market_spec
-from marketforge.output.writers import CandleWriter, OutputFormat
+from marketforge.output.writers import CandleWriter, OutputFormat, ensure_open_file_capacity
 from marketforge.trading_calendar import SECONDS_PER_DAY, get_calendar
 
 TimeLike = int | float | str | dt.datetime | dt.date
@@ -130,10 +130,6 @@ class MarketPlan:
     @property
     def market(self) -> MarketType:
         return self.spec.market
-
-    @property
-    def columns(self) -> list[int]:
-        return [self.spec.symbols.index(s) for s in self.selected]
 
 
 @dataclass
@@ -229,28 +225,22 @@ def _run_market(
     sink: Sink,
     on_day: Callable[[MarketType], None] | None = None,
 ) -> None:
-    sim = MarketSimulator(plan.spec, request.seed)
+    # Random draws are market-wide; everything after them runs only for the
+    # selected instruments, whose columns come back in plan.selected order.
+    sim = MarketSimulator(plan.spec, request.seed, instruments=plan.selected)
     cal = get_calendar(plan.market)
     aggs = {tf: BarAggregator(cal, tf, request.start, request.end) for tf in request.timeframes}
-    cols = plan.columns
     first = request.start // SECONDS_PER_DAY
     last = (request.end - 1) // SECONDS_PER_DAY
     for day in range(first, last + 1):
         res = sim.simulate_day(day, request.start, request.end)
         if res is not None:
-            # Only the selected instruments are aggregated and written.
-            c = cols
             m1 = Bars(
-                res.timestamps,
-                res.open[:, c],
-                res.high[:, c],
-                res.low[:, c],
-                res.close[:, c],
-                res.volume[:, c],
-                res.regime,
+                res.timestamps, res.open, res.high, res.low, res.close, res.volume, res.regime
             )
+            anchor = cal.anchor_minutes(res.timestamps)  # shared by every timeframe
             for tf, agg in aggs.items():
-                sink(plan, tf, agg.push(m1))
+                sink(plan, tf, agg.push(m1, anchor))
         if on_day is not None:
             on_day(plan.market)
     for tf, agg in aggs.items():
@@ -339,34 +329,44 @@ def generate(
     for plan in request.plans:
         for tf in request.timeframes:
             chunks = parts.get((plan.market, tf))
-            allb = Bars.concat(chunks) if chunks else None
-            for j, symbol in enumerate(plan.selected):
-                out.setdefault(symbol, {})[tf.name] = _frame(allb, j, request.include_regime)
+            frames = _frames(chunks or [], len(plan.selected), request.include_regime)
+            for symbol, frame in zip(plan.selected, frames, strict=True):
+                out.setdefault(symbol, {})[tf.name] = frame
     return out
 
 
-def _frame(bars: Bars | None, j: int, include_regime: bool) -> pd.DataFrame:
-    if bars is None:
-        ts = np.empty(0, dtype=np.int64)
-        data: dict[str, np.ndarray] = {
-            c: np.empty(0) for c in ("open", "high", "low", "close", "volume")
-        }
-        regime = np.empty(0, dtype=np.int8)
-    else:
-        ts = bars.timestamps
-        data = {
-            "open": bars.open[:, j],
-            "high": bars.high[:, j],
-            "low": bars.low[:, j],
-            "close": bars.close[:, j],
-            "volume": bars.volume[:, j],
-        }
-        regime = bars.regime
+_FRAME_COLUMNS = ("open", "high", "low", "close", "volume")
+
+
+def _frames(chunks: list[Bars], n_instruments: int, include_regime: bool) -> list[pd.DataFrame]:
+    """
+    One DataFrame per instrument from a market's candle chunks.
+
+    The values are copied once, straight from the chunks into an
+    (instrument, column, row) block; each frame then wraps its own slice
+    without another copy, and all frames share one (immutable) time index.
+    """
+    n = sum(len(c) for c in chunks)
+    block = np.empty((n_instruments, len(_FRAME_COLUMNS), n))
+    ts = np.empty(n, dtype=np.int64)
+    regime = np.empty(n, dtype=np.int8)
+    row = 0
+    for c in chunks:
+        k = len(c)
+        for i, name in enumerate(_FRAME_COLUMNS):
+            block[:, i, row : row + k] = getattr(c, name).T
+        ts[row : row + k] = c.timestamps
+        regime[row : row + k] = c.regime
+        row += k
     index = pd.DatetimeIndex(pd.to_datetime(ts, unit="s", utc=True), name="time")
-    df = pd.DataFrame(data, index=index)
-    if include_regime:
-        df["regime"] = pd.Categorical.from_codes(regime.astype(int), categories=list(REGIME_NAMES))
-    return df
+    codes = regime.astype(int)
+    frames = []
+    for j in range(n_instruments):
+        df = pd.DataFrame(block[j].T, index=index, columns=list(_FRAME_COLUMNS), copy=False)
+        if include_regime:
+            df["regime"] = pd.Categorical.from_codes(codes, categories=list(REGIME_NAMES))
+        frames.append(df)
+    return frames
 
 
 @dataclass
@@ -419,6 +419,10 @@ def generate_to_disk(
             include_regime=include_regime,
             overrides=overrides,
         )
+    fmt = OutputFormat(fmt)
+    if fmt == OutputFormat.PARQUET:
+        n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
+        ensure_open_file_capacity(n_files)
     writers = {
         plan.market: CandleWriter(
             output_dir,
@@ -426,7 +430,7 @@ def generate_to_disk(
             plan.selected,
             list(range(len(plan.selected))),
             request.timeframes,
-            OutputFormat(fmt),
+            fmt,
             request.include_regime,
         )
         for plan in request.plans
@@ -436,10 +440,25 @@ def generate_to_disk(
         writers[plan.market].write(tf, bars)
 
     report = DiskReport(seed=request.seed)
+
+    def close_all() -> BaseException | None:
+        # Close every writer even if one fails; return the first error.
+        first: BaseException | None = None
+        for market, writer in writers.items():
+            try:
+                paths = writer.close()
+            except BaseException as e:
+                first = first or e
+                continue
+            report.paths[market.value] = {s: dict(tfs) for s, tfs in paths.items()}
+        return first
+
     try:
         execute(request, write, jobs=jobs, on_day=on_day)
-    finally:
-        for market, writer in writers.items():
-            paths = writer.close()
-            report.paths[market.value] = {s: dict(tfs) for s, tfs in paths.items()}
+    except BaseException:
+        close_all()  # the generation error wins over any error while closing
+        raise
+    error = close_all()
+    if error is not None:
+        raise error
     return report

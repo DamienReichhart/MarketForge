@@ -7,11 +7,22 @@
 """
 Compiled per-minute recursions.
 
-These are the only parts of the simulation that cannot be vectorised: each
-step depends on the previous one. They are compiled with Numba and are all
-*resumable*: they take the state left by the previous call and return the
-state to pass to the next one, so a day-by-day simulation is bit-identical
-to a single long run.
+The recursions (regime chain, GJR-GARCH, AR(1)) are the parts of the
+simulation that cannot be vectorised: each step depends on the previous one.
+They are all *resumable*: they take the state left by the previous call and
+return the state to pass to the next one, so a day-by-day simulation is
+bit-identical to a single long run.
+
+The fused kernels (:func:`factor_paths`, :func:`bar_arguments`,
+:func:`finish_bars`) replace chains of NumPy expressions that each allocated
+a full (minutes x instruments) temporary. They reproduce those expressions
+bit for bit, which constrains how they are written (see docs/adr/0007):
+
+- only IEEE-exact operations (``+ - * /``, ``sqrt``, ``abs``, ``min``/``max``),
+  in the same order and grouping as the NumPy expression they replace;
+- no transcendental function: ``exp`` and ``log`` stay in NumPy, whose SIMD
+  implementations differ from libm (and so from Numba) in the last bit;
+- no ``fastmath``, so LLVM never contracts ``a * b + c`` into an FMA.
 """
 
 from __future__ import annotations
@@ -133,6 +144,186 @@ def ar1(drivers: np.ndarray, phi: float, state: np.ndarray) -> tuple[np.ndarray,
             y[t, i] = v
             state[i] = v
     return y, state
+
+
+@njit(cache=True, nogil=True)
+def factor_paths(
+    h: np.ndarray,
+    vol_mult: np.ndarray,
+    drift_mult: np.ndarray,
+    season: np.ndarray,
+    z: np.ndarray,
+    sigma: np.ndarray,
+    mu: np.ndarray,
+    gap_rows: np.ndarray,
+    gap: np.ndarray,
+    log_price: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Per-minute volatility, returns and log price path of each factor.
+
+    Exactly reproduces::
+
+        level     = sqrt(h) * vol_mult[:, None]
+        sigma_f   = sigma * level * season[:, None]
+        returns   = mu * drift_mult[:, None] + sigma_f * z
+        log_close = log_price + cumsum(gap + returns, axis=0)
+        log_open  = vstack([log_price, log_close[:-1]]) + gap
+
+    where ``gap`` is zero except on ``gap_rows``.
+
+    Args:
+        h: (n, F) GJR-GARCH variance multipliers.
+        vol_mult, drift_mult, season: (n,) market-wide multipliers.
+        z: (n, F) unit-variance shocks.
+        sigma, mu: (F,) per-minute volatility and drift.
+        gap_rows: (k,) rows that open after a closure (strictly increasing).
+        gap: (k, F) log gap applied at those rows.
+        log_price: (F,) log close before the first row.
+
+    Returns:
+        (sigma_f, returns, log_open, log_close), each (n, F).
+    """
+    n, f = z.shape
+    sigma_f = np.empty((n, f))
+    returns = np.empty((n, f))
+    log_open = np.empty((n, f))
+    log_close = np.empty((n, f))
+    cum = np.zeros(f)
+    prev = log_price.copy()
+    g_idx = 0
+    for t in range(n):
+        at_gap = g_idx < gap_rows.shape[0] and gap_rows[g_idx] == t
+        level_t = vol_mult[t]
+        for i in range(f):
+            s = sigma[i] * (np.sqrt(h[t, i]) * level_t) * season[t]
+            r = mu[i] * drift_mult[t] + s * z[t, i]
+            g = gap[g_idx, i] if at_gap else 0.0
+            x = g + r
+            c = x if t == 0 else cum[i] + x
+            cum[i] = c
+            close = log_price[i] + c
+            log_open[t, i] = prev[i] + g
+            log_close[t, i] = close
+            prev[i] = close
+            sigma_f[t, i] = s
+            returns[t, i] = r
+        if at_gap:
+            g_idx += 1
+    return sigma_f, returns, log_open, log_close
+
+
+@njit(cache=True, nogil=True)
+def project_signed(x: np.ndarray, index: np.ndarray, sign: np.ndarray) -> np.ndarray:
+    """
+    Instruments as signed sums of at most two factor columns.
+
+    ``out[:, j] = sign[j, 0] * x[:, index[j, 0]] + sign[j, 1] * x[:, index[j, 1]]``,
+    where an unused second term has ``index == -1``. With weights of +-1 and at
+    most two non-zero terms, every summation order rounds to the same double,
+    so this equals ``x @ weights`` computed by any BLAS.
+    """
+    n = x.shape[0]
+    m = index.shape[0]
+    out = np.empty((n, m))
+    for t in range(n):
+        for j in range(m):
+            v = sign[j, 0] * x[t, index[j, 0]]
+            if index[j, 1] >= 0:
+                v = v + sign[j, 1] * x[t, index[j, 1]]
+            out[t, j] = v
+    return out
+
+
+@njit(cache=True, nogil=True)
+def bar_arguments(
+    log_open: np.ndarray,
+    log_close: np.ndarray,
+    body: np.ndarray,
+    sigma_i: np.ndarray,
+    intrabar_ratio: float,
+    log_u_high: np.ndarray,
+    log_u_low: np.ndarray,
+    sigma_ref: np.ndarray,
+    season: np.ndarray,
+    exp_args: np.ndarray,
+    level: np.ndarray,
+) -> None:
+    """
+    Fill the arguments of the per-bar transcendentals, in place.
+
+    ``exp_args`` (4, n, I) receives log open, log close and the log of the
+    Brownian-bridge high and low (:func:`bridge_extremes` with
+    ``bar_std = sigma_i * intrabar_ratio``); ``level`` (n, I) receives the
+    turbulence ``sigma_i / (sigma_ref * season)`` whose log drives volume.
+    The caller applies ``np.exp`` / ``np.log`` to them in place.
+    """
+    n, m = body.shape
+    for t in range(n):
+        for j in range(m):
+            b = body[t, j]
+            bar_std = sigma_i[t, j] * intrabar_ratio
+            s2 = bar_std * bar_std
+            b2 = b * b
+            hi = 0.5 * (b + np.sqrt(b2 - 2.0 * s2 * log_u_high[t, j]))
+            lo = 0.5 * (b - np.sqrt(b2 - 2.0 * s2 * log_u_low[t, j]))
+            lo_t = log_open[t, j]
+            exp_args[0, t, j] = lo_t
+            exp_args[1, t, j] = log_close[t, j]
+            exp_args[2, t, j] = lo_t + hi
+            exp_args[3, t, j] = lo_t + lo
+            level[t, j] = sigma_i[t, j] / (sigma_ref[j] * season[t])
+
+
+@njit(cache=True, nogil=True)
+def finish_bars(
+    prices: np.ndarray,
+    body: np.ndarray,
+    sigma_i: np.ndarray,
+    log_level: np.ndarray,
+    log_season: np.ndarray,
+    noise: np.ndarray,
+    e_volume: np.ndarray,
+    lam: float,
+    kappa: float,
+    phi: float,
+    z_clip: float,
+    mean_abs_z: float,
+    log_correction: np.ndarray,
+    memory: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Close high/low over the body and run the log-volume AR(1).
+
+    ``prices`` (4, n, I) holds exp() of the :func:`bar_arguments` output:
+    open, close, bridge high, bridge low. Exactly reproduces::
+
+        high    = maximum(bridge_high, maximum(open, close))
+        low     = minimum(bridge_low, minimum(open, close))
+        zabs    = clip(abs(body) / sigma_i, 0, z_clip) - mean_abs_z
+        drivers = lam * zabs + kappa * log_level + log_season[:, None] + noise * e_volume
+        y, memory = ar1(drivers, phi, memory)
+        returned volume argument = y - log_correction
+
+    Returns:
+        (high, low, volume_arg) and ``memory`` is updated in place.
+    """
+    n, m = body.shape
+    high = np.empty((n, m))
+    low = np.empty((n, m))
+    vol_arg = np.empty((n, m))
+    for t in range(n):
+        for j in range(m):
+            o = prices[0, t, j]
+            c = prices[1, t, j]
+            high[t, j] = max(prices[2, t, j], max(o, c))
+            low[t, j] = min(prices[3, t, j], min(o, c))
+            za = min(max(abs(body[t, j]) / sigma_i[t, j], 0.0), z_clip) - mean_abs_z
+            d = lam * za + kappa * log_level[t, j] + log_season[t] + noise[j] * e_volume[t, j]
+            y = phi * memory[j] + d
+            memory[j] = y
+            vol_arg[t, j] = y - log_correction[j]
+    return high, low, vol_arg
 
 
 def bridge_extremes(

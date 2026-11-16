@@ -31,9 +31,10 @@ marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --assets EURUSD
   minute. The same seed gives the same EURUSD whether you generate it alone or
   with 200 other instruments. Extending `--to` never changes earlier candles.
 - **Fast and bounded in memory.** Simulation streams day by day through
-  compiled (Numba) kernels. A year of EURUSD across all 8 timeframes takes about
-  5 s. A month of all 208 instruments takes about 11 s. Memory does not grow
-  with the date range.
+  compiled (Numba) kernels, and only the instruments you ask for are computed
+  past the random draws. A year of EURUSD across all 8 timeframes takes about
+  2 s. A month of all 208 instruments, all timeframes, takes about 6 s.
+  Memory does not grow with the date range.
 
 ## Installation
 
@@ -146,6 +147,16 @@ timestamp,open,high,low,close,volume
   positive.
 - Within a session, each candle opens at the previous close. The first candle
   after a closure opens with a gap.
+- Every output file is rewritten from scratch, so re-running into the same
+  directory never leaves candles from an earlier run behind.
+- Candles are buffered and written in chunks of up to 32,768 rows per file
+  (one Parquet row group each), with at most ~2 million rows buffered per
+  market.
+- A Parquet file can only be finished, not appended to, so every Parquet output
+  stays open until the run ends. When a run needs more open files than the
+  process's soft limit allows (256 by default on macOS), MarketForge raises the
+  soft limit up to the hard limit, and stops before generating anything if
+  that is not enough.
 
 ### Candle alignment
 
@@ -286,6 +297,12 @@ determines every random shock. Output is identical regardless of which
 instruments are selected, the timeframes, the output format, `--jobs`, or how
 far `--to` extends. Changes that alter output for an existing seed only ship in
 a new major version.
+
+Candle values are bit-for-bit identical on a given platform and NumPy build.
+Across machines they can differ in the last bit before rounding: NumPy picks
+its `exp`/`log` implementation by CPU (for example AVX-512), and those differ by
+one ulp on a small fraction of inputs. See
+[ADR 0007](docs/adr/0007-optimise-without-changing-a-single-bit.md).
 
 ## License
 

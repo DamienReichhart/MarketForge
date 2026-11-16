@@ -91,3 +91,24 @@ def test_markets_accept_enum_values():
 
     data = mf.generate(markets=[MarketType.STOCKS], start="2024-01-02", end="2024-01-03", seed=1)
     assert "AAPL" in data
+
+
+def test_frames_are_independent_of_each_other():
+    data = mf.generate(["EURUSD", "USDJPY"], start="2024-01-02", end="2024-01-03", seed=2)
+    eur, jpy = data["EURUSD"]["m1"], data["USDJPY"]["m1"]
+    before = jpy.copy()
+    eur.iloc[0, 0] = -1.0
+    pd.testing.assert_frame_equal(jpy, before)
+
+
+def test_generation_error_is_not_masked_by_closing_writers(tmp_path, monkeypatch):
+    import marketforge.api as api
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("simulation failed")
+
+    monkeypatch.setattr(api, "execute", boom)
+    with pytest.raises(RuntimeError, match="simulation failed"):
+        mf.generate_to_disk(tmp_path, ["EURUSD"], start="2024-01-02", end="2024-01-03", seed=1)
+    # Writers were still closed: every file exists and is valid (empty).
+    assert pd.read_csv(tmp_path / "forex" / "EURUSD_m1.csv").empty

@@ -7,9 +7,11 @@
 """
 Whole-market simulation engine.
 
-A :class:`MarketSimulator` simulates every instrument of one market jointly,
-walking time one UTC day at a time and carrying its state (prices, GARCH
-variance, regime, volume memory) from day to day (see docs/adr/0001).
+A :class:`MarketSimulator` simulates one market jointly, walking time one UTC
+day at a time and carrying its state (prices, GARCH variance, regime, volume
+memory) from day to day (see docs/adr/0001). Random draws always cover the
+whole market; the computation after them covers only the requested
+instruments and their factors, which is bit-identical (see docs/adr/0007).
 
 Per open minute t and simulated factor f:
 
@@ -34,9 +36,9 @@ independent of which instruments are written and of the end of the range.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field, replace
-from functools import cache
+from functools import cache, lru_cache
 
 import numpy as np
 
@@ -45,7 +47,14 @@ from marketforge.config.defaults import MarketDefaults, get_market_defaults
 from marketforge.config.settings import AnomalyConfig, AnomalyType, MarketType
 from marketforge.core.factors import FactorStructure, forex_structure
 from marketforge.core.innovations import correlated_shocks
-from marketforge.core.kernels import ar1, bridge_extremes, gjr_garch, regime_chain
+from marketforge.core.kernels import (
+    bar_arguments,
+    factor_paths,
+    finish_bars,
+    gjr_garch,
+    project_signed,
+    regime_chain,
+)
 from marketforge.core.seasonality import SessionSeasonality
 from marketforge.trading_calendar import (
     MINUTES_PER_DAY,
@@ -123,13 +132,13 @@ class DayResult:
 
 @dataclass
 class _State:
-    log_price: np.ndarray  # (F,) factor log close
-    garch_variance: np.ndarray  # (F,)
-    garch_shock: np.ndarray  # (F,)
+    log_price: np.ndarray  # (Fa,) log close of each active factor
+    garch_variance: np.ndarray  # (Fa,)
+    garch_shock: np.ndarray  # (Fa,)
     regime: int
     drift_mult: float
     vol_mult: float
-    volume_memory: np.ndarray  # (I,)
+    volume_memory: np.ndarray  # (I,) one per selected instrument
     last_timestamp: int | None = None
 
 
@@ -141,7 +150,29 @@ def _normalised_regime_targets(
     the mean drift multiplier is 1 and the mean squared volatility multiplier
     is 1. Without this the configured annual drift and volatility were not
     what the simulation produced (e.g. stocks drifted down on average).
+
+    The calibration runs a multi-million-step chain (~0.15 s and up to ~200 MB
+    of temporaries), so its result is cached per distinct set of parameters.
     """
+    key = (
+        cumulative.shape,
+        np.ascontiguousarray(cumulative, dtype=float).tobytes(),
+        np.ascontiguousarray(drift, dtype=float).tobytes(),
+        np.ascontiguousarray(vol, dtype=float).tobytes(),
+        int(initial),
+    )
+    d, v = _cached_regime_targets(key)
+    return d.copy(), v.copy()
+
+
+@lru_cache(maxsize=32)
+def _cached_regime_targets(
+    key: tuple[tuple[int, ...], bytes, bytes, bytes, int],
+) -> tuple[np.ndarray, np.ndarray]:
+    shape, cum_bytes, drift_bytes, vol_bytes, initial = key
+    cumulative = np.frombuffer(cum_bytes).reshape(shape).copy()
+    drift = np.frombuffer(drift_bytes).copy()
+    vol = np.frombuffer(vol_bytes).copy()
     # Simulate long enough to visit every regime many times (>= ~2000 mean
     # durations of the stickiest one), with a fixed seed: deterministic.
     stay = np.diff(
@@ -163,7 +194,10 @@ def _normalised_regime_targets(
     burn = min(n // 10, int(20 * longest))
     vol_scale = 1.0 / np.sqrt(np.mean(v[burn:] ** 2))
     drift_shift = 1.0 - float(np.mean(d[burn:]))
-    return drift + drift_shift, vol * vol_scale
+    targets = (drift + drift_shift, vol * vol_scale)
+    for a in targets:
+        a.setflags(write=False)  # shared by every simulator: never mutated
+    return targets
 
 
 def _closure_variance(minutes: np.ndarray, defaults: MarketDefaults) -> np.ndarray:
@@ -187,30 +221,50 @@ def _effective_minutes_per_year(market: MarketType, scale: float, exponent: floa
 
 
 class MarketSimulator:
-    """Stateful, day-by-day simulator for one market."""
+    """
+    Stateful, day-by-day simulator for one market.
 
-    def __init__(self, spec: MarketSpec, seed: int) -> None:
+    Every random number is drawn for the whole market with fixed shapes, so an
+    instrument's candles never depend on which other instruments are requested.
+    The work after the draws is done only for ``instruments`` (default: every
+    instrument of the market) and the factors they are built from, and the
+    columns of each :class:`DayResult` follow the order of ``instruments``.
+    """
+
+    def __init__(
+        self, spec: MarketSpec, seed: int, instruments: Sequence[str] | None = None
+    ) -> None:
         if seed < 0:
             raise ValueError(f"seed must be a non-negative integer, got {seed}")
         self.spec = spec
         self.seed = int(seed)
         d = spec.defaults
         self.calendar: TradingCalendar = get_calendar(spec.market)
-        self.seasonality = SessionSeasonality(self.calendar)
+        self.seasonality = _seasonality(spec.market)
 
         structure = spec.structure
-        self._identity = structure.is_identity
-        self._weights_t = structure.weights.T.copy()  # (F, I)
-        n_f = len(structure.factors)
-        n_i = len(structure.instruments)
+        symbols = structure.instruments
+        selected = list(symbols) if instruments is None else list(instruments)
+        unknown = [s for s in selected if s not in symbols]
+        if unknown:
+            raise ValueError(f"Not instruments of the {spec.market.value} market: {unknown}")
+        if len(set(selected)) != len(selected):
+            raise ValueError(f"Duplicate instruments requested: {selected}")
+        if not selected:
+            raise ValueError("At least one instrument is required")
+        self.instruments: tuple[str, ...] = tuple(selected)
+        inst = np.array([symbols.index(s) for s in selected], dtype=np.intp)
+
+        self._n_factors = len(structure.factors)
+        self._n_instruments = len(symbols)
         by_symbol = {a.symbol: a for a in spec.instruments}
         factors = [by_symbol[s] for s in structure.factors]
 
         minutes_per_year = _effective_minutes_per_year(
             spec.market, d.closure_variance_scale, d.closure_variance_exponent
         )
-        self._sigma = np.array([a.volatility for a in factors]) / np.sqrt(minutes_per_year)
-        self._mu = np.array([a.drift for a in factors]) / minutes_per_year
+        sigma = np.array([a.volatility for a in factors]) / np.sqrt(minutes_per_year)
+        mu = np.array([a.drift for a in factors]) / minutes_per_year
         self._cholesky = np.linalg.cholesky(spec.factor_correlation)
         self._nu = float(d.innovation_nu) if d.innovation_nu else None
 
@@ -228,54 +282,53 @@ class MarketSimulator:
             r0,
         )
 
-        # Cross volatilities: (factor indices, weights) per derived instrument.
-        self._cross_terms: list[tuple[int, np.ndarray, np.ndarray]] = []
-        if not self._identity:
-            for i in range(n_i):
-                nz = np.nonzero(structure.weights[i])[0]
-                if len(nz) == 1 and structure.weights[i, nz[0]] == 1.0:
-                    continue
-                self._cross_terms.append((i, nz, structure.weights[i, nz]))
-        ref = self._instrument_sigma(np.tile(self._sigma, (1, 1)))[0]
-        self._sigma_ref = ref  # (I,) unconditional per-minute sigma
+        # ---- active subset: the selected instruments and their factors ----
+        self._projection = _Projection.build(structure, inst, spec.factor_correlation)
+        fa = self._projection.factors
+        self._factors = fa
+        self._all_factors = fa.size == self._n_factors and bool(np.all(fa == np.arange(fa.size)))
+        self._inst = inst
+        self._all_instruments = inst.size == self._n_instruments and bool(
+            np.all(inst == np.arange(inst.size))
+        )
+        self._sigma = sigma[fa]
+        self._mu = mu[fa]
+        # Unconditional per-minute sigma of each selected instrument.
+        self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
         vp = d.volume_params
         self._volume = (vp.phi, vp.lam, vp.kappa)
         # volume_volatility is the stationary std of the noise part of log-volume;
         # the AR(1) innovation that produces it is smaller by sqrt(1 - phi^2).
-        self._volume_noise = np.array(
-            [by_symbol[s].volume_volatility for s in structure.instruments]
-        ) * np.sqrt(1.0 - vp.phi**2)
-        var_u = vp.lam**2 * _VAR_ABS_Z + self._volume_noise**2 + self.seasonality.log_variance
-        self._volume_log_correction = 0.5 * var_u / (1.0 - vp.phi**2)
-        self._base_volume = np.array([by_symbol[s].volume_base for s in structure.instruments])
+        noise = np.array([by_symbol[s].volume_volatility for s in symbols]) * np.sqrt(
+            1.0 - vp.phi**2
+        )
+        var_u = vp.lam**2 * _VAR_ABS_Z + noise**2 + self.seasonality.log_variance
+        self._volume_noise = noise[inst]
+        self._volume_log_correction = (0.5 * var_u / (1.0 - vp.phi**2))[inst]
+        self._base_volume = np.array([by_symbol[s].volume_base for s in symbols])[inst]
 
         self._state = _State(
-            log_price=np.log([a.start_price for a in factors]),
-            garch_variance=np.ones(n_f),
-            garch_shock=np.zeros(n_f),
+            log_price=np.log([a.start_price for a in factors])[fa],
+            garch_variance=np.ones(fa.size),
+            garch_shock=np.zeros(fa.size),
             regime=r0,
             drift_mult=float(self._regime_drift[r0]),
             vol_mult=float(self._regime_vol[r0]),
-            volume_memory=np.zeros(n_i),
+            volume_memory=np.zeros(inst.size),
         )
 
     # ------------------------------------------------------------- helpers
-    def _instrument_sigma(self, factor_sigma: np.ndarray) -> np.ndarray:
-        """Per-instrument std from factor stds (rows = minutes)."""
-        if self._identity:
-            return factor_sigma
-        out = np.abs(factor_sigma @ self._weights_t)  # exact for anchors
-        corr = self.spec.factor_correlation
-        for i, idx, w in self._cross_terms:
-            s = factor_sigma[:, idx] * w
-            out[:, i] = np.sqrt(
-                np.maximum(np.einsum("nj,jk,nk->n", s, corr[np.ix_(idx, idx)], s), 0.0)
-            )
-        return np.asarray(out)
-
     def _correlated(self, z: np.ndarray, chi2: np.ndarray) -> np.ndarray:
-        return correlated_shocks(z, chi2, self._cholesky, self._nu)
+        """Correlated shocks of the active factors (always computed market-wide)."""
+        full = correlated_shocks(z, chi2, self._cholesky, self._nu)
+        return full if self._all_factors else np.ascontiguousarray(full[:, self._factors])
+
+    def _select(self, draws: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        """Rows ``rows`` and the selected instruments' columns of a market-wide draw."""
+        if self._all_instruments:
+            return np.asarray(draws[rows])
+        return np.asarray(draws[np.ix_(rows, self._inst)])
 
     def _day_rng(self, day: int, stream: int) -> np.random.Generator:
         seq = np.random.SeedSequence([self.seed, _MARKET_STREAM[self.spec.market], day, stream])
@@ -291,19 +344,19 @@ class MarketSimulator:
             return None
         ts = day_ts[rows]
         st = self._state
-        n_f = self._sigma.size
-        n_i = self._base_volume.size
+        n_f = self._n_factors
+        n_i = self._n_instruments
         nu = self._nu if self._nu is not None else 5.0
 
-        # Fixed-shape draws, in a fixed order (reproducibility contract).
+        # Fixed-shape, market-wide draws in a fixed order (reproducibility contract).
         rng = self._day_rng(day, 0)
         z_all = rng.standard_normal((MINUTES_PER_DAY, n_f))
         chi_all = rng.chisquare(nu, MINUTES_PER_DAY)
         z_gap = rng.standard_normal((_MAX_GAPS_PER_DAY, n_f))
         chi_gap = rng.chisquare(nu, _MAX_GAPS_PER_DAY)
         u_regime = rng.random(MINUTES_PER_DAY)
-        u_high = 1.0 - rng.random((MINUTES_PER_DAY, n_i))
-        u_low = 1.0 - rng.random((MINUTES_PER_DAY, n_i))
+        u_high = rng.random((MINUTES_PER_DAY, n_i))
+        u_low = rng.random((MINUTES_PER_DAY, n_i))
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
 
         z = self._correlated(z_all[rows], chi_all[rows])
@@ -322,12 +375,10 @@ class MarketSimulator:
             z, *self._garch, st.garch_variance, st.garch_shock
         )
         season = self.seasonality.factor(ts)
-        level = np.sqrt(h) * vol_m[:, None]  # (n, F) turbulence
-        sigma_f = self._sigma * level * season[:, None]
-        returns_f = self._mu * drift_m[:, None] + sigma_f * z
 
-        # Gaps after closures.
-        gap_f = np.zeros_like(returns_f)
+        # Gaps after closures: at most a few rows a day.
+        gap_rows = np.empty(0, dtype=np.int64)
+        gap = np.empty((0, self._sigma.size))
         if st.last_timestamp is not None:
             prev = np.concatenate(([st.last_timestamp], ts[:-1]))
             closed = (ts - prev) // 60 - 1
@@ -338,49 +389,65 @@ class MarketSimulator:
                 k = gap_rows.size
                 zg = self._correlated(z_gap[:k], chi_gap[:k])
                 var_units = _closure_variance(closed[gap_rows], self.spec.defaults)
-                gap_f[gap_rows] = (
-                    self._sigma * level[gap_rows] * np.sqrt(var_units)[:, None] * zg
+                level = np.sqrt(h[gap_rows]) * vol_m[gap_rows, None]
+                gap = (
+                    self._sigma * level * np.sqrt(var_units)[:, None] * zg
                     + self._mu * var_units[:, None]
                 )
 
-        # Factor log path, then project to instruments.
-        log_close_f = st.log_price + np.cumsum(gap_f + returns_f, axis=0)
-        # Open = previous close (+ gap), built from the same floats so that an
-        # in-session open is bit-identical to the previous close.
-        log_open_f = np.vstack([st.log_price[None, :], log_close_f[:-1]]) + gap_f
+        # Factor paths, then instruments.
+        sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
+            h, vol_m, drift_m, season, z, self._sigma, self._mu, gap_rows, gap, st.log_price
+        )
         st.log_price = log_close_f[-1].copy()
         st.last_timestamp = int(ts[-1])
-        if self._identity:
-            log_open, log_close, body = log_open_f, log_close_f, returns_f
-            sigma_i = sigma_f
-            level_i = sigma_f / (self._sigma * season[:, None])
-        else:
-            wt = self._weights_t
-            log_open, log_close, body = log_open_f @ wt, log_close_f @ wt, returns_f @ wt
-            sigma_i = self._instrument_sigma(sigma_f)
-            level_i = sigma_i / (self._sigma_ref * season[:, None])
+        proj = self._projection
+        log_open = proj.apply(log_open_f)
+        log_close = proj.apply(log_close_f)
+        body = proj.apply(returns_f)
+        sigma_i = proj.sigma(sigma_f)
 
-        hi, lo = bridge_extremes(
-            body, sigma_i * self.spec.defaults.intrabar_volatility_ratio, u_high[rows], u_low[rows]
+        # Intrabar extremes, prices and volume. Transcendentals stay in NumPy
+        # (bit-exactness, see docs/adr/0007); everything else is fused.
+        n, m = body.shape
+        prices = np.empty((4, n, m))
+        level_i = np.empty((n, m))
+        bar_arguments(
+            log_open,
+            log_close,
+            body,
+            sigma_i,
+            self.spec.defaults.intrabar_volatility_ratio,
+            np.log(1.0 - self._select(u_high, rows)),
+            np.log(1.0 - self._select(u_low, rows)),
+            self._sigma_ref,
+            season,
+            prices,
+            level_i,
         )
-        open_ = np.exp(log_open)
-        close = np.exp(log_close)
-        high = np.maximum(np.exp(log_open + hi), np.maximum(open_, close))
-        low = np.minimum(np.exp(log_open + lo), np.minimum(open_, close))
-
-        # Volume: log-AR(1) driven by the standardised move, turbulence and seasonality.
+        np.exp(prices, out=prices)  # open, close, bridge high, bridge low
+        np.log(level_i, out=level_i)
         phi, lam, kappa = self._volume
-        zabs = np.clip(np.abs(body) / sigma_i, 0.0, _Z_CLIP) - _MEAN_ABS_Z
-        drivers = (
-            lam * zabs
-            + kappa * np.log(level_i)
-            + np.log(season)[:, None]
-            + self._volume_noise * e_volume[rows]
+        high, low, volume = finish_bars(
+            prices,
+            body,
+            sigma_i,
+            level_i,
+            np.log(season),
+            self._volume_noise,
+            self._select(e_volume, rows),
+            lam,
+            kappa,
+            phi,
+            _Z_CLIP,
+            _MEAN_ABS_Z,
+            self._volume_log_correction,
+            st.volume_memory,
         )
-        y, st.volume_memory = ar1(drivers, phi, st.volume_memory)
-        volume = self._base_volume * np.exp(y - self._volume_log_correction)
+        np.exp(volume, out=volume)
+        volume *= self._base_volume  # base * exp(.) == exp(.) * base
 
-        result = DayResult(ts, open_, high, low, close, volume, regimes)
+        result = DayResult(ts, prices[0], high, low, prices[1], volume, regimes)
         if self.spec.anomaly.types:
             self._inject_anomalies(day, rows, result)
         if self.spec.defaults.integer_volume:
@@ -399,21 +466,21 @@ class MarketSimulator:
     # ----------------------------------------------------------- anomalies
     def _inject_anomalies(self, day: int, rows: np.ndarray, res: DayResult) -> None:
         cfg = self.spec.anomaly
-        n_i = res.open.shape[1]
+        n_i = self._n_instruments
         rng = self._day_rng(day, 1)
         u_spike = rng.random((MINUTES_PER_DAY, n_i))
         u_dir = rng.random((MINUTES_PER_DAY, n_i))
         u_mag = rng.random((MINUTES_PER_DAY, n_i))
-        u_crash = np.asarray(rng.random(n_i))
-        u_start = np.asarray(rng.random(n_i))
+        u_crash = np.asarray(rng.random(n_i))[self._inst]
+        u_start = np.asarray(rng.random(n_i))[self._inst]
 
         if AnomalyType.SPIKES in cfg.types:
             lo_m, hi_m = cfg.spike_magnitude_range
-            hit = u_spike[rows] < cfg.spike_probability
+            hit = self._select(u_spike, rows) < cfg.spike_probability
             if hit.any():
-                mag = lo_m + (hi_m - lo_m) * u_mag[rows]
+                mag = lo_m + (hi_m - lo_m) * self._select(u_mag, rows)
                 mid = 0.5 * (res.open + res.close)
-                up = hit & (u_dir[rows] < 0.5)
+                up = hit & (self._select(u_dir, rows) < 0.5)
                 down = hit & ~up
                 res.high = np.where(up, res.high + mid * mag, res.high)
                 res.low = np.where(down, np.maximum(res.low - mid * mag, 0.5 * mid), res.low)
@@ -427,6 +494,99 @@ class MarketSimulator:
                 for i in np.nonzero(u_crash < cfg.flash_crash_probability)[0]:
                     s = int(u_start[i] * (n - length - 1))
                     _apply_envelope(res, int(i), s, envelope)
+
+
+@cache
+def _seasonality(market: MarketType) -> SessionSeasonality:
+    """Shared seasonality of a market (normalised once over a reference year)."""
+    return SessionSeasonality(get_calendar(market))
+
+
+@dataclass(frozen=True)
+class _Projection:
+    """
+    How the selected instruments derive from the active factors.
+
+    ``factors`` are the indices (into the market's factors) of the factors that
+    are simulated. Instruments are either the factors themselves (crypto,
+    stocks), a signed sum of at most two of them with weights +-1 (every
+    built-in forex pair), or, for user-defined forex structures beyond that,
+    a general projection that falls back to the full matrix product.
+    """
+
+    factors: np.ndarray  # (Fa,) indices into the market's factors
+    kind: str  # "identity" | "signed" | "matrix"
+    index: np.ndarray  # signed: (I, 2) positions in the active factors, -1 = unused
+    sign: np.ndarray  # signed: (I, 2)
+    weights_t: np.ndarray  # matrix: (F, I_all) full transposed weights
+    instruments: np.ndarray  # matrix: (I,) columns of the full product to keep
+    anchors: tuple[tuple[int, int], ...]  # (column, active factor position)
+    crosses: tuple[tuple[int, np.ndarray, np.ndarray, np.ndarray], ...]
+    # crosses: (column, active factor positions, weights, correlation sub-matrix)
+
+    @classmethod
+    def build(
+        cls, structure: FactorStructure, inst: np.ndarray, correlation: np.ndarray
+    ) -> _Projection:
+        empty = np.empty((0, 2), dtype=np.int64)
+        if structure.is_identity:
+            return cls(inst, "identity", empty, empty.astype(float), np.empty((0, 0)), inst, (), ())
+        weights = structure.weights[inst]  # (I, F)
+        nonzero = [np.nonzero(row)[0] for row in weights]
+        simple = all(
+            nz.size <= 2 and np.all(np.abs(row[nz]) == 1.0)
+            for row, nz in zip(weights, nonzero, strict=True)
+        )
+        if simple:
+            factors = np.unique(np.concatenate(nonzero))
+            kind = "signed"
+        else:
+            factors = np.arange(structure.weights.shape[1])
+            kind = "matrix"
+        pos = {int(f): p for p, f in enumerate(factors)}
+        index = np.full((inst.size, 2), -1, dtype=np.int64)
+        sign = np.zeros((inst.size, 2))
+        anchors: list[tuple[int, int]] = []
+        crosses: list[tuple[int, np.ndarray, np.ndarray, np.ndarray]] = []
+        for j, (row, nz) in enumerate(zip(weights, nonzero, strict=True)):
+            if kind == "signed":
+                index[j, : nz.size] = [pos[int(f)] for f in nz]
+                sign[j, : nz.size] = row[nz]
+            if nz.size == 1 and row[nz[0]] == 1.0:
+                anchors.append((j, pos[int(nz[0])]))
+            else:
+                local = np.array([pos[int(f)] for f in nz], dtype=np.intp)
+                crosses.append((j, local, row[nz], correlation[np.ix_(nz, nz)]))
+        return cls(
+            factors,
+            kind,
+            index,
+            sign,
+            structure.weights.T.copy() if kind == "matrix" else np.empty((0, 0)),
+            inst,
+            tuple(anchors),
+            tuple(crosses),
+        )
+
+    def apply(self, x: np.ndarray) -> np.ndarray:
+        """Instrument values from active-factor values (rows = minutes)."""
+        if self.kind == "identity":
+            return x
+        if self.kind == "signed":
+            return project_signed(x, self.index, self.sign)
+        return np.ascontiguousarray((x @ self.weights_t)[:, self.instruments])
+
+    def sigma(self, factor_sigma: np.ndarray) -> np.ndarray:
+        """Per-instrument std from active-factor stds (rows = minutes)."""
+        if self.kind == "identity":
+            return factor_sigma
+        out = np.empty((factor_sigma.shape[0], self.instruments.size))
+        for j, p in self.anchors:
+            out[:, j] = factor_sigma[:, p]
+        for j, idx, w, corr in self.crosses:
+            s = factor_sigma[:, idx] * w
+            out[:, j] = np.sqrt(np.maximum(np.einsum("nj,jk,nk->n", s, corr, s), 0.0))
+        return out
 
 
 def _flash_crash_envelope(length: int, magnitude: float) -> np.ndarray:
