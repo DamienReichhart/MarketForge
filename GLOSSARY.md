@@ -61,6 +61,10 @@ _Avoid_: day start, rollover
 The duration a candle summarises: `m1`, `m5`, `m15`, `m30`, `H1`, `H4`, `D1`, `W1`.
 _Avoid_: resolution, interval, period
 
+**Tick volume**:
+The number of price updates in a minute; the volume reported for forex, which has no consolidated traded volume.
+_Avoid_: lots, notional (for forex volume)
+
 **Candle**:
 One open/high/low/close/volume record for an instrument over one timeframe bucket.
 _Avoid_: bar (in prose), row, tick

@@ -154,11 +154,18 @@ half-built.
 
 ## Markets
 
-| Market | Instruments | Hours | Notes |
-| --- | --- | --- | --- |
-| crypto | 53 (BTCUSD, ETHUSD, SOLUSD, ...) | 24/7 | Heaviest tails (Student-t, 6 degrees of freedom). Weekends are quieter. |
-| forex | 81: majors, crosses, exotics, metals (XAUUSD), index and oil CFDs | Sun 17:00 to Fri 17:00 NY | 41 anchor pairs are simulated and 40 crosses derived. Weekend gaps. |
-| stocks | 74 US large caps (AAPL, MSFT, NVDA, JPM, ...) | NYSE session, holidays, early closes | Overnight and weekend gaps. U-shaped intraday volatility and volume. |
+| Market | Instruments | Hours | Volume unit | Notes |
+| --- | --- | --- | --- | --- |
+| crypto | 53 (BTCUSD, ETHUSD, SOLUSD, ...) | 24/7 | base asset (BTC for BTCUSD) | Heaviest tails (Student-t, 6 degrees of freedom). Activity peaks at the US open; weekends are quieter. Calibrated on real Binance m1 data. |
+| forex | 81: majors, crosses, exotics, metals (XAUUSD), index and oil CFDs | Sun 17:00 to Fri 17:00 NY | ticks per minute (integers) | 41 anchor pairs are simulated and 40 crosses derived. Weekend gaps. |
+| stocks | 74 US large caps (AAPL, MSFT, NVDA, JPM, ...) | NYSE session, holidays, early closes | shares | Overnight and weekend gaps. U-shaped intraday volatility and volume. |
+
+**Known simplifications.** The index and oil CFDs in the forex catalog
+(GRXEUR, SPXUSD, WTIUSD, ...) trade on the forex calendar, nearly 24/5. Their
+real sessions and daily maintenance breaks are not modelled. Forex is open on
+Christmas and New Year's Day. NYSE one-off closures (9/11, Hurricane Sandy,
+national days of mourning) are not modelled. Forex tick-volume levels are
+estimates, not measurements.
 
 Annual volatility and drift in the catalog are what you get. Regime multipliers
 are normalised so they change *when* volatility and drift happen, not how much.
@@ -180,7 +187,7 @@ market = "crypto"
 start_price = 1.50
 volatility = 0.90
 drift = 0.0                   # annualised log drift
-volume_base = 20000           # typical volume per minute
+volume_base = 20000           # mean volume per minute (coins / ticks / shares)
 volume_volatility = 0.5       # lognormal sigma of volume noise
 correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
 ```
@@ -206,6 +213,8 @@ Per open minute *t* and simulated series *f*:
   - h<sub>t</sub> is a GJR-GARCH(1,1) multiplier with unit mean, which gives
     clustering and the leverage effect.
   - g<sub>t</sub> is the regime multiplier, smoothed so regime changes ramp in.
+    Regimes last hours to days: crypto trends average about 1.7 days and
+    crashes about 13 hours.
   - s<sub>t</sub> is intraday seasonality.
 - **Return** (open to close): μ<sub>f</sub> · d<sub>t</sub> + volatility · *z*,
   where d<sub>t</sub> is the regime drift multiplier.
@@ -213,7 +222,9 @@ Per open minute *t* and simulated series *f*:
   variance grows with *C*. Roughly 30% of a session's variance builds up
   overnight for stocks; a typical EURUSD weekend gap is about 10 pips.
 - **High/low**: the exact maximum and minimum of a Brownian bridge from open to
-  close, sampled from their closed-form distribution.
+  close, sampled from their closed-form distribution. The excursion uses a
+  fraction of the bar's volatility (0.62 for crypto), because real minutes
+  wander less inside the bar than a pure random walk.
 - **Volume**: a log-AR(1) process. It rises with the size of the standardized
   move, with the volatility level and with intraday seasonality, and has its
   own persistent noise.
@@ -232,17 +243,34 @@ The validator measures open-to-close minute returns (overnight and weekend gaps
 excluded) against per-market bands:
 
 - **Heavy tails**: excess kurtosis in a realistic range.
-- **Volatility clustering**: autocorrelation of |returns| that is significant
-  and decays slowly.
+- **Volatility clustering**: the autocorrelation of |returns| over the first
+  20 minutes is significant.
+- **Long memory**: |returns| are still autocorrelated an hour later.
 - **Leverage effect**: returns are not positively correlated with next-period
   volatility. The band allows for sampling noise, and is looser for forex,
   where crosses have no natural "down".
 - **Range efficiency**: mean(high − low) / mean(|close − open|). A pure random
   walk gives 2.0.
 
-With two-week windows, about 99.8% of instrument checks pass across seeds. The
-rare failures are single heavy-tailed assets on a particular seed, as with real
-data.
+The bands are anchored to the same statistics measured on real m1 data. See
+[`marketforge/validation/reference.py`](marketforge/validation/reference.py)
+and [ADR 0006](docs/adr/0006-validation-bands-are-the-realism-contract.md).
+
+- **Crypto** is anchored on Binance BTC/ETH/SOL 1-minute klines (Feb 2024).
+  Generated crypto data falls inside the measured real range for |r|
+  autocorrelation from 15 minutes to 1 day, clustering, leverage, range
+  efficiency and volume dynamics.
+- **Forex and stocks** use *provisional* bands until real reference data is
+  measured for them, and their reports say so.
+
+To anchor them, or to compare against your own data:
+
+```bash
+python scripts/measure_real_data.py --name EURUSD ./my_eurusd_m1/*.csv   # timestamp,open,high,low,close,volume
+```
+
+With two-week windows and three seeds, 621 of 624 instrument checks pass. All
+3 failures are stocks, on the provisional bands, at the edge of sampling noise.
 
 ## Reproducibility contract
 
