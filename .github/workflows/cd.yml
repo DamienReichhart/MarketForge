@@ -115,11 +115,10 @@ jobs:
           subject-path: dist/*
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        # Trusted publishing only: PyPI authenticates this job by its OIDC
+        # identity (repository, cd.yml, environment Deploy). No API token
+        # exists; do not add one. Also uploads PEP 740 attestations to PyPI.
         with:
-          # Trusted publishing (OIDC) is used when this secret is unset or
-          # empty. The token is a transition fallback: configure the trusted
-          # publisher (docs/ci-cd.md), delete the secret, then drop this line.
-          password: ${{ secrets.PYPI_API_KEY }} # zizmor: ignore[use-trusted-publishing]
           print-hash: true
 
   github-release:

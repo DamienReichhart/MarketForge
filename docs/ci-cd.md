@@ -63,7 +63,8 @@ guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► git
    all of it passes.
 3. **publish** downloads the exact `dist` artifact CI built and tested, checks
    it holds only this version's sdist and wheel, records a signed build
-   provenance attestation, and uploads to PyPI.
+   provenance attestation, and uploads to PyPI through trusted publishing
+   (OIDC, no stored token).
 4. **github-release** creates the tag `v<version>` on the released commit and a
    GitHub release with the CHANGELOG section as notes and the distributions
    attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
@@ -86,8 +87,9 @@ to check a release before merging. A non-dry run is refused outside `main`.
 ### When a release fails half-way
 
 - Failed in **guard** or **ci**: nothing was published. Fix and push again.
-- Failed in **publish** (for example a PyPI credential problem): nothing was
-  published. Fix the configuration, then *Re-run failed jobs*.
+- Failed in **publish** (for example `invalid-publisher`: the trusted
+  publisher on PyPI does not match the repository, `cd.yml` or `Deploy`):
+  nothing was published. Fix the configuration, then *Re-run failed jobs*.
 - Failed in **github-release** or **verify** after PyPI accepted the upload:
   use *Re-run failed jobs*. The release job is idempotent: it reuses the tag
   if it already points at this commit. Do **not** push a new commit to retry:
@@ -99,11 +101,12 @@ These are GitHub and PyPI settings; the workflows cannot apply them.
 
 1. **Required check.** In *Settings → Rules → Rulesets*, protect `main` and
    `dev`: require a pull request and the status check **CI OK**.
-2. **Trusted publishing (recommended).** On PyPI, *marketforge → Settings →
-   Publishing → Add a new publisher*: owner `DamienReichhart`, repository
-   `MarketForge`, workflow `cd.yml`, environment `Deploy`. Then delete the
-   `PYPI_API_KEY` secret and the `password:` line in `cd.yml`. Until then the
-   workflow falls back to that token, and PyPI attestations are skipped.
+2. **Trusted publishing (configured).** PyPI accepts uploads only from the
+   publisher registered under *marketforge → Manage → Publishing*: owner
+   `DamienReichhart`, repository `MarketForge`, workflow `cd.yml`,
+   environment `Deploy`. There is no PyPI API token, in GitHub or anywhere
+   else. Renaming `cd.yml` or the `Deploy` environment breaks publishing until
+   the publisher on PyPI is updated to match.
 3. **`Deploy` environment.** In *Settings → Environments → Deploy*, limit
    deployment branches to `main`. Add required reviewers if you want to
    approve each upload by hand.
