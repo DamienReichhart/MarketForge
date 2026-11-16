@@ -11,7 +11,7 @@ Validation report: run stylized-fact metrics against per-market target bands.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+
 import numpy as np
 
 from marketforge.config.settings import MarketType
@@ -23,8 +23,8 @@ from marketforge.validation.reference import bands_for
 class MetricResult:
     name: str
     value: float
-    low: Optional[float]
-    high: Optional[float]
+    low: float | None
+    high: float | None
     passed: bool
 
 
@@ -33,7 +33,7 @@ class ValidationReport:
     market_type: MarketType
     metrics: dict[str, MetricResult] = field(default_factory=dict)
 
-    def get(self, name: str) -> Optional[MetricResult]:
+    def get(self, name: str) -> MetricResult | None:
         return self.metrics.get(name)
 
     @property

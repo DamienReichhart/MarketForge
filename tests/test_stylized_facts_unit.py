@@ -1,10 +1,10 @@
 import numpy as np
+
 from marketforge.validation.stylized_facts import (
     excess_kurtosis,
-    volatility_clustering_strength,
     leverage_correlation,
     range_efficiency,
-    ljung_box_pvalue,
+    volatility_clustering_strength,
 )
 
 

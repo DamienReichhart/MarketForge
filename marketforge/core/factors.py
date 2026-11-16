@@ -39,7 +39,7 @@ class FactorStructure:
     weights: np.ndarray
 
     @classmethod
-    def identity(cls, symbols: list[str]) -> "FactorStructure":
+    def identity(cls, symbols: list[str]) -> FactorStructure:
         """Every instrument is its own factor."""
         syms = tuple(symbols)
         return cls(factors=syms, instruments=syms, weights=np.eye(len(syms)))

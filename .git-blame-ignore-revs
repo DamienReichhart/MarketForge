@@ -1,0 +1,5 @@
+# Mechanical commits hidden from `git blame`.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply ruff format
+dac650d553d1684923689857a3888c787744eefc

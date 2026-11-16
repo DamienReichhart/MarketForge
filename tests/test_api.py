@@ -30,7 +30,7 @@ def test_generate_returns_utc_indexed_frames():
 
 
 def test_output_does_not_depend_on_what_else_is_selected():
-    kw = dict(start="2024-01-02", end="2024-01-04", seed=7, timeframes=["m1"])
+    kw = {"start": "2024-01-02", "end": "2024-01-04", "seed": 7, "timeframes": ["m1"]}
     alone = mf.generate(["EURUSD"], **kw)["EURUSD"]["m1"]
     with_others = mf.generate(["GBPUSD", "EURUSD", "AAPL"], **kw)["EURUSD"]["m1"]
     whole_market = mf.generate(markets=["forex"], **kw)["EURUSD"]["m1"]
@@ -62,7 +62,7 @@ def test_market_filter_and_errors():
         mf.generate(["NOPE"], start="2024-01-01", end="2024-01-02")
     with pytest.raises(ValueError, match="belong to the requested markets"):
         mf.generate(["AAPL"], markets=["crypto"], start="2024-01-01", end="2024-01-02")
-    with pytest.raises(ValueError, match="removed in 3.0"):
+    with pytest.raises(ValueError, match=r"removed in 3\.0"):
         mf.generate(["AAPL"], start="2024-01-01", end="2024-01-02", anomalies=["gaps"])
     with pytest.raises(ValueError, match="before end"):
         mf.generate(["AAPL"], start="2024-01-02", end="2024-01-01")
@@ -75,7 +75,7 @@ def test_closed_market_range_returns_empty_frames():
 
 @pytest.mark.parametrize("fmt", ["csv", "parquet"])
 def test_generate_to_disk_matches_in_memory(tmp_path, fmt):
-    kw = dict(start="2024-01-02", end="2024-01-04", seed=5, timeframes=["m1", "H1"])
+    kw = {"start": "2024-01-02", "end": "2024-01-04", "seed": 5, "timeframes": ["m1", "H1"]}
     report = mf.generate_to_disk(tmp_path, ["AAPL", "BTCUSD"], fmt=fmt, jobs=2, **kw)
     assert report.seed == 5 and report.n_files == 4
     path = report.paths["stocks"]["AAPL"]["H1"]

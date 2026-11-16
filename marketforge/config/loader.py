@@ -9,15 +9,14 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
-from typing import Optional, Union
+from functools import cache
 
 from marketforge.config.catalog.base import MarketConfig
 from marketforge.config.settings import MarketType
 
 
-@lru_cache(maxsize=None)
-def load_market_config(market_type: Union[MarketType, str]) -> MarketConfig:
+@cache
+def load_market_config(market_type: MarketType | str) -> MarketConfig:
     """Built-in catalog of one market (cached; treat as read-only)."""
     market = MarketType(
         str(market_type.value if isinstance(market_type, MarketType) else market_type).lower()
@@ -36,7 +35,7 @@ def load_market_config(market_type: Union[MarketType, str]) -> MarketConfig:
 
 
 def load_catalog(
-    overrides: Optional[Union[str, "os.PathLike[str]"]] = None,
+    overrides: str | os.PathLike[str] | None = None,
 ) -> dict[MarketType, MarketConfig]:
     """
     Built-in catalog for every market, with an optional TOML override file applied.

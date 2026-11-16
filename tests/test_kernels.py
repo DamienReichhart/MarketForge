@@ -24,7 +24,7 @@ def test_regime_chain_is_resumable():
     full = regime_chain(u, *args, 0, 1.0, 1.0)
     first = regime_chain(u[:400], *args, 0, 1.0, 1.0)
     second = regime_chain(u[400:], *args, *first[3:])
-    for a, b1, b2 in zip(full[:3], first[:3], second[:3]):
+    for a, b1, b2 in zip(full[:3], first[:3], second[:3], strict=True):
         np.testing.assert_array_equal(a, np.concatenate([b1, b2]))
 
 

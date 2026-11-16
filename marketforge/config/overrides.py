@@ -35,7 +35,7 @@ import sys
 import warnings
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 
@@ -55,7 +55,7 @@ class OverrideError(ValueError):
     """An override file is malformed or inconsistent with the catalog."""
 
 
-def read_overrides(path: Union[str, "os.PathLike[str]"]) -> dict[str, dict[str, Any]]:
+def read_overrides(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
     """Parse an override file into {SYMBOL: {key: value}}."""
     p = Path(path)
     try:
@@ -154,10 +154,9 @@ def apply_overrides(
     out: dict[MarketType, MarketConfig] = {}
     for market, cfg in catalog.items():
         syms = order[market]
-        if syms == list(cfg.symbols) and not corr_edits[market]:
-            if assets[market] == cfg.assets:
-                out[market] = cfg
-                continue
+        if syms == list(cfg.symbols) and not corr_edits[market] and assets[market] == cfg.assets:
+            out[market] = cfg
+            continue
         n = len(syms)
         mat = np.eye(n)
         k = len(cfg.symbols)

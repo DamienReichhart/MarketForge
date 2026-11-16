@@ -13,7 +13,7 @@ Defines the core dataclasses used across all market configurations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+
 import numpy as np
 
 from marketforge.config.settings import MarketType
@@ -41,7 +41,7 @@ class AssetParams:
     drift: float = 0.0
     volume_base: float = 1000.0
     volume_volatility: float = 0.5
-    category: Optional[str] = None
+    category: str | None = None
 
     def __post_init__(self) -> None:
         """Validate asset parameters."""

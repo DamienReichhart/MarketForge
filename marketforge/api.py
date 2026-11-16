@@ -22,10 +22,10 @@ from __future__ import annotations
 
 import datetime as dt
 import secrets
+from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ from marketforge.engine import MarketSimulator, MarketSpec, build_market_spec
 from marketforge.output.writers import CandleWriter, OutputFormat
 from marketforge.trading_calendar import SECONDS_PER_DAY, get_calendar
 
-TimeLike = Union[int, float, str, dt.datetime, dt.date]
+TimeLike = int | float | str | dt.datetime | dt.date
 DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
 REGIME_NAMES = ("trend_up", "trend_down", "range", "high_volatility", "crash")
 
@@ -69,7 +69,7 @@ def parse_time(value: TimeLike) -> int:
     if isinstance(value, dt.datetime):
         moment = value
     elif isinstance(value, dt.date):
-        moment = dt.datetime(value.year, value.month, value.day)
+        moment = dt.datetime(value.year, value.month, value.day, tzinfo=dt.timezone.utc)
     elif isinstance(value, str):
         text = value.strip()
         if text.lstrip("-").isdigit():
@@ -153,16 +153,16 @@ class Request:
 
 
 def plan_request(
-    assets: Optional[Sequence[str]] = None,
-    markets: Optional[Sequence[Union[str, MarketType]]] = None,
+    assets: Sequence[str] | None = None,
+    markets: Sequence[str | MarketType] | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     timeframes: Sequence[str] = DEFAULT_TIMEFRAMES,
     anomalies: Sequence[str] = (),
     include_regime: bool = False,
-    overrides: Optional[Union[str, Path]] = None,
+    overrides: str | Path | None = None,
 ) -> Request:
     """
     Resolve user input into a :class:`Request`.
@@ -220,14 +220,14 @@ def plan_request(
 
 # ---------------------------------------------------------------- running
 # Receives candles of the plan's *selected* instruments, in plan.selected order.
-Sink = Callable[[MarketPlan, Timeframe, Optional[Bars]], None]
+Sink = Callable[[MarketPlan, Timeframe, Bars | None], None]
 
 
 def _run_market(
     request: Request,
     plan: MarketPlan,
     sink: Sink,
-    on_day: Optional[Callable[[MarketType], None]] = None,
+    on_day: Callable[[MarketType], None] | None = None,
 ) -> None:
     sim = MarketSimulator(plan.spec, request.seed)
     cal = get_calendar(plan.market)
@@ -261,7 +261,7 @@ def execute(
     request: Request,
     sink: Sink,
     jobs: int = 1,
-    on_day: Optional[Callable[[MarketType], None]] = None,
+    on_day: Callable[[MarketType], None] | None = None,
 ) -> None:
     """Run every market of a request, optionally in parallel threads."""
     # The matrix products here are tiny; multithreaded BLAS only burns CPU
@@ -284,16 +284,16 @@ class GeneratedData(dict):
 
 
 def generate(
-    assets: Optional[Sequence[str]] = None,
+    assets: Sequence[str] | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
-    markets: Optional[Sequence[Union[str, MarketType]]] = None,
-    seed: Optional[int] = None,
+    markets: Sequence[str | MarketType] | None = None,
+    seed: int | None = None,
     timeframes: Sequence[str] = ("m1",),
     anomalies: Sequence[str] = (),
     include_regime: bool = False,
-    overrides: Optional[Union[str, Path]] = None,
+    overrides: str | Path | None = None,
 ) -> GeneratedData:
     """
     Generate candles in memory.
@@ -329,7 +329,7 @@ def generate(
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
 
-    def collect(plan: MarketPlan, tf: Timeframe, bars: Optional[Bars]) -> None:
+    def collect(plan: MarketPlan, tf: Timeframe, bars: Bars | None) -> None:
         if bars is not None and len(bars):
             parts.setdefault((plan.market, tf), []).append(bars)
 
@@ -345,7 +345,7 @@ def generate(
     return out
 
 
-def _frame(bars: Optional[Bars], j: int, include_regime: bool) -> pd.DataFrame:
+def _frame(bars: Bars | None, j: int, include_regime: bool) -> pd.DataFrame:
     if bars is None:
         ts = np.empty(0, dtype=np.int64)
         data: dict[str, np.ndarray] = {
@@ -384,21 +384,21 @@ class DiskReport:
 
 
 def generate_to_disk(
-    output_dir: Union[str, Path],
-    assets: Optional[Sequence[str]] = None,
+    output_dir: str | Path,
+    assets: Sequence[str] | None = None,
     *,
     start: TimeLike,
     end: TimeLike,
-    markets: Optional[Sequence[Union[str, MarketType]]] = None,
-    seed: Optional[int] = None,
+    markets: Sequence[str | MarketType] | None = None,
+    seed: int | None = None,
     timeframes: Sequence[str] = DEFAULT_TIMEFRAMES,
     anomalies: Sequence[str] = (),
     include_regime: bool = False,
-    overrides: Optional[Union[str, Path]] = None,
-    fmt: Union[str, OutputFormat] = OutputFormat.CSV,
+    overrides: str | Path | None = None,
+    fmt: str | OutputFormat = OutputFormat.CSV,
     jobs: int = 1,
-    request: Optional[Request] = None,
-    on_day: Optional[Callable[[MarketType], None]] = None,
+    request: Request | None = None,
+    on_day: Callable[[MarketType], None] | None = None,
 ) -> DiskReport:
     """
     Generate candles and stream them to ``{output_dir}/{market}/{SYMBOL}_{tf}.{fmt}``.
@@ -432,7 +432,7 @@ def generate_to_disk(
         for plan in request.plans
     }
 
-    def write(plan: MarketPlan, tf: Timeframe, bars: Optional[Bars]) -> None:
+    def write(plan: MarketPlan, tf: Timeframe, bars: Bars | None) -> None:
         writers[plan.market].write(tf, bars)
 
     report = DiskReport(seed=request.seed)
@@ -441,7 +441,5 @@ def generate_to_disk(
     finally:
         for market, writer in writers.items():
             paths = writer.close()
-            report.paths[market.value] = {
-                s: {tf: p for tf, p in tfs.items()} for s, tfs in paths.items()
-            }
+            report.paths[market.value] = {s: dict(tfs) for s, tfs in paths.items()}
     return report

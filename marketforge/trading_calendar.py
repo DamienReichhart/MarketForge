@@ -24,8 +24,7 @@ exact for every minute those markets are open.
 from __future__ import annotations
 
 import datetime as dt
-from functools import lru_cache
-from typing import Optional
+from functools import cache
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -76,7 +75,7 @@ def _nth_weekday(year: int, month: int, weekday: int, n: int) -> dt.date:
     return last - dt.timedelta(days=(last.weekday() - weekday) % 7)
 
 
-def _observed(d: dt.date, saturday_to_friday: bool = True) -> Optional[dt.date]:
+def _observed(d: dt.date, saturday_to_friday: bool = True) -> dt.date | None:
     """NYSE observance: Sunday holidays move to Monday, Saturday ones to Friday."""
     if d.weekday() == 6:
         return d + dt.timedelta(days=1)
@@ -85,10 +84,10 @@ def _observed(d: dt.date, saturday_to_friday: bool = True) -> Optional[dt.date]:
     return d
 
 
-@lru_cache(maxsize=None)
+@cache
 def nyse_holidays(year: int) -> frozenset[dt.date]:
     """Full-day NYSE closures for a year under the current holiday rules."""
-    days: list[Optional[dt.date]] = [
+    days: list[dt.date | None] = [
         # New Year's Day: a Saturday holiday is not moved to Friday Dec 31.
         _observed(dt.date(year, 1, 1), saturday_to_friday=False),
         _nth_weekday(year, 2, 0, 3),  # Washington's Birthday
@@ -106,7 +105,7 @@ def nyse_holidays(year: int) -> frozenset[dt.date]:
     return frozenset(d for d in days if d is not None)
 
 
-@lru_cache(maxsize=None)
+@cache
 def nyse_early_closes(year: int) -> frozenset[dt.date]:
     """NYSE 13:00 early closes: July 3, the day after Thanksgiving, Christmas Eve."""
     candidates = [
@@ -133,7 +132,7 @@ class TradingCalendar:
     def __init__(self, market: MarketType) -> None:
         self.market = market
         if market == MarketType.CRYPTO:
-            self.timezone: Optional[ZoneInfo] = None
+            self.timezone: ZoneInfo | None = None
             self.anchor_shift = 0
         elif market == MarketType.FOREX:
             self.timezone = NEW_YORK
@@ -225,7 +224,7 @@ class TradingCalendar:
         return total
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_calendar(market: MarketType) -> TradingCalendar:
     """Shared calendar instance for a market."""
     return TradingCalendar(MarketType(market))

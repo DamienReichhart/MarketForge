@@ -118,7 +118,7 @@ ignore_missing_imports = true
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-extend-exclude = [".venv"]
+extend-exclude = [".venv", "*.md"]  # keep hand-aligned README examples
 
 [tool.ruff.lint]
 select = [
@@ -146,7 +146,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "scripts/**" = ["T20"]
 ".github/scripts/**" = ["T20"]
-"tests/**" = ["T20"]
+"tests/**" = ["T20", "E731"]  # small lambda helpers read fine in tests
 
 [tool.ruff.lint.isort]
 known-first-party = ["marketforge"]

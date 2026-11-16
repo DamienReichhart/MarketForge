@@ -22,7 +22,6 @@ from marketforge.config.catalog.base import (
 )
 from marketforge.config.settings import MarketType
 
-
 # =============================================================================
 # CRYPTO ASSET DEFINITIONS
 # =============================================================================
