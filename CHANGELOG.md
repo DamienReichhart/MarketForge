@@ -2,9 +2,21 @@
 
 ## 3.1.1
 
-No change to the library: every seed produces exactly the candles 3.1.0
-produced, and CI now enforces that. This release ships the hardened release
-pipeline.
+One fix for macOS 15; on Linux, Windows and other macOS versions every seed
+produces exactly the candles 3.1.0 produced, and CI now enforces that. This
+release also ships the hardened release pipeline.
+
+### Fixes
+- **macOS 15: extending a date range could change earlier candles** in the
+  last digit (about 1e-16 relative). Apple's Accelerate BLAS on macOS 15
+  rounds a row of a matrix product differently depending on how many rows the
+  matrix has, and a day cut short by the end (or start) of the range was
+  multiplied with fewer rows than the same day in a longer run. Such a day is
+  now computed in the shape of its whole trading session, so a minute's
+  candle no longer depends on where the range ends. Whole days take exactly
+  the same path as before. On macOS 15 only, the candles of a day cut short by
+  the range change in the last digit, to the values a longer range already
+  produced in 3.1.0.
 
 ### Release and supply chain
 - Each release carries a **CycloneDX SBOM** (`marketforge-<version>.cdx.json`

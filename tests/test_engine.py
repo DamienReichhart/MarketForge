@@ -60,6 +60,45 @@ def test_extending_the_range_never_changes_earlier_candles(market):
         np.testing.assert_array_equal(getattr(short, field), getattr(long, field)[:n])
 
 
+@pytest.mark.parametrize("market", ["crypto", "forex", "stocks"])
+def test_range_invariance_does_not_depend_on_blas_rounding(market, monkeypatch):
+    """Some BLAS builds (Accelerate on macOS 15) round a row of a matrix product
+    differently depending on how many rows the matrix has. Emulate that on any
+    platform: perturb every BLAS-backed product by its row count. If the engine
+    ever multiplied a range-dependent number of rows, extending the range would
+    change earlier candles here, as it did on macOS 15 before 3.1.1."""
+    import marketforge.engine as engine
+
+    def row_count_dependent(func):
+        def wrapped(x, *args, **kwargs):
+            return func(x, *args, **kwargs) * (1.0 + 1e-9 * x.shape[0])
+
+        return wrapped
+
+    monkeypatch.setattr(engine, "correlated_shocks", row_count_dependent(engine.correlated_shocks))
+    # Only the products that reach BLAS (matrix projection) or einsum (crosses).
+    apply, sigma = engine._Projection.apply, engine._Projection.sigma
+
+    def fake_apply(self, x):
+        return (
+            row_count_dependent(lambda v: apply(self, v))(x)
+            if self.kind == "matrix"
+            else apply(self, x)
+        )
+
+    def fake_sigma(self, x):
+        return row_count_dependent(lambda v: sigma(self, v))(x) if self.crosses else sigma(self, x)
+
+    monkeypatch.setattr(engine._Projection, "apply", fake_apply)
+    monkeypatch.setattr(engine._Projection, "sigma", fake_sigma)
+
+    short = _run(market, 9, JAN_1_2024, JAN_1_2024 + 3 * DAY + MID_SESSION)
+    long = _run(market, 9, JAN_1_2024, JAN_1_2024 + 6 * DAY)
+    n = short.timestamps.size
+    for field in ("open", "high", "low", "close", "volume"):
+        np.testing.assert_array_equal(getattr(short, field), getattr(long, field)[:n])
+
+
 def test_stocks_have_no_candles_outside_the_nyse_session(stocks_two_weeks):
     ts = stocks_two_weeks.timestamps
     when = [dt.datetime.fromtimestamp(int(t), dt.UTC) for t in ts[::30]]
