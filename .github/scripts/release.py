@@ -6,8 +6,9 @@ Subcommands:
                  it if it is invalid, already tagged, not newer than the latest
                  tag, already on PyPI, missing from CHANGELOG.md, or not a
                  major bump although a commit since the latest tag is marked
-                 breaking. Writes `name`, `version`, `tag` and `prerelease` to
-                 $GITHUB_OUTPUT.
+                 breaking. Writes `release`, `name`, `version`, `tag` and
+                 `prerelease` to $GITHUB_OUTPUT. With --if-unreleased, an
+                 already tagged version is not an error: `release=false`.
     check-dist   Check that dist/ holds exactly the sdist and wheel of a version.
     notes        Print the CHANGELOG.md section of a version (release notes).
 
@@ -287,6 +288,17 @@ def cmd_guard(args: argparse.Namespace) -> None:
 
     tags = git_tags()
     existing = tag_versions(tags)
+    if args.if_unreleased and version in existing:
+        print(
+            f"::notice title=Nothing to release::{name} {version} is already released "
+            f"(tag '{existing[version]}'). Bump [project].version to cut a new release"
+        )
+        set_outputs(release="false", name=name, version=str(version), tag=tag, prerelease="false")
+        summary(
+            f"### Nothing to release\n\n`{name}` {version} is already tagged "
+            f"`{existing[version]}`; CI ran, nothing was published.\n"
+        )
+        return
     check_not_tagged(version, tags)
     check_newer_than_tags(version, tags)
     latest = max(existing, default=None)
@@ -302,6 +314,7 @@ def cmd_guard(args: argparse.Namespace) -> None:
         )
 
     set_outputs(
+        release="true",
         name=name,
         version=str(version),
         tag=tag,
@@ -333,6 +346,11 @@ def main(argv: list[str] | None = None) -> int:
 
     guard = sub.add_parser("guard", help="validate that pyproject's version can be released")
     guard.add_argument("--skip-pypi", action="store_true", help="do not query PyPI")
+    guard.add_argument(
+        "--if-unreleased",
+        action="store_true",
+        help="an already tagged version means nothing to release (exit 0, release=false)",
+    )
     guard.set_defaults(func=cmd_guard)
 
     dist = sub.add_parser("check-dist", help="validate the built distributions")

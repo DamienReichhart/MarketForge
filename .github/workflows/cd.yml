@@ -1,14 +1,20 @@
 name: CD
 
-# Release pipeline. Every push to main releases the version in pyproject.toml:
+# Main-branch pipeline. Every push to main runs the full CI and releases the
+# version in pyproject.toml if it is new:
 #
-#   guard ─► ci (full CI, builds `dist`) ─► publish (PyPI) ─► github-release ─► verify
+#   guard ─┐
+#   ci ────┴─► publish (PyPI) ─► github-release
+#                             └► verify (Linux, macOS, Windows)
 #
-# The guard refuses to release, and stops the run before anything else
-# starts, when tag v<version> (or any spelling of it, like V3.0) already
-# exists, when the version is not newer than every existing tag, when PyPI
-# already has it, or when CHANGELOG.md has no section for it. So a push to
-# main that does not bump the version FAILS this workflow, on purpose.
+# The guard decides whether there is anything to release. A version that is
+# already tagged means "nothing to release": CI still runs (this workflow is
+# main's CI), nothing is published, and the run is green. The guard FAILS,
+# and nothing is published, when the version is new but not releasable: not
+# newer than every existing tag, already on PyPI, missing from CHANGELOG.md,
+# or not a major bump although a commit since the last tag is marked
+# breaking. PRs into main run the same guard in CI (Release readiness), so
+# those failures are caught before the merge.
 #
 # The distributions published are the ones CI built and tested in this run
 # (the `dist` artifact), not a rebuild.
@@ -42,6 +48,7 @@ jobs:
     permissions:
       contents: read
     outputs:
+      release: ${{ steps.guard.outputs.release }}
       name: ${{ steps.guard.outputs.name }}
       version: ${{ steps.guard.outputs.version }}
       tag: ${{ steps.guard.outputs.tag }}
@@ -68,11 +75,10 @@ jobs:
         run: uv pip install --group release
       - name: Check that the version can be released
         id: guard
-        run: python .github/scripts/release.py guard
+        run: python .github/scripts/release.py guard --if-unreleased
 
   ci:
     name: CI
-    needs: guard
     # The `$/` self-repository form is not understood by actionlint yet.
     uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository]
     permissions:
@@ -81,7 +87,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: [guard, ci]
-    if: ${{ !inputs.dry-run }}
+    if: ${{ needs.guard.outputs.release == 'true' && !inputs.dry-run }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

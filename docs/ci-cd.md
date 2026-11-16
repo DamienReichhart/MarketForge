@@ -4,8 +4,8 @@ Three workflows live in `.github/workflows/`:
 
 | Workflow | Runs on | Purpose |
 | --- | --- | --- |
-| `ci.yml` (**CI**) | every PR, push to `dev`/`main`, merge queue, weekly schedule, manual, and called by CD | Quality gate |
-| `cd.yml` (**CD**) | push to `main`, manual dry run | Release to PyPI and GitHub |
+| `ci.yml` (**CI**) | every PR, push to `dev`, merge queue, weekly schedule, manual; on `main` it runs inside CD | Quality gate |
+| `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, and release to PyPI and GitHub when the version is new |
 | `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
 
 All third-party actions are pinned to a commit SHA. Dependabot
@@ -50,13 +50,16 @@ uv pip install -e . --group test --resolution lowest-direct && pytest   # floors
 `marketforge.__version__` reads it back from the installed metadata.
 
 ```
-guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► github-release (tag + release)
-                                                     └──► verify (pip install from PyPI)
+guard ─┐
+ci ────┴─► publish (PyPI) ──► github-release (tag + release)
+                         └──► verify (pip install from PyPI on Linux, macOS, Windows)
 ```
 
-1. **guard** reads the version and **stops the whole run** if:
+1. **guard** reads the version. If a tag for it already exists, in any
+   spelling (`v3.0.0`, `V3.0`, `3.0.0`), there is **nothing to release**: CI
+   still runs, nothing is published, and the run is green. Otherwise it
+   **blocks the release** (the run fails, nothing is published) if:
    - it is not a canonical PEP 440 version (`3.1.0`, `3.1.0rc1`; not `3.1.0-rc1`);
-   - a tag for it already exists, in any spelling (`v3.0.0`, `V3.0`, `3.0.0`);
    - it is not newer than every existing version tag;
    - PyPI already has it (PyPI never accepts the same version twice);
    - `CHANGELOG.md` has no non-empty `## <version>` section;
@@ -64,8 +67,9 @@ guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► git
      `refactor(api)!:`, or a `BREAKING CHANGE:` footer) and the version is not
      a major bump (a minor bump below 1.0). The `!` is a promise to users:
      either bump the major version or reword the commit.
-2. **ci** runs the full CI workflow on the commit. Nothing is published unless
-   all of it passes.
+2. **ci** runs the full CI workflow on the commit, in parallel with the
+   guard. This is `main`'s only CI run (`ci.yml` has no push trigger for
+   `main`). Nothing is published unless all of it passes.
 3. **publish** downloads the exact `dist` artifact CI built and tested, checks
    it holds only this version's sdist and wheel, records a signed build
    provenance attestation, and uploads to PyPI through trusted publishing
@@ -77,9 +81,10 @@ guard ──► ci (full CI, builds dist) ──► publish (PyPI) ──► git
 5. **verify** installs the version from PyPI in a clean environment (retrying
    while the CDN catches up) and runs it.
 
-Consequence: **a push to `main` that does not bump the version fails the CD
-workflow.** That is deliberate. Merge to `main` only to release; integrate on
-`dev`.
+A push to `main` that does not bump the version (a docs fix, say) is a green
+no-op release. PRs into `main` are stricter: their **Release readiness** job
+runs the guard without the "nothing to release" escape, so a PR that forgets
+the bump cannot merge. Merge to `main` to release; integrate on `dev`.
 
 Releases never run concurrently, and a running release is never cancelled.
 

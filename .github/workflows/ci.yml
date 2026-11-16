@@ -1,14 +1,16 @@
 name: CI
 
-# Quality gate for every change. Also called by the CD workflow (cd.yml) on
-# main, where its `dist` artifact is the exact build that gets published.
+# Quality gate for every change. On main it runs inside the CD workflow
+# (cd.yml), where its `dist` artifact is the exact build that gets published.
 #
 # Branch protection: require the single "CI OK" check. It fails if any job
 # below fails or is cancelled, so adding a job never needs a settings change.
 
 on:
   push:
-    branches: [main, dev]
+    # Pushes to main run this workflow from cd.yml (workflow_call), which also
+    # publishes the exact `dist` it builds; a push trigger here would run it twice.
+    branches: [dev]
   pull_request:
   merge_group:
   schedule:
