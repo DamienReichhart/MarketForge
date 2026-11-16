@@ -12,6 +12,7 @@ Provides centralized access to all market configurations.
 
 from __future__ import annotations
 
+import os
 from typing import Optional
 import numpy as np
 
@@ -273,3 +274,22 @@ def market_config_to_generator_config(
         volume_params=market_defaults.volume_params,
     )
 
+
+
+def load_catalog(overrides: Optional["str | os.PathLike[str]"] = None) -> dict[MarketType, MarketConfig]:
+    """
+    Built-in catalog for every market, with an optional TOML override file applied.
+
+    Args:
+        overrides: Path to an override file (see :mod:`marketforge.config.overrides`).
+
+    Returns:
+        {MarketType: MarketConfig}; cached catalog objects are never mutated.
+    """
+    registry = ConfigRegistry()
+    catalog = {m: registry.get_config(m) for m in MarketType}
+    if overrides is None:
+        return catalog
+    from marketforge.config.overrides import apply_overrides, read_overrides
+
+    return apply_overrides(catalog, read_overrides(overrides))
