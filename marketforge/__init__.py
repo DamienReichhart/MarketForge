@@ -14,6 +14,7 @@ with correlations, realistic market behavior, and multiple timeframes.
 
 from importlib import metadata as _metadata
 
+from marketforge.api.catalog import instruments
 from marketforge.api.disk import generate_to_disk
 from marketforge.api.memory import GeneratedData, generate
 from marketforge.api.parsing import parse_time
@@ -30,5 +31,6 @@ __all__ = [
     "__version__",
     "generate",
     "generate_to_disk",
+    "instruments",
     "parse_time",
 ]

@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import click
 
-from marketforge.config.loader import load_catalog
+from marketforge.api.catalog import instruments
 from marketforge.domain.markets import MarketType
-from marketforge.simulation.spec import build_market_spec
 
 
 @click.command("list-instruments")
@@ -27,21 +26,14 @@ from marketforge.simulation.spec import build_market_spec
 )
 def list_instruments(market: str | None, overrides: str | None) -> None:
     """List available instruments with their start price and volatility."""
-    catalog = load_catalog(overrides)
-    for m, cfg in catalog.items():
-        if market and m.value != market:
-            continue
-        spec = build_market_spec(cfg)
-        anchors = set(spec.structure.factors)
-        click.secho(f"\n{m.value} ({cfg.n_instruments} instruments)", bold=True)
+    table = instruments(market, overrides=overrides)
+    for name, rows in table.groupby("market", sort=False):
+        click.secho(f"\n{name} ({len(rows)} instruments)", bold=True)
         click.echo(f"  {'SYMBOL':<10}{'START':>14}{'VOL':>8}{'DRIFT':>8}  NOTE")
-        for s in cfg.symbols:
-            a = cfg.get_instrument(s)
+        for symbol, row in rows.iterrows():
             note = (
-                ""
-                if spec.structure.is_identity
-                else ("anchor" if s in anchors else "cross (derived)")
+                "" if name != MarketType.FOREX else "cross (derived)" if row.derived else "anchor"
             )
             click.echo(
-                f"  {s:<10}{a.start_price:>14,.4f}{a.volatility:>8.3f}{a.drift:>8.3f}  {note}"
+                f"  {symbol:<10}{row.start_price:>14,.4f}{row.volatility:>8.3f}{row.drift:>8.3f}  {note}"
             )
