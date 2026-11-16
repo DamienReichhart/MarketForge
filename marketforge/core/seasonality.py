@@ -18,9 +18,14 @@ configured volatility level.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from marketforge.config.settings import MarketType
+
+if TYPE_CHECKING:
+    from marketforge.trading_calendar import TradingCalendar
 
 SECONDS_PER_DAY = 86400
 
@@ -91,3 +96,64 @@ class SeasonalityModel:
         diurnal = 1.0 + 0.12 * np.sin((minutes / 1440.0) * 2 * np.pi - 1.0)
         weekend = np.where(dow >= 5, 0.82, 1.0)
         return diurnal * weekend
+
+
+# Reference window used to normalise session seasonality: a full calendar
+# year, so the scale never depends on the requested range or chunking.
+_REFERENCE_START = 1672531200  # 2023-01-01T00:00:00Z
+_REFERENCE_END = 1704067200    # 2024-01-01T00:00:00Z
+
+
+class SessionSeasonality:
+    """
+    Calendar-aware intraday volatility seasonality.
+
+    Unlike :class:`SeasonalityModel`, which normalised over whatever window it
+    was given, this model is normalised once over a fixed reference year of
+    *open* minutes, so mean(s^2) == 1 across a typical year and the factor at a
+    given minute never depends on the requested range.
+
+    - Stocks: U-shape keyed to the New York session (open and close bumps,
+      lunch lull), honouring early closes.
+    - Forex: Asian / London / London-New York overlap activity (UTC).
+    - Crypto: mild diurnal cycle and quieter weekends (UTC).
+    """
+
+    def __init__(self, calendar: TradingCalendar) -> None:
+        self._calendar = calendar
+        ref = calendar.open_minutes(_REFERENCE_START, _REFERENCE_END)
+        raw = self._raw(ref)
+        self._norm = float(np.sqrt(np.mean(raw ** 2)))
+        self._log_var = float(np.var(np.log(raw / self._norm)))
+
+    @property
+    def log_variance(self) -> float:
+        """Variance of log s(t) over the reference year (for lognormal corrections)."""
+        return self._log_var
+
+    def factor(self, timestamps: np.ndarray) -> np.ndarray:
+        """Seasonality multiplier s(t) for open-minute timestamps."""
+        return np.asarray(self._raw(np.asarray(timestamps, dtype=np.int64)) / self._norm)
+
+    def _raw(self, ts: np.ndarray) -> np.ndarray:
+        market = self._calendar.market
+        if market == MarketType.STOCKS:
+            local = self._calendar.local_minutes(ts)
+            mod = local % 1440
+            close = self._calendar.session_close_minute(local // 1440)
+            since_open = mod - 570
+            to_close = close - 1 - mod
+            shape = (
+                1.0
+                + 0.9 * np.exp(-((since_open / 25.0) ** 2))
+                + 0.7 * np.exp(-((to_close / 25.0) ** 2))
+                - 0.2 * np.exp(-(((mod - 750) / 60.0) ** 2))
+            )
+        else:
+            minutes = (ts % SECONDS_PER_DAY) // 60
+            dow = ((ts // SECONDS_PER_DAY) + 3) % 7
+            if market == MarketType.FOREX:
+                shape = SeasonalityModel._forex_shape(minutes, np.zeros_like(dow))
+            else:
+                shape = SeasonalityModel._crypto_shape(minutes, dow)
+        return np.asarray(np.maximum(shape, 1e-3), dtype=float)
