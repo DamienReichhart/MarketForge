@@ -153,7 +153,7 @@ def generate(
     """Generate candles and write them to disk."""
     import os
 
-    from marketforge.api.disk import generate_to_disk
+    from marketforge.api.disk import write_request
     from marketforge.api.planning import plan_request
 
     market_list = _split(markets)
@@ -192,9 +192,7 @@ def generate(
                 bar.update(1)
 
     try:
-        report = generate_to_disk(
-            output_dir, request=request, start=start, end=end, fmt=fmt, jobs=jobs, on_day=tick
-        )
+        report = write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=tick)
     finally:
         if bar is not None:
             bar.close()

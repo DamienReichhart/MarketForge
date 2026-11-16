@@ -51,7 +51,6 @@ def generate_to_disk(
     overrides: str | Path | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
     jobs: int = 1,
-    request: Request | None = None,
     on_day: Callable[[MarketType], None] | None = None,
 ) -> DiskReport:
     """
@@ -61,18 +60,29 @@ def generate_to_disk(
     ``parquet``) and ``jobs`` (markets simulated in parallel). Memory use does
     not grow with the length of the range.
     """
-    if request is None:
-        request = plan_request(
-            assets,
-            markets,
-            start=start,
-            end=end,
-            seed=seed,
-            timeframes=timeframes,
-            anomalies=anomalies,
-            include_regime=include_regime,
-            overrides=overrides,
-        )
+    request = plan_request(
+        assets,
+        markets,
+        start=start,
+        end=end,
+        seed=seed,
+        timeframes=timeframes,
+        anomalies=anomalies,
+        include_regime=include_regime,
+        overrides=overrides,
+    )
+    return write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=on_day)
+
+
+def write_request(
+    request: Request,
+    output_dir: str | Path,
+    *,
+    fmt: str | OutputFormat = OutputFormat.CSV,
+    jobs: int = 1,
+    on_day: Callable[[MarketType], None] | None = None,
+) -> DiskReport:
+    """Run an already resolved request and stream its candles to ``output_dir``."""
     fmt = OutputFormat(fmt)
     if fmt == OutputFormat.PARQUET:
         n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
