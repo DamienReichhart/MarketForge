@@ -38,13 +38,9 @@ def _correlation_standard_error(x: np.ndarray, y: np.ndarray, overlap: int = 0) 
     """
     Standard error of corr(x, y), robust to heavy tails and to clustering: the
     Newey-West variance of the mean of the standardised products. The
-    bandwidth is the usual 4 * (n / 100) ** (2 / 9), and at least ``overlap``:
-    the number of steps over which consecutive products share data (the lag,
-    for an autocorrelation). It is 1/sqrt(n) for independent normal data.
-
-    For the autocorrelation of |returns| it is still an underestimate: how
-    much volatility persists over an hour depends on a handful of regime
-    changes, which no two-week sample can measure.
+    bandwidth is the usual 4 * (n / 100) ** (2 / 9), and at least ``overlap``,
+    the number of steps over which the products stay dependent. It is
+    1/sqrt(n) for independent normal data, whatever the bandwidth.
     """
     n = x.size
     if n < 2:
@@ -79,9 +75,17 @@ def leverage_standard_error(returns: np.ndarray) -> float:
 
 
 def abs_autocorrelation_standard_error(returns: np.ndarray, lag: int) -> float:
-    """Standard error of the autocorrelation of |returns| at ``lag``."""
+    """
+    Standard error of the autocorrelation of |returns| at ``lag``.
+
+    Volatility persists for hours, so the products stay dependent far beyond
+    the lag; the bandwidth is four times the lag. On generated stocks that
+    gives 0.043 for a statistic that scatters by 0.067 from seed to seed: still
+    an underestimate, because how much volatility persists over an hour
+    depends on a handful of regime changes that no two-week sample can count.
+    """
     a = np.abs(np.asarray(returns, dtype=float))
-    return _correlation_standard_error(a[:-lag], a[lag:], overlap=lag)
+    return _correlation_standard_error(a[:-lag], a[lag:], overlap=4 * lag)
 
 
 def _acf(x: np.ndarray, lag: int) -> float:
