@@ -1,5 +1,95 @@
 ---
-title: cli
+title: Command line
+description: "Every marketforge command and option: generate, extend, validate and list-instruments."
 ---
 
-Stub.
+```bash
+marketforge [--debug] COMMAND [OPTIONS]
+```
+
+| Command | What it does |
+| --- | --- |
+| [`generate`](#generate) | Writes a dataset: candle files for every instrument and timeframe, and the manifest. |
+| [`extend`](#extend) | Continues a dataset forward in time, with the settings it was made with. |
+| [`validate`](#validate) | Checks an `m1` candle file against real-market stylized facts. Exit code 1 on failure. |
+| [`list-instruments`](#list-instruments) | Lists the catalog: start price, volatility, and whether a forex instrument is a derived cross. |
+
+`--debug`, given before the command, shows full tracebacks. Otherwise an error is a single line. `--version` prints the version.
+
+## generate
+
+```bash
+# One year of EURUSD, every timeframe, reproducible
+marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
+
+# A whole market as Parquet, with regime labels and the bid-ask spread
+marketforge generate -o ./data --from 2024-01-01 --days 180 --market crypto \
+    --format parquet --with-regime --with-spread --seed 7
+
+# What would a run produce (files, rows, disk size, time)? Nothing is written.
+marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
+```
+
+| Option | Meaning |
+| --- | --- |
+| `-o, --output-dir` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv\|parquet}` and `marketforge.json`. |
+| `--from` | Start of the range (inclusive). Accepts `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds. UTC unless an offset is given. |
+| `--to` or `--days` | End of the range (exclusive), in the same formats as `--from`, or its length in days. Give exactly one. |
+| `-i, --instruments` | Comma-separated instruments, in any letter case. Their markets are inferred. |
+| `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--instruments` is not given. With `--instruments`, keeps only the instruments in these markets. |
+| `-s, --seed` | Non-negative integer. When omitted, a random seed is used, printed, and recorded in the manifest so the run can be reproduced. |
+| `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`, in any letter case. Default: all. |
+| `--format` | `csv` (default) or `parquet`. Parquet files are about half the size and load much faster. |
+| `--timestamps` | `unix` (default) or `iso` (`2024-01-02T14:30:00Z`), for CSV files. |
+| `--anomalies` | Optional, deliberately unrealistic events: `spikes`, `flash_crash`. |
+| `--with-spread` | Adds a `spread` column: the mean quoted bid-ask spread of the candle, in price units. See [Bid-ask spread](../../reference/spread/). |
+| `--with-regime` | Adds a `regime` column: `0` trend_up, `1` trend_down, `2` range, `3` high_volatility, `4` crash. |
+| `--config` | A TOML [override file](../custom-instruments/). |
+| `-j, --jobs` | Markets simulated in parallel. Default: one per market, up to the CPU count. |
+| `--dry-run` | Prints the plan and estimates, then exits. |
+| `--no-progress` | Hides the progress bar. |
+
+A file that receives no candle (the market was closed for the whole range, or the range is shorter than the candle) is written empty, with a warning. `generate` rewrites every output file and the manifest from scratch, so re-running into the same directory never leaves candles from an earlier run behind.
+
+## extend
+
+```bash
+marketforge extend ./data --to 2025-03-01     # or --days 30
+```
+
+Continues a dataset with everything but the new end taken from its manifest. Afterwards it holds exactly the candles one generation up to the new end would have produced. See [Extending a dataset](../extend/).
+
+| Option | Meaning |
+| --- | --- |
+| `DATASET` | The directory holding `marketforge.json`. |
+| `--to` or `--days` | The new end (exclusive), or the number of days to add. |
+| `-j, --jobs` | Markets simulated in parallel. |
+| `--dry-run` | Prints what would be added, then exits. |
+| `--no-progress` | Hides the progress bar. |
+
+## validate
+
+```bash
+marketforge validate --input ./data/forex/EURUSD_m1.csv
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--input` | CSV or Parquet file of `m1` candles with `open`, `high`, `low` and `close` columns. Other timeframes are refused. |
+| `--market` | `crypto`, `forex` or `stocks`: whose bands to apply. Optional for a file MarketForge wrote: it is read from the path (`{market}/{SYMBOL}_m1`). |
+
+Prints a report and exits with code 1 if any statistic is outside its band. Works on any file with those columns, including your own real data. See [Validation](../validation/).
+
+## list-instruments
+
+```bash
+marketforge list-instruments --market forex
+marketforge list-instruments --config my_instruments.toml
+```
+
+| Option | Meaning |
+| --- | --- |
+| `-m, --market` | Only this market. |
+| `--config` | An override file to apply first, to see your own instruments. |
+
+Forex crosses are marked as derived: their prices come from anchor pairs.
