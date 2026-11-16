@@ -156,6 +156,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/**" = ["T20"]
+"website/scripts/**" = ["T20"]
 ".github/scripts/**" = ["T20"]
 "tests/**" = ["T20", "E731"]  # small lambda helpers read fine in tests
 
