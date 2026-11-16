@@ -24,14 +24,15 @@ def test_regime_time_scale_stretches_durations_not_destinations():
     base = np.array(RegimeParams().transition_matrix)
     off = ~np.eye(5, dtype=bool)
     np.testing.assert_allclose(m[off], base[off] / 60)
-    assert rp.expected_durations()[0] == pytest.approx(60 / 0.15)
     with pytest.raises(ValueError):
         RegimeParams(minutes_per_step=0.5)
 
 
 @pytest.mark.parametrize("market", list(MarketType))
 def test_market_regimes_last_hours_not_minutes(market):
-    durations = get_market_defaults(market).regime_params.expected_durations()
+    rp = get_market_defaults(market).regime_params
+    stay = np.diag(np.array(rp.per_minute_matrix()))
+    durations = 1.0 / (1.0 - stay)  # mean length of each regime, in open minutes
     assert min(durations) >= 120  # even crashes last a couple of hours
 
 

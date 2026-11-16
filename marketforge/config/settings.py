@@ -123,13 +123,6 @@ class RegimeParams:
             for i in range(len(p))
         ]
 
-    def expected_durations(self) -> list[float]:
-        """Mean length of each regime, in open minutes."""
-        return [
-            self.minutes_per_step / max(1e-12, 1.0 - self.transition_matrix[i][i])
-            for i in range(len(self.transition_matrix))
-        ]
-
     def get_regime_index(self, regime: RegimeType) -> int:
         return _REGIME_ORDER.index(regime)
 
