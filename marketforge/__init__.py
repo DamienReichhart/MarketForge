@@ -14,7 +14,9 @@ with correlations, realistic market behavior, and multiple timeframes.
 
 from importlib import metadata as _metadata
 
-from marketforge.api import GeneratedData, generate, generate_to_disk, parse_time
+from marketforge.api.disk import generate_to_disk
+from marketforge.api.memory import GeneratedData, generate
+from marketforge.api.parsing import parse_time
 
 try:
     # pyproject.toml is the single source of truth for the version.

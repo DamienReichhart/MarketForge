@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 import marketforge as mf
-from marketforge.api import parse_time
+from marketforge.api.parsing import parse_time
 
 
 def test_parse_time_accepts_common_forms():
@@ -102,7 +102,7 @@ def test_frames_are_independent_of_each_other():
 
 
 def test_generation_error_is_not_masked_by_closing_writers(tmp_path, monkeypatch):
-    import marketforge.api as api
+    import marketforge.api.disk as api
 
     def boom(*args, **kwargs):
         raise RuntimeError("simulation failed")

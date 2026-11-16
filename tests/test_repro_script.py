@@ -61,6 +61,6 @@ def test_baseline_can_be_pinned(monkeypatch):
     [*repro.DISK_SCENARIOS.values(), *repro.MEMORY_SCENARIOS.values()],
 )
 def test_scenarios_are_valid_requests(kwargs):
-    from marketforge.api import plan_request
+    from marketforge.api.planning import plan_request
 
     assert plan_request(**kwargs).seed == kwargs["seed"]

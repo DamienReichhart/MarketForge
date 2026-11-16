@@ -153,7 +153,8 @@ def generate(
     """Generate candles and write them to disk."""
     import os
 
-    from marketforge.api import generate_to_disk, plan_request
+    from marketforge.api.disk import generate_to_disk
+    from marketforge.api.planning import plan_request
 
     market_list = _split(markets)
     if [m.lower() for m in market_list] == ["all"]:
