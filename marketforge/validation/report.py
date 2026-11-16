@@ -52,10 +52,17 @@ class ValidationReport:
             )
         ]
         for m in self.metrics.values():
-            band = f"[{m.low}, {m.high}]"
-            flag = "ok " if m.passed else "FAIL"
-            lines.append(f"  {flag} {m.name}={m.value:.4f} target {band}")
+            flag = "ok  " if m.passed else "FAIL"
+            lines.append(f"  {flag} {m.name} = {m.value:.4f}  (expected {_band(m.low, m.high)})")
         return "\n".join(lines)
+
+
+def _band(low: float | None, high: float | None) -> str:
+    if low is None:
+        return f"at most {high:g}"
+    if high is None:
+        return f"at least {low:g}"
+    return f"{low:g} to {high:g}"
 
 
 def _check(name, value, low, high) -> MetricResult:

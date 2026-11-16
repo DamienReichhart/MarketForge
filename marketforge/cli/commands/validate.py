@@ -8,14 +8,10 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import click
-import pandas as pd
 
+from marketforge.api.validating import validate as validate_candles
 from marketforge.domain.markets import MarketType
-from marketforge.validation.report import validate_ohlcv
 
 
 @click.command()
@@ -24,27 +20,19 @@ from marketforge.validation.report import validate_ohlcv
     "input_path",
     required=True,
     type=click.Path(exists=True, dir_okay=False),
-    help="CSV or Parquet file with open/high/low/close columns.",
+    help="CSV or Parquet file of m1 candles with open/high/low/close columns.",
 )
 @click.option(
     "--market",
-    required=True,
     type=click.Choice([m.value for m in MarketType]),
-    help="Market whose target bands to apply.",
+    help="Market whose bands to apply. Default: read from the path ({market}/{SYMBOL}_m1).",
 )
-def validate(input_path: str, market: str) -> None:
-    """Check a candle file against real-market stylized facts (exit 1 on failure)."""
-    path = Path(input_path)
-    df = pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
-    missing = {"open", "high", "low", "close"} - set(df.columns)
-    if missing:
-        raise click.UsageError(f"{path} lacks column(s): {', '.join(sorted(missing))}")
-    report = validate_ohlcv(
-        df["open"].to_numpy(),
-        df["high"].to_numpy(),
-        df["low"].to_numpy(),
-        df["close"].to_numpy(),
-        MarketType(market),
-    )
+def validate(input_path: str, market: str | None) -> None:
+    """Check an m1 candle file against real-market stylized facts (exit 1 on failure)."""
+    try:
+        report = validate_candles(input_path, market)
+    except ValueError as e:
+        raise click.UsageError(str(e)) from None
     click.echo(report.summary())
-    sys.exit(0 if report.passed else 1)
+    if not report.passed:
+        raise click.exceptions.Exit(1)

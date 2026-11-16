@@ -113,9 +113,7 @@ def test_validate_generated_parquet(tmp_path):
         "--no-progress",
     )
     assert gen.exit_code == 0, gen.output
-    res = _run(
-        "validate", "--input", str(tmp_path / "crypto" / "BTCUSD_m1.parquet"), "--market", "crypto"
-    )
+    res = _run("validate", "--input", str(tmp_path / "crypto" / "BTCUSD_m1.parquet"))
     assert "Validation report (crypto)" in res.output
     assert res.exit_code == 0, res.output
 

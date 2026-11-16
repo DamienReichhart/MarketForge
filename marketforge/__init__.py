@@ -18,6 +18,7 @@ from marketforge.api.catalog import instruments
 from marketforge.api.disk import generate_to_disk
 from marketforge.api.memory import GeneratedData, generate
 from marketforge.api.parsing import parse_time
+from marketforge.api.validating import validate
 
 try:
     # pyproject.toml is the single source of truth for the version.
@@ -33,4 +34,5 @@ __all__ = [
     "generate_to_disk",
     "instruments",
     "parse_time",
+    "validate",
 ]
