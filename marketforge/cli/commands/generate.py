@@ -8,20 +8,12 @@
 
 from __future__ import annotations
 
-import os
-import sys
-import threading
-import time
-import warnings
-from pathlib import Path
-
 import click
-from tqdm import tqdm
 
-from marketforge.api.disk import write_request
+from marketforge.api.parsing import parse_time
 from marketforge.api.planning import plan_request
 from marketforge.cli.plan_summary import print_plan
-from marketforge.domain.markets import MarketType
+from marketforge.cli.running import days_option, end_of_range, jobs_option, progress_option, run
 
 
 @click.command()
@@ -38,9 +30,8 @@ from marketforge.domain.markets import MarketType
     metavar="TIME",
     help="Start (inclusive): 2024-01-01, 2024-01-01T09:30, or Unix seconds. UTC unless an offset is given.",
 )
-@click.option(
-    "--to", "end", required=True, metavar="TIME", help="End (exclusive), same formats as --from."
-)
+@click.option("--to", "end", metavar="TIME", help="End (exclusive), same formats as --from.")
+@days_option
 @click.option(
     "--instruments",
     "-i",
@@ -89,25 +80,18 @@ from marketforge.domain.markets import MarketType
     is_flag=True,
     help="Add a 'regime' column (0=trend_up 1=trend_down 2=range 3=high_volatility 4=crash).",
 )
-@click.option(
-    "--jobs",
-    "-j",
-    type=click.IntRange(min=1),
-    default=None,
-    help="Markets simulated in parallel. Default: one per market, up to the CPU count.",
-)
+@jobs_option
 @click.option(
     "--dry-run",
     is_flag=True,
     help="Print what would be generated (files, rows, size, time) and exit.",
 )
-@click.option(
-    "--progress/--no-progress", default=True, show_default=True, help="Show a progress bar."
-)
+@progress_option
 def generate(
     output_dir: str | None,
     start: str,
-    end: str,
+    end: str | None,
+    days: int | None,
     instruments: str | None,
     markets: str | None,
     seed: int | None,
@@ -120,49 +104,22 @@ def generate(
     dry_run: bool,
     progress: bool,
 ) -> None:
-    """Generate candles and write them to disk."""
+    """Generate a dataset: candle files and the manifest that records how they were made."""
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
     request = plan_request(
         instruments,
         markets,
         start=start,
-        end=end,
+        end=end_of_range(parse_time(start), end, days),
         seed=seed,
         timeframes=timeframes,
         anomalies=anomalies or (),
         include_regime=with_regime,
         overrides=overrides,
     )
-    jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
     print_plan(request, fmt, output_dir, seed is None)
     if dry_run or not output_dir:
         return
-
-    t0 = time.time()
-    total = request.n_days * len(request.plans)
-    bar = None
-    lock = threading.Lock()
-    if progress:
-        bar = tqdm(total=total, unit="day", desc="Simulating", ncols=90, file=sys.stderr)
-
-    def tick(_: MarketType) -> None:
-        if bar is not None:
-            with lock:
-                bar.update(1)
-
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        try:
-            report = write_request(request, output_dir, fmt=fmt, jobs=jobs, on_day=tick)
-        finally:
-            if bar is not None:
-                bar.close()
-    elapsed = time.time() - t0
-    click.secho(
-        f"\nDone in {elapsed:.1f}s: {report.n_files} files in {Path(output_dir).resolve()}",
-        fg="green",
-    )
-    click.echo(f"Reproduce with --seed {report.seed}")
-    for warning in caught:
-        click.secho(f"Warning: {warning.message}", fg="yellow", err=True)
+    run(request, output_dir, fmt, jobs, progress)
+    click.echo(f"Reproduce with --seed {request.seed}")

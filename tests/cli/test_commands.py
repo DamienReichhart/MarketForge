@@ -143,3 +143,51 @@ def test_generate_asks_for_an_output_directory_before_planning():
     res = _run("generate", "--from", "2024-01-01", "--to", "2024-01-02", "--instruments", "AAPL")
     assert res.exit_code == 2
     assert "Missing option '--output-dir'" in res.output and "Range" not in res.output
+
+
+def test_extend_continues_a_dataset_like_one_longer_generation(tmp_path):
+    common = ("--instruments", "EURUSD,AAPL", "-t", "m1,D1", "--seed", "3", "--no-progress")
+    whole = _run(
+        "generate", "-o", str(tmp_path / "whole"), "--from", "2024-01-02", "--days", "9", *common
+    )
+    assert whole.exit_code == 0, whole.output
+    part = _run(
+        "generate",
+        "-o",
+        str(tmp_path / "part"),
+        "--from",
+        "2024-01-02",
+        "--to",
+        "2024-01-04T15:00",
+        *common,
+    )
+    assert part.exit_code == 0, part.output
+
+    dry = _run("extend", str(tmp_path / "part"), "--to", "2024-01-11", "--dry-run")
+    assert dry.exit_code == 0, dry.output
+    assert "2024-01-04 15:00 UTC -> 2024-01-11 00:00 UTC" in dry.output
+    assert "added to" in dry.output
+
+    res = _run("extend", str(tmp_path / "part"), "--to", "2024-01-11", "--no-progress")
+    assert res.exit_code == 0, res.output
+    for name in (
+        "forex/EURUSD_m1.csv",
+        "forex/EURUSD_D1.csv",
+        "stocks/AAPL_m1.csv",
+        "stocks/AAPL_D1.csv",
+    ):
+        assert (tmp_path / "part" / name).read_bytes() == (tmp_path / "whole" / name).read_bytes()
+
+    more = _run("extend", str(tmp_path / "part"), "--days", "1", "--no-progress")
+    assert more.exit_code == 0, more.output
+    assert "2024-01-11 00:00 UTC -> 2024-01-12 00:00 UTC" in more.output
+
+
+def test_the_end_of_a_range_is_given_exactly_once(tmp_path):
+    for extra in ((), ("--to", "2024-01-03", "--days", "2")):
+        res = _run(
+            "generate", "-o", str(tmp_path), "--from", "2024-01-02", "--instruments", "AAPL", *extra
+        )
+        assert res.exit_code == 2 and "exactly one of '--to' and '--days'" in res.output
+    res = _run("extend", str(tmp_path), "--days", "2")
+    assert res.exit_code == 1 and "is not a MarketForge dataset" in res.output

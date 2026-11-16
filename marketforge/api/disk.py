@@ -142,6 +142,7 @@ def plan_extension(dataset: str | os.PathLike[str], end: TimeLike) -> tuple[Requ
         include_regime=manifest.include_regime,
         overrides=manifest.overrides,
     )
+    request.extends_from = manifest.end
     for plan in request.plans:
         plan.resume = Checkpoint(**manifest.checkpoint[plan.market.value])
     return request, OutputFormat(manifest.format)
@@ -158,7 +159,7 @@ def write_request(
     """Run an already resolved request (a new dataset or an extension) into ``output_dir``."""
     fmt = OutputFormat(fmt)
     root = Path(output_dir)
-    extending = any(plan.resume is not None for plan in request.plans)
+    extending = request.extends_from is not None
     if fmt == OutputFormat.PARQUET:
         n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
         ensure_open_file_capacity(n_files)

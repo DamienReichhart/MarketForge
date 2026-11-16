@@ -21,8 +21,9 @@ def print_plan(request: Request, fmt: str, output_dir: str | None, random_seed: 
     def iso(t: int) -> str:
         return dt.datetime.fromtimestamp(t, dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
 
+    since = request.start if request.extends_from is None else request.extends_from
     click.secho("MarketForge " + __version__, bold=True)
-    click.echo(f"  Range       {iso(request.start)} -> {iso(request.end)}")
+    click.echo(f"  Range       {iso(since)} -> {iso(request.end)}")
     click.echo(
         f"  Seed        {request.seed}"
         + ("  (random; pass --seed to fix it)" if random_seed else "")
@@ -31,7 +32,7 @@ def print_plan(request: Request, fmt: str, output_dir: str | None, random_seed: 
     rows = 0
     seconds = 0.0
     for plan in request.plans:
-        open_minutes = get_calendar(plan.market).count_open_minutes(request.start, request.end)
+        open_minutes = get_calendar(plan.market).count_open_minutes(since, request.end)
         per_instrument = sum(
             open_minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes
         )
@@ -48,7 +49,11 @@ def print_plan(request: Request, fmt: str, output_dir: str | None, random_seed: 
     n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
     click.echo(
         f"  Output      {n_files} {fmt} files, ~{rows:,} rows, ~{_human(rows * bytes_per_row)}"
-        + (f" in {output_dir}" if output_dir else "")
+        + (
+            f" {'added to' if request.extends_from is not None else 'in'} {output_dir}"
+            if output_dir
+            else ""
+        )
     )
     click.echo(f"  Estimate    ~{_duration(seconds)} on one core")
 

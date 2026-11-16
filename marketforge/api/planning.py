@@ -74,6 +74,7 @@ class Request:
     include_regime: bool = False
     anomalies: frozenset[AnomalyType] = frozenset()
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    extends_from: int | None = None  # the end of the dataset this request extends
 
     @property
     def first_day(self) -> int:
