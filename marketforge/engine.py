@@ -142,11 +142,16 @@ def _normalised_regime_targets(
     is 1. Without this the configured annual drift and volatility were not
     what the simulation produced (e.g. stocks drifted down on average).
     """
-    u = np.random.Generator(np.random.PCG64(20260613)).random(400_000)
+    # Simulate long enough to visit every regime many times (>= ~2000 mean
+    # durations of the stickiest one), with a fixed seed: deterministic.
+    stay = np.diff(np.concatenate([np.zeros((cumulative.shape[0], 1)), cumulative], axis=1), axis=1).diagonal()
+    longest = float(np.max(1.0 / np.maximum(1.0 - stay, 1e-9)))
+    n = int(min(20_000_000, max(400_000, 2000 * longest)))
+    u = np.random.Generator(np.random.PCG64(20260613)).random(n)
     _, d, v, *_ = regime_chain(
         u, cumulative, drift, vol, _REGIME_SMOOTHING, initial, float(drift[initial]), float(vol[initial])
     )
-    burn = 10_000
+    burn = min(n // 10, int(20 * longest))
     vol_scale = 1.0 / np.sqrt(np.mean(v[burn:] ** 2))
     drift_shift = 1.0 - float(np.mean(d[burn:]))
     return drift + drift_shift, vol * vol_scale
@@ -200,7 +205,7 @@ class MarketSimulator:
         self._garch = (1.0 - g.persistence, g.alpha, g.beta, g.gamma)
 
         rp = d.regime_params
-        self._regime_cum = np.cumsum(np.asarray(rp.transition_matrix, dtype=float), axis=1)
+        self._regime_cum = np.cumsum(np.asarray(rp.per_minute_matrix(), dtype=float), axis=1)
         self._regime_cum[:, -1] = 1.0
         r0 = rp.get_regime_index(rp.initial_regime)
         self._regime_drift, self._regime_vol = _normalised_regime_targets(
@@ -336,7 +341,9 @@ class MarketSimulator:
             sigma_i = self._instrument_sigma(sigma_f)
             level_i = sigma_i / (self._sigma_ref * season[:, None])
 
-        hi, lo = bridge_extremes(body, sigma_i, u_high[rows], u_low[rows])
+        hi, lo = bridge_extremes(
+            body, sigma_i * self.spec.defaults.intrabar_volatility_ratio, u_high[rows], u_low[rows]
+        )
         open_ = np.exp(log_open)
         close = np.exp(log_close)
         high = np.maximum(np.exp(log_open + hi), np.maximum(open_, close))

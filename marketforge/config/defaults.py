@@ -41,6 +41,8 @@ class MarketDefaults:
         closure_variance_scale, closure_variance_exponent: Price variance
             accumulated over a closure of C minutes, in open-minute variances:
             scale * C ** exponent. Produces overnight and weekend gaps.
+        intrabar_volatility_ratio: Fraction of the bar's volatility used for
+            the high/low excursion around the open-to-close path.
     """
 
     market_type: MarketType
@@ -51,6 +53,10 @@ class MarketDefaults:
     volume_params: VolumeParams
     closure_variance_scale: float = 0.0
     closure_variance_exponent: float = 0.5
+    # Intrabar diffusion relative to the bar's volatility. Real minutes wander
+    # less inside the bar than a Brownian path would (range/body ~1.5-1.7
+    # instead of 2.0), so high/low are drawn with this fraction of sigma.
+    intrabar_volatility_ratio: float = 1.0
 
 
 CRYPTO_DEFAULTS = MarketDefaults(
@@ -67,6 +73,9 @@ CRYPTO_DEFAULTS = MarketDefaults(
         drift_multipliers=(2.5, -2.5, 0.0, 0.0, -6.0),
         volatility_multipliers=(0.9, 0.9, 0.7, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
+        # Calibrated on Binance BTC/ETH/SOL m1 (Feb 2024): trends last ~1.7
+        # days and crashes ~13 h, reproducing |r| autocorrelation out to a day.
+        minutes_per_step=480,
     ),
     anomaly_config=AnomalyConfig(
         spike_probability=0.001,
@@ -80,7 +89,8 @@ CRYPTO_DEFAULTS = MarketDefaults(
     # produced 20-80 sigma minutes and sample kurtosis in the thousands on some
     # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
     innovation_nu=6.0,
-    volume_params=VolumeParams(phi=0.72, lam=0.35),
+    volume_params=VolumeParams(phi=0.45, lam=0.35, kappa=0.4),
+    intrabar_volatility_ratio=0.62,
 )
 
 
@@ -98,6 +108,8 @@ FOREX_DEFAULTS = MarketDefaults(
         drift_multipliers=(1.5, -1.5, 0.0, 0.0, -3.0),
         volatility_multipliers=(0.7, 0.7, 0.5, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
+        # Provisional (no real FX m1 reference yet): trends last ~2.8 days.
+        minutes_per_step=480,
     ),
     anomaly_config=AnomalyConfig(
         spike_probability=0.0003,
@@ -107,7 +119,8 @@ FOREX_DEFAULTS = MarketDefaults(
         flash_crash_recovery_candles=60,
     ),
     innovation_nu=10.0,
-    volume_params=VolumeParams(phi=0.6, lam=0.25),
+    volume_params=VolumeParams(phi=0.45, lam=0.25, kappa=0.4),
+    intrabar_volatility_ratio=0.7,  # provisional
     # Weekend (2880 min) gap ~ sqrt(80) ~ 9 open-minute stds: ~10 pips std
     # on EURUSD, with Student-t tails for the occasional 50-pip gap.
     closure_variance_scale=1.5,
@@ -133,6 +146,9 @@ STOCKS_DEFAULTS = MarketDefaults(
         drift_multipliers=(2.0, -2.0, 0.0, 0.0, -5.0),
         volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 1.5),
         initial_regime=RegimeType.RANGE,
+        # Provisional (no real equity m1 reference yet): trends last ~4
+        # sessions, crashes ~1 session.
+        minutes_per_step=240,
     ),
     anomaly_config=AnomalyConfig(
         spike_probability=0.0004,
@@ -142,7 +158,8 @@ STOCKS_DEFAULTS = MarketDefaults(
         flash_crash_recovery_candles=45,
     ),
     innovation_nu=10.0,
-    volume_params=VolumeParams(phi=0.7, lam=0.3),
+    volume_params=VolumeParams(phi=0.45, lam=0.3, kappa=0.4),
+    intrabar_volatility_ratio=0.7,  # provisional
     # Overnight (1050 min) variance ~ 0.3 of a 390-minute session; a weekend
     # adds ~40% more, in line with empirical overnight/weekend ratios.
     closure_variance_scale=20.0,
