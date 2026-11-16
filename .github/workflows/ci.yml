@@ -151,6 +151,33 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+  next-python:
+    # Early warning for the next CPython (in beta). Deliberately NOT part of
+    # "CI OK": a red mark here never blocks a merge. When it is final, move it
+    # into the test matrix and add its classifier to pyproject.toml.
+    name: Test (py3.15 preview, non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.15"
+          activate-environment: "true"
+          enable-cache: "true"
+          cache-dependency-glob: pyproject.toml
+          cache-suffix: next-python
+      - name: Install (binary wheels only, so a missing wheel fails fast)
+        run: uv pip install -e . --group test --only-binary ":all:"
+      - name: Show environment
+        run: |
+          python --version
+          uv pip list
+      - name: pytest
+        run: pytest
+
   min-deps:
     name: Test (lowest supported dependencies)
     runs-on: ubuntu-latest
