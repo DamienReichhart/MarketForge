@@ -90,16 +90,6 @@ def _batch(parts: list[tuple[np.ndarray, ...]], schema: pa.Schema) -> pa.RecordB
     return pa.RecordBatch.from_arrays(arrays, schema=schema)
 
 
-def candle_batches(
-    bars: Bars, columns: Sequence[int], include_regime: bool
-) -> list[pa.RecordBatch]:
-    """One record batch per requested column of ``bars``, prices and volume rounded."""
-    schema = candle_schema(include_regime)
-    ts, fields = _rounded_columns(bars, columns)
-    regime = (bars.regime.astype(np.int8),) if include_regime else ()
-    return [_batch([(ts, *(f[j] for f in fields), *regime)], schema) for j in range(len(fields[0]))]
-
-
 def ensure_open_file_capacity(n_files: int) -> None:
     """
     Make sure this process may keep ``n_files`` files open at once.
