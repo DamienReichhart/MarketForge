@@ -385,8 +385,8 @@ class MarketSimulator:
         u_spike = rng.random((MINUTES_PER_DAY, n_i))
         u_dir = rng.random((MINUTES_PER_DAY, n_i))
         u_mag = rng.random((MINUTES_PER_DAY, n_i))
-        u_crash = rng.random(n_i)
-        u_start = rng.random(n_i)
+        u_crash = np.asarray(rng.random(n_i))
+        u_start = np.asarray(rng.random(n_i))
 
         if AnomalyType.SPIKES in cfg.types:
             lo_m, hi_m = cfg.spike_magnitude_range
@@ -407,7 +407,7 @@ class MarketSimulator:
                 envelope = _flash_crash_envelope(length, cfg.flash_crash_magnitude)
                 for i in np.nonzero(u_crash < cfg.flash_crash_probability)[0]:
                     s = int(u_start[i] * (n - length - 1))
-                    _apply_envelope(res, i, s, envelope)
+                    _apply_envelope(res, int(i), s, envelope)
 
 
 def _flash_crash_envelope(length: int, magnitude: float) -> np.ndarray:

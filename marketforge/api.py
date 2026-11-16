@@ -326,7 +326,7 @@ def generate(
 def _frame(bars: Optional[Bars], j: int, include_regime: bool) -> pd.DataFrame:
     if bars is None:
         ts = np.empty(0, dtype=np.int64)
-        data = {c: np.empty(0) for c in ("open", "high", "low", "close", "volume")}
+        data: dict[str, np.ndarray] = {c: np.empty(0) for c in ("open", "high", "low", "close", "volume")}
         regime = np.empty(0, dtype=np.int8)
     else:
         ts = bars.timestamps
