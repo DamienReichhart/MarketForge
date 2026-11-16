@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.1.1
+
+No change to the library: every seed produces exactly the candles 3.1.0
+produced, and CI now enforces that. This release ships the hardened release
+pipeline.
+
+### Release and supply chain
+- Each release carries a **CycloneDX SBOM** (`marketforge-<version>.cdx.json`
+  on the GitHub release) and signed build-provenance and SBOM attestations.
+  Verify a download with
+  `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
+- The PyPI release is verified after upload by installing and running it on
+  Linux, macOS and Windows.
+- `SECURITY.md`: report vulnerabilities privately through GitHub, not in
+  public issues.
+
+### Guarantees now enforced by CI
+- **Seed reproducibility:** on Linux, macOS and Windows, 786 fixed-seed
+  outputs are compared bit for bit with the latest release; any difference
+  fails unless the major version is bumped.
+- **Semantic versioning:** a release is blocked if a commit since the last
+  release is marked breaking (`type!:` or `BREAKING CHANGE:`) and the
+  version is not a major bump.
+
 ## 3.1.0
 
 Faster generation with **bit-for-bit identical output**: every seed produces
