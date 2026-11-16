@@ -11,8 +11,26 @@ from __future__ import annotations
 import os
 from functools import cache
 
-from marketforge.config.catalog.base import MarketConfig
+from marketforge.config.catalog.crypto import correlations as crypto_correlations
+from marketforge.config.catalog.crypto import instruments as crypto_instruments
+from marketforge.config.catalog.forex import correlations as forex_correlations
+from marketforge.config.catalog.forex import instruments as forex_instruments
+from marketforge.config.catalog.schema import MarketConfig
+from marketforge.config.catalog.stocks import correlations as stocks_correlations
+from marketforge.config.catalog.stocks import instruments as stocks_instruments
 from marketforge.domain.markets import MarketType
+
+_BUILTIN = {
+    MarketType.CRYPTO: (
+        crypto_instruments.INSTRUMENTS,
+        crypto_correlations.build_correlation_matrix,
+    ),
+    MarketType.FOREX: (forex_instruments.INSTRUMENTS, forex_correlations.build_correlation_matrix),
+    MarketType.STOCKS: (
+        stocks_instruments.INSTRUMENTS,
+        stocks_correlations.build_correlation_matrix,
+    ),
+}
 
 
 @cache
@@ -21,17 +39,14 @@ def load_market_config(market_type: MarketType | str) -> MarketConfig:
     market = MarketType(
         str(market_type.value if isinstance(market_type, MarketType) else market_type).lower()
     )
-    if market == MarketType.FOREX:
-        from marketforge.config.catalog.forex import get_forex_config
-
-        return get_forex_config()
-    if market == MarketType.CRYPTO:
-        from marketforge.config.catalog.crypto import get_crypto_config
-
-        return get_crypto_config()
-    from marketforge.config.catalog.stocks import get_stocks_config
-
-    return get_stocks_config()
+    instruments, build_correlation_matrix = _BUILTIN[market]
+    correlation_matrix, symbol_order = build_correlation_matrix()
+    return MarketConfig(
+        market_type=market,
+        assets=instruments,
+        correlation_matrix=correlation_matrix,
+        asset_order=symbol_order,
+    )
 
 
 def load_catalog(

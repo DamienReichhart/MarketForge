@@ -39,7 +39,8 @@ from typing import Any
 
 import numpy as np
 
-from marketforge.config.catalog.base import AssetParams, MarketConfig, ensure_positive_semidefinite
+from marketforge.config.catalog.correlation import ensure_positive_semidefinite
+from marketforge.config.catalog.schema import AssetParams, MarketConfig
 from marketforge.domain.markets import MarketType
 
 _FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility")

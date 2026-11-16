@@ -43,9 +43,9 @@ from functools import cache, lru_cache
 import numpy as np
 
 from marketforge.calendars.trading_calendar import TradingCalendar, get_calendar
-from marketforge.config.catalog.base import AssetParams, MarketConfig
+from marketforge.config.catalog.schema import AssetParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
-from marketforge.config.settings import AnomalyConfig
+from marketforge.config.model_params import AnomalyConfig
 from marketforge.core.factors import FactorStructure, forex_structure
 from marketforge.core.innovations import correlated_shocks
 from marketforge.core.kernels import (

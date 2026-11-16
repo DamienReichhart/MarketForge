@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from marketforge.config.catalog.forex import FOREX_ASSETS_DATA
+from marketforge.config.catalog.forex.instruments import INSTRUMENTS as FOREX_ASSETS_DATA
 from marketforge.core.factors import FactorStructure, forex_structure
 
 
