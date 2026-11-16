@@ -173,6 +173,43 @@ jobs:
       - name: pytest
         run: pytest
 
+  reproducibility:
+    # The seed contract (docs/adr/0006, 0007): every seed must produce the
+    # same candles as the latest release, bit for bit, unless the major
+    # version is bumped. Both are fingerprinted in ONE environment (same
+    # dependency versions, same CPU), so SIMD differences between runners
+    # cannot cause false alarms; each OS is checked against itself.
+    name: Seed reproducibility (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          activate-environment: "true"
+          enable-cache: "true"
+          cache-dependency-glob: pyproject.toml
+      - name: Fingerprint the code under test
+        run: |
+          uv pip install .
+          # -I: import the installed package, never the checkout.
+          python -I .github/scripts/repro.py capture "$RUNNER_TEMP/head.json"
+      - name: Fingerprint the latest release with the same dependencies
+        run: |
+          baseline="$(python .github/scripts/repro.py baseline)"
+          echo "Baseline: marketforge ${baseline}"
+          uv pip install --no-deps --reinstall "marketforge==${baseline}"
+          python -I .github/scripts/repro.py capture "$RUNNER_TEMP/base.json"
+      - name: Compare
+        run: python .github/scripts/repro.py compare "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json"
+
   build:
     name: Build & verify distributions
     runs-on: ubuntu-latest
@@ -331,6 +368,7 @@ jobs:
       - typecheck
       - test
       - min-deps
+      - reproducibility
       - build
       - audit
       - workflows
