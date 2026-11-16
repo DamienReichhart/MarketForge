@@ -34,7 +34,7 @@ independent of which instruments are written and of the end of the range.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Iterator, Optional
 
@@ -97,15 +97,7 @@ def build_market_spec(
         structure = FactorStructure.identity(symbols)
     idx = [symbols.index(s) for s in structure.factors]
     corr = np.asarray(config.correlation_matrix)[np.ix_(idx, idx)]
-    base = defaults.anomaly_config
-    anomaly = AnomalyConfig(
-        types=frozenset(a for a in anomalies if a != AnomalyType.GAPS),
-        spike_probability=base.spike_probability,
-        spike_magnitude_range=base.spike_magnitude_range,
-        flash_crash_probability=base.flash_crash_probability,
-        flash_crash_magnitude=base.flash_crash_magnitude,
-        flash_crash_recovery_candles=base.flash_crash_recovery_candles,
-    )
+    anomaly = replace(defaults.anomaly_config, types=frozenset(anomalies))
     return MarketSpec(
         market=market,
         instruments=tuple(config.get_asset(s) for s in symbols),

@@ -5,23 +5,22 @@
 # root for full license information.
 
 """
-Default parameters for different market types.
+Per-market model parameters.
 
-Provides sensible defaults based on historical market characteristics
-for crypto, forex, and stock markets.
+Calibrated so that generated m1 data passes the stylized-fact bands of
+:mod:`marketforge.validation.report` across every instrument and seeds; run
+``python scripts/benchmark_realism.py`` after changing anything here.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from marketforge.config.settings import (
-    MarketType,
-    GARCHParams,
-    RegimeParams,
     AnomalyConfig,
-    AnomalyType,
+    GARCHParams,
+    MarketType,
+    RegimeParams,
     RegimeType,
     VolumeParams,
 )
@@ -30,55 +29,36 @@ from marketforge.config.settings import (
 @dataclass(frozen=True)
 class MarketDefaults:
     """
-    Default parameters for a specific market type.
-    
-    Contains calibrated parameters based on typical market behavior.
-    
+    Model parameters for one market.
+
     Attributes:
-        market_type: The market type these defaults apply to.
-        base_volatility: Typical annualized volatility.
-        base_drift: Typical annualized drift.
-        garch_params: Calibrated GARCH parameters.
-        regime_params: Calibrated regime transition parameters.
-        anomaly_config: Typical anomaly configuration.
-        volume_base: Typical base volume.
-        volume_volatility: Typical volume volatility.
-        session_gaps: Whether this market has session gaps.
-        weekend_gaps: Whether this market closes on weekends.
+        market_type: Market these parameters apply to.
+        garch_params: Volatility clustering and leverage.
+        regime_params: Market-wide regime chain.
+        anomaly_config: Anomaly magnitudes (which ones run is chosen per request).
+        innovation_nu: Student-t degrees of freedom of shocks (None = Gaussian).
+        volume_params: Volume dynamics shared by the market's instruments.
+        closure_variance_scale, closure_variance_exponent: Price variance
+            accumulated over a closure of C minutes, in open-minute variances:
+            scale * C ** exponent. Produces overnight and weekend gaps.
     """
+
     market_type: MarketType
-    base_volatility: float
-    base_drift: float
     garch_params: GARCHParams
     regime_params: RegimeParams
     anomaly_config: AnomalyConfig
-    volume_base: float
-    volume_volatility: float
-    session_gaps: bool
-    weekend_gaps: bool
     innovation_nu: float
     volume_params: VolumeParams
-    # Price variance accumulated over a closure of C minutes, expressed in
-    # open-minute variances: scale * C ** exponent. Produces overnight and
-    # weekend gaps; ignored for markets that never close.
     closure_variance_scale: float = 0.0
     closure_variance_exponent: float = 0.5
 
 
-# Crypto market defaults - 24/7 trading, high volatility
 CRYPTO_DEFAULTS = MarketDefaults(
     market_type=MarketType.CRYPTO,
-    base_volatility=0.03,  # Higher volatility for crypto
-    base_drift=0.0001,
-    garch_params=GARCHParams(
-        omega=0.00002,  # Higher baseline volatility
-        alpha=0.03,     # Low alpha limits GARCH spike amplification (kurtosis control)
-        beta=0.84,      # High persistence
-        gamma=0.16,     # Leverage: strong enough for robust negative leverage correlation
-    ),
+    garch_params=GARCHParams(alpha=0.03, beta=0.84, gamma=0.16),
     regime_params=RegimeParams(
         transition_matrix=(
-            (0.80, 0.05, 0.10, 0.04, 0.01),  # More volatile transitions
+            (0.80, 0.05, 0.10, 0.04, 0.01),
             (0.05, 0.80, 0.10, 0.04, 0.01),
             (0.12, 0.12, 0.65, 0.09, 0.02),
             (0.06, 0.10, 0.14, 0.62, 0.08),
@@ -89,41 +69,27 @@ CRYPTO_DEFAULTS = MarketDefaults(
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
-        types=frozenset({AnomalyType.SPIKES, AnomalyType.FLASH_CRASH}),
-        gap_probability=0.0,  # No gaps in 24/7 market
-        spike_probability=0.001,  # More frequent spikes
+        spike_probability=0.001,
         spike_magnitude_range=(0.03, 0.15),
         flash_crash_probability=0.002,
         flash_crash_magnitude=0.20,
         flash_crash_recovery_candles=20,
     ),
-    volume_base=1000.0,
-    volume_volatility=0.6,
-    session_gaps=False,
-    weekend_gaps=False,
     # The Student-t mixing variable is shared by every crypto asset (tail
     # dependence), so a rare draw hits the whole market at once. With nu=5 that
     # produced 20-80 sigma minutes and sample kurtosis in the thousands on some
     # seeds; nu=6 keeps median m1 excess kurtosis ~10 without the blow-ups.
     innovation_nu=6.0,
-    volume_params=VolumeParams(phi=0.72, lam=0.35, noise_sigma=0.5),
+    volume_params=VolumeParams(phi=0.72, lam=0.35),
 )
 
 
-# Forex market defaults - session-based with weekend gaps
 FOREX_DEFAULTS = MarketDefaults(
     market_type=MarketType.FOREX,
-    base_volatility=0.008,  # Lower volatility for forex
-    base_drift=0.00001,
-    garch_params=GARCHParams(
-        omega=0.000005,
-        alpha=0.03,
-        beta=0.91,  # Very high persistence
-        gamma=0.08,  # Stronger leverage for robustly negative correlation
-    ),
+    garch_params=GARCHParams(alpha=0.03, beta=0.91, gamma=0.08),
     regime_params=RegimeParams(
         transition_matrix=(
-            (0.88, 0.02, 0.08, 0.02, 0.00),  # More stable regimes
+            (0.88, 0.02, 0.08, 0.02, 0.00),
             (0.02, 0.88, 0.08, 0.02, 0.00),
             (0.08, 0.08, 0.78, 0.06, 0.00),
             (0.04, 0.08, 0.18, 0.68, 0.02),
@@ -134,21 +100,14 @@ FOREX_DEFAULTS = MarketDefaults(
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
-        types=frozenset({AnomalyType.GAPS, AnomalyType.SPIKES}),
-        gap_probability=0.002,  # Session and weekend gaps
-        gap_magnitude_range=(0.0005, 0.008),
         spike_probability=0.0003,
         spike_magnitude_range=(0.01, 0.05),
         flash_crash_probability=0.0002,
         flash_crash_magnitude=0.08,
         flash_crash_recovery_candles=60,
     ),
-    volume_base=10000.0,
-    volume_volatility=0.4,
-    session_gaps=True,
-    weekend_gaps=True,
-    innovation_nu=10.0,  # Higher nu reduces kurtosis for robust multi-seed/multi-asset behavior
-    volume_params=VolumeParams(phi=0.6, lam=0.25, noise_sigma=0.35),
+    innovation_nu=10.0,
+    volume_params=VolumeParams(phi=0.6, lam=0.25),
     # Weekend (2880 min) gap ~ sqrt(80) ~ 9 open-minute stds: ~10 pips std
     # on EURUSD, with Student-t tails for the occasional 50-pip gap.
     closure_variance_scale=1.5,
@@ -156,21 +115,13 @@ FOREX_DEFAULTS = MarketDefaults(
 )
 
 
-# Stock market defaults - market hours with gaps
 STOCKS_DEFAULTS = MarketDefaults(
     market_type=MarketType.STOCKS,
-    base_volatility=0.015,  # Moderate volatility
-    base_drift=0.0002,  # Slight upward bias
-    garch_params=GARCHParams(
-        omega=0.00001,
-        alpha=0.05,
-        beta=0.88,
-        # v2 used alpha=0.04, gamma=0.16: on minute data a run of negative
-        # Student-t shocks compounded variance to ~260x its mean (37-sigma
-        # minutes, excess kurtosis in the hundreds). 0.08 keeps a clearly
-        # negative leverage correlation without the blow-ups.
-        gamma=0.08,
-    ),
+    # v2 used alpha=0.04, gamma=0.16: on minute data a run of negative
+    # Student-t shocks compounded variance to ~260x its mean (37-sigma
+    # minutes, excess kurtosis in the hundreds). gamma=0.08 keeps a clearly
+    # negative leverage correlation without the blow-ups.
+    garch_params=GARCHParams(alpha=0.05, beta=0.88, gamma=0.08),
     regime_params=RegimeParams(
         transition_matrix=(
             (0.85, 0.03, 0.08, 0.03, 0.01),
@@ -184,21 +135,14 @@ STOCKS_DEFAULTS = MarketDefaults(
         initial_regime=RegimeType.RANGE,
     ),
     anomaly_config=AnomalyConfig(
-        types=frozenset({AnomalyType.GAPS, AnomalyType.SPIKES}),
-        gap_probability=0.005,  # Overnight and weekend gaps
-        gap_magnitude_range=(0.002, 0.03),
         spike_probability=0.0004,
         spike_magnitude_range=(0.02, 0.08),
         flash_crash_probability=0.0005,
         flash_crash_magnitude=0.10,
         flash_crash_recovery_candles=45,
     ),
-    volume_base=100000.0,
-    volume_volatility=0.5,
-    session_gaps=True,
-    weekend_gaps=True,
     innovation_nu=10.0,
-    volume_params=VolumeParams(phi=0.7, lam=0.3, noise_sigma=0.45),
+    volume_params=VolumeParams(phi=0.7, lam=0.3),
     # Overnight (1050 min) variance ~ 0.3 of a 390-minute session; a weekend
     # adds ~40% more, in line with empirical overnight/weekend ratios.
     closure_variance_scale=20.0,
@@ -206,7 +150,6 @@ STOCKS_DEFAULTS = MarketDefaults(
 )
 
 
-# Registry of market defaults
 _MARKET_DEFAULTS: dict[MarketType, MarketDefaults] = {
     MarketType.CRYPTO: CRYPTO_DEFAULTS,
     MarketType.FOREX: FOREX_DEFAULTS,
@@ -215,39 +158,5 @@ _MARKET_DEFAULTS: dict[MarketType, MarketDefaults] = {
 
 
 def get_market_defaults(market_type: MarketType) -> MarketDefaults:
-    """
-    Get default parameters for a market type.
-    
-    Args:
-        market_type: The market type to get defaults for.
-        
-    Returns:
-        MarketDefaults instance with calibrated parameters.
-        
-    Raises:
-        KeyError: If market type is not recognized.
-    """
-    if market_type not in _MARKET_DEFAULTS:
-        raise KeyError(f"Unknown market type: {market_type}")
-    return _MARKET_DEFAULTS[market_type]
-
-
-def get_default_volatility(market_type: MarketType) -> float:
-    """Get default volatility for a market type."""
-    return get_market_defaults(market_type).base_volatility
-
-
-def get_default_drift(market_type: MarketType) -> float:
-    """Get default drift for a market type."""
-    return get_market_defaults(market_type).base_drift
-
-
-def get_default_volume_base(market_type: MarketType) -> float:
-    """Get default volume base for a market type."""
-    return get_market_defaults(market_type).volume_base
-
-
-def list_market_types() -> list[str]:
-    """Return list of supported market type names."""
-    return [mt.value for mt in MarketType]
-
+    """Model parameters for a market."""
+    return _MARKET_DEFAULTS[MarketType(market_type)]
