@@ -197,7 +197,20 @@ def _fake_repo(monkeypatch, tags, messages=(), on_pypi=False):
     return raw
 
 
-def test_guard_fails_on_an_existing_tag(monkeypatch, capsys):
+def _outputs(path):
+    return dict(line.split("=", 1) for line in path.read_text().splitlines())
+
+
+def test_guard_if_unreleased_turns_an_existing_tag_into_a_no_op(monkeypatch, tmp_path):
+    output = tmp_path / "out"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    raw = _fake_repo(monkeypatch, ["V2.0", f"v{raw_version()}"])
+    assert release.main(["guard", "--if-unreleased"]) == 0
+    assert _outputs(output)["release"] == "false"
+    assert _outputs(output)["version"] == raw
+
+
+def test_guard_without_if_unreleased_fails_on_an_existing_tag(monkeypatch, capsys):
     _fake_repo(monkeypatch, [f"v{raw_version()}"])
     assert release.main(["guard"]) == 1
     assert "already released" in capsys.readouterr().out
@@ -208,6 +221,15 @@ def test_guard_blocks_unflagged_breaking_changes(monkeypatch, capsys):
     _fake_repo(monkeypatch, [f"v{major}.0.0rc1"], messages=["feat!: incompatible"])
     assert release.main(["guard"]) == 1
     assert "not a major release" in capsys.readouterr().out
+
+
+def test_guard_passes_and_marks_a_release(monkeypatch, tmp_path):
+    output = tmp_path / "out"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    _fake_repo(monkeypatch, ["V1.0"], messages=["fix: something"])
+    assert release.main(["guard", "--if-unreleased"]) == 0
+    assert _outputs(output)["release"] == "true"
+    assert _outputs(output)["tag"] == f"v{raw_version()}"
 
 
 def raw_version():
