@@ -7,6 +7,12 @@ API covers what the command line does. **Every seed produces exactly the
 candles 3.1.1 produced**, with one exception listed under Breaking changes.
 The major version is for the renamed options and parameters.
 
+### Licence
+- **MarketForge is now Apache-2.0**, not AGPL-3.0-or-later, so it can be
+  imported into closed-source pipelines and services without copyleft
+  obligations. Versions released before 4.0 stay under the AGPL they shipped
+  with. The data MarketForge generates was never covered by either licence.
+
 ### Breaking changes
 - **"Asset" is now "instrument" everywhere**, as the glossary has said since
   3.0. `--assets`/`-a` is `--instruments`/`-i`, `list-assets` is

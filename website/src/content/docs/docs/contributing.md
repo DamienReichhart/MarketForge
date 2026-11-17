@@ -3,7 +3,7 @@ title: "Contributing"
 description: "How to set up a development environment, the checks CI runs, and how releases happen."
 ---
 
-MarketForge is free software under the AGPL-3.0-or-later, developed on [GitHub](https://github.com/DamienReichhart/MarketForge). Issues, measurements on real data and pull requests are welcome.
+MarketForge is free software under the Apache-2.0 licence, developed on [GitHub](https://github.com/DamienReichhart/MarketForge). Issues, measurements on real data and pull requests are welcome.
 
 ## Development setup
 

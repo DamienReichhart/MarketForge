@@ -10,7 +10,7 @@ These terms govern your use of this website. By using it you accept them. The we
 
 ## The software and its licence
 
-MarketForge is free, open-source software, distributed under the **GNU Affero General Public License, version 3 or (at your option) any later version** (AGPL-3.0-or-later). The [licence](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE), not these terms, governs your rights to use, modify and redistribute the software. Where these terms and the licence differ about the software, the licence prevails.
+MarketForge is free, open-source software, distributed under the **Apache License, version 2.0** (Apache-2.0). The [licence](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE), not these terms, governs your rights to use, modify and redistribute the software. Where these terms and the licence differ about the software, the licence prevails.
 
 The website’s text, examples and images are part of the same repository and are published under the same licence, unless stated otherwise. Third-party names and trademarks mentioned on the site (exchanges, instruments, companies, software) belong to their owners and are used only to describe what MarketForge simulates or works with.
 
@@ -26,7 +26,7 @@ Nothing on this website or in the software is financial, investment, trading, le
 
 ## No warranty, limited liability
 
-The website and the software are provided **“as is”, without warranty of any kind**, as set out in sections 15 and 16 of the licence. The publisher is a private individual who provides them free of charge and does not guarantee that they are accurate, complete, available or fit for a particular purpose.
+The website and the software are provided **“as is”, without warranty of any kind**, as set out in sections 7 and 8 of the licence. The publisher is a private individual who provides them free of charge and does not guarantee that they are accurate, complete, available or fit for a particular purpose.
 
 To the extent permitted by law, the publisher is not liable for any loss arising from the use of the website, the software or the data it generates, including trading losses, lost profits and lost data. Nothing in these terms limits liability that cannot be limited under applicable law, such as liability for gross negligence or wilful misconduct, or your rights as a consumer.
 

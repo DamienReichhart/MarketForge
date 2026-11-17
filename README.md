@@ -7,7 +7,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/marketforge)](https://pypi.org/project/marketforge/)
 [![Python](https://img.shields.io/pypi/pyversions/marketforge)](https://pypi.org/project/marketforge/)
-[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE)
 [![Docs](https://img.shields.io/badge/docs-damienreichhart.github.io%2FMarketForge-informational)](https://damienreichhart.github.io/MarketForge/)
 
 **Synthetic market data for training AI trading models and testing
@@ -229,7 +229,7 @@ releases.
 
 ## License
 
-AGPL-3.0-or-later. See [LICENSE](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE).
+Apache-2.0. See [LICENSE](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE).
 
 All data MarketForge produces is synthetic. It is not the price history of any
 real instrument, and nothing in this project is financial advice.
