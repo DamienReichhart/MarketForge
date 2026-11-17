@@ -13,7 +13,7 @@ Alternatives we rejected:
 
 ## Consequences
 
-- **Forward only, within a major version.** Earlier history cannot be prepended, and a dataset written by another major version is refused, since a seed's candles may differ.
+- **Forward only, within a model revision.** Earlier history cannot be prepended, and a dataset written by another `model_revision` is refused, since a seed's candles may differ ([ADR 0011](0011-realism-over-seed-stability.md)).
 - **Datasets written before 4.0 cannot be extended**: they have no manifest.
 - **Parquet files are rewritten** on extension (existing rows copied, new ones added) because Parquet cannot be appended to. We kept one file per instrument and timeframe rather than part files, which every existing reader would have had to learn.
 - **Extension is all-or-nothing.** A journal records the size of every CSV file before it is appended to; rewritten Parquet files are staged beside the originals and swapped in after the new manifest is ready. A failed or killed extension is undone, or completed, the next time the dataset is extended.

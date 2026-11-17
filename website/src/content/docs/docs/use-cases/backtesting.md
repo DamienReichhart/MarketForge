@@ -46,7 +46,7 @@ Synthetic data lets you build tests with a known answer:
 
 - **Zero-edge baseline.** Generate a market with `drift = 0` in an [override file](../../guides/custom-instruments/) and run a random-entry strategy across many seeds. Its mean P&L before costs should be zero, and after costs should be minus the spread you paid. Anything else is a bug in fills or accounting.
 - **Look-ahead detector.** A strategy that peeks one candle ahead makes money on every seed. Run your real strategy across 50 seeds: consistent profits on data with no edge are a red flag.
-- **Regression tests.** Fix a seed and a version, store the expected trades, and assert them in CI. The data will be bit-for-bit identical on the next run.
+- **Regression tests.** Fix a seed and a version, store the expected trades, and assert them in CI. The data will be bit-for-bit identical on the next run with the same version and platform.
 
 ```bash
 # A fixed fixture for the engine's test suite: one month, three markets, small

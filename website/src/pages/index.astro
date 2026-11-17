@@ -22,7 +22,7 @@ const validationLines = sample.validation.summary.split('\n');
 
 <Landing
 	title="MarketForge: synthetic market data for AI trading models and backtesters"
-	description="Open-source generator of realistic OHLCV data: 208 crypto, forex and stock instruments, real trading calendars, labelled market regimes, bid-ask spreads, bit-for-bit reproducible. Train AI trading models and stress-test backtesters."
+	description="Open-source generator of realistic OHLCV data: 208 crypto, forex and stock instruments, real trading calendars, labelled market regimes, bid-ask spreads, reproducible from a seed. Train AI trading models and stress-test backtesters."
 	version={version}
 >
 	<section class="mf-hero">
@@ -190,7 +190,7 @@ const validationLines = sample.validation.summary.split('\n');
 			</header>
 			<div class="mf-features">
 				<div>
-					<h3>Bit-for-bit reproducible</h3>
+					<h3>Reproducible</h3>
 					<p>The seed, market and minute fix every random shock. The same EURUSD comes out whether you generate it alone or with 207 other instruments, at any timeframe or in either format, and CI checks 786 outputs on every commit.</p>
 				</div>
 				<div>

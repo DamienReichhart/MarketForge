@@ -8,7 +8,7 @@ name = "marketforge"
 # `v<version>` when this changes on main; `marketforge.__version__` reads it
 # back from the installed metadata.
 version = "3.1.1"
-description = "Synthetic OHLCV market data for training AI trading models and testing backtesters: labelled regimes, real trading calendars, bit-for-bit reproducible"
+description = "Synthetic OHLCV market data for training AI trading models and testing backtesters: labelled regimes, real trading calendars, reproducible from a seed"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]

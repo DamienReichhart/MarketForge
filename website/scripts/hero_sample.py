@@ -2,8 +2,8 @@
 
 The landing page draws its chart and validation report from
 src/samples/hero-sample.json, so it shows what MarketForge actually produces,
-never a mock-up. Regenerate it after a major version (a seed's candles only
-change then) with, from the repository root:
+never a mock-up. Regenerate it after a release that changes the model (a seed's candles
+only change then) with, from the repository root:
 
     pip install -e .
     python website/scripts/hero_sample.py

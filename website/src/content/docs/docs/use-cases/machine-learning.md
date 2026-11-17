@@ -123,4 +123,4 @@ Markets are simulated in parallel (`--jobs`), memory stays flat whatever the ran
 - **Overfitting the generator.** Hyperparameters tuned until the synthetic validation score is perfect are tuned to MarketForge. Keep synthetic data for learning, real data for selection.
 - **Regimes are market-wide.** Every instrument of a market shares one regime path; the label describes the market, not the individual instrument.
 - **Labels are cleaner than reality.** Five sharp states are a simplification of real markets. A detector that is excellent here is an upper bound, not a guarantee.
-- **Major versions change paths.** A seed's candles only change in a new major version. Record the version (the manifest does) next to your results.
+- **Releases can change paths.** A seed's candles can change in any release that makes the data more realistic (see *Output changes* in the changelog). Pin the version and record it (the manifest does) next to your results.

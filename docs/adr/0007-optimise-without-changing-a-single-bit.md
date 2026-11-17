@@ -1,5 +1,7 @@
 # Optimise without changing a single bit
 
+> Amended by [ADR 0011](0011-realism-over-seed-stability.md): the "no output change" rule applies to optimisations, which still must not alter a seed. It no longer exists to protect seeds across versions.
+
 3.0's speed was limited by Python-level waste, not by the language (ADR 0003 still holds). The worst cases were thousands of tiny CSV writes and `np.round` calls, re-concatenating the open weekly bucket every day, recomputing the whole market after the draws when one instrument was requested, and rebuilding a multi-million-step regime calibration in every simulator. 3.1 removes that waste under one rule: **for every seed, the output must stay identical, bit for bit, to 3.0's**. The rule is what lets the change ship as a minor version (ADR 0006).
 
 What keeps a rewrite bit-identical:

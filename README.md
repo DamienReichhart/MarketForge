@@ -15,8 +15,8 @@ backtesters.** MarketForge simulates 208 crypto, forex and US stock
 instruments minute by minute, on each market's real trading calendar, and
 writes candles from `m1` to `W1` as CSV, Parquet or pandas DataFrames. Every
 candle can carry the **hidden market regime** that produced it and a realistic
-**bid-ask spread**, and every dataset is **bit-for-bit reproducible** from its
-seed.
+**bid-ask spread**, and every dataset is **reproducible** from its seed and
+version.
 
 ```bash
 pip install marketforge
@@ -79,9 +79,10 @@ and stress-test, and real data to decide whether anything earns money. See
   memory, the leverage effect, intrabar range and the spread are checked
   against bands measured on real minute data, for every instrument, across
   seeds. The validator ships with the package.
-- **Bit-for-bit reproducible.** A seed fixes every random shock by market and
-  minute. The same seed gives the same EURUSD whether you generate it alone or
-  with 207 other instruments. CI enforces it on every commit.
+- **Reproducible.** A seed fixes every random shock by market and minute. The
+  same seed and version give the same EURUSD, bit for bit on a given
+  platform, whether you generate it alone or with 207 other instruments. CI
+  enforces it on every commit.
 - **Datasets you can extend.** Every dataset carries a manifest of how it was
   made. `marketforge extend` continues it, byte-identical to generating the
   whole range at once.
@@ -179,14 +180,17 @@ the [spread](https://damienreichhart.github.io/MarketForge/docs/reference/spread
 and the [known simplifications](https://damienreichhart.github.io/MarketForge/docs/reference/markets/#known-simplifications)
 are documented in full.
 
-## Reproducibility contract
+## Reproducibility
 
-For a given MarketForge **major version**, `(seed, market, minute)` fully
-determines every random shock. Output is identical whichever instruments,
-timeframes, format or `--jobs` you choose, whether the spread or regime is
-requested, how far `--to` extends, and whether the range was generated at once
-or extended in steps. Changes that alter output for an existing seed only ship
-in a new major version. See
+For a given MarketForge **version**, `(seed, market, minute)` fully determines
+every random shock. Output is identical whichever instruments, timeframes,
+format or `--jobs` you choose, whether the spread or regime is requested, how
+far `--to` extends, and whether the range was generated at once or extended in
+steps. **Realism comes before seed stability:** any release may change what a
+seed produces when that makes the data more realistic, and says so under
+*Output changes* in the changelog. Pin the version to keep a dataset
+identical; the manifest records the version and model revision that made it.
+See
 [Reproducibility](https://damienreichhart.github.io/MarketForge/docs/reference/reproducibility/).
 
 ## Contributing

@@ -26,7 +26,7 @@ The manifest stores a checkpoint: the model state (prices, GARCH variance, regim
 ## Limits
 
 - Datasets go **forward only**. To get an earlier start, generate again.
-- Extension works **within a major version**: a seed's candles can differ between major versions, so a dataset written by 4.x is extended by 4.x.
+- Extension works **within a model revision**: a seed's candles can differ between releases that change the model, so a dataset is extended only by a release with the same `model_revision` as the one that wrote it (the manifest records both).
 - Datasets written before 4.0 have no manifest and cannot be extended.
 
 See [ADR 0009](../../adr/0009-extend-datasets-from-an-exact-checkpoint/) for the design.
