@@ -38,7 +38,7 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `-i, --instruments` | Comma-separated instruments, in any letter case. Their markets are inferred. |
 | `-m, --market` | `crypto`, `forex`, `stocks` or `all`. Defaults to all when `--instruments` is not given. With `--instruments`, keeps only the instruments in these markets. |
 | `-s, --seed` | Non-negative integer. When omitted, a random seed is used, printed, and recorded in the manifest so the run can be reproduced. |
-| `-t, --timeframes` | Any of `m1,m5,m15,m30,H1,H4,D1,W1`, in any letter case. Default: all. |
+| `-t, --timeframes` | Any of `m1,m2,m3,m5,m10,m15,m20,m30,H1,H2,H3,H4,H6,H8,H12,D1,W1`, in any letter case. Default: `m1,m5,m15,m30,H1,H4,D1,W1`. |
 | `--format` | `csv` (default), `parquet` or `feather`. Parquet files are about half the size and load much faster; Feather (Arrow IPC) loads fastest of all. |
 | `--timestamps` | `unix` (default); `iso` (`2024-01-02T14:30:00Z`) for CSV files; or `datetime`, a native UTC time column, for Parquet and Feather files. |
 | `--anomalies` | Optional, deliberately unrealistic events: `spikes`, `flash_crash`. |

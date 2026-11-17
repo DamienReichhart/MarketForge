@@ -40,6 +40,7 @@ print(report.passed, report.summary())
 | `GeneratedData.panel(column, timeframe)` | One column of every instrument side by side. The index is the union of all candle times; a value is NaN where that instrument's market was closed, never forward-filled. |
 | `GeneratedData.to_long(timeframe)` | Every instrument of a timeframe in one frame indexed by `(symbol, time)`: the long format of most data and ML tooling. |
 | `GeneratedData.to_numpy(timeframe, columns)` | A `(time, instrument, column)` float array for tensors, with its time index and symbol list; NaN where a market was closed, regime as its codes. |
+| `resample(frame, timeframe, market)` | Aggregates `m1` candles into any timeframe exactly as MarketForge would: on the market's anchor clock (forex days at 17:00 New York, stock days at the open), dropping partial candles, which a plain pandas `resample` gets wrong. |
 | `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
 | `read(dataset, instruments=None, *, timeframes=None)` | Loads a dataset (or part of it) back into memory: the same `GeneratedData` that `generate()` returns for its settings, with a UTC index, float columns and a categorical regime. |
 | `estimate(...)` | What a generation would produce without running it: `files`, `rows`, `disk_bytes`, `memory_bytes` (for `generate()`), `seconds` on one core and `wall_seconds(jobs)`. Takes the arguments of `generate_to_disk()`. |

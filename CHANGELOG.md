@@ -89,6 +89,11 @@ options and parameters.
   [ADR 0011](docs/adr/0011-realism-over-seed-stability.md).
 
 ### Machine-learning ergonomics
+- **More timeframes**: m2, m3, m10, m20, H2, H3, H6, H8 and H12, on each
+  market's anchors like the others.
+- **`mf.resample(frame, "H4", "forex")`** aggregates m1 candles (generated,
+  read back or your own) exactly as MarketForge does: on the market's anchor
+  clock and without partial candles.
 - **Feather output** (`--format feather`): Arrow IPC files that load fastest
   and memory-map with no copy. They extend, read back and validate like the
   other formats.

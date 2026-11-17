@@ -136,7 +136,8 @@ def generate(
         markets: Restrict to these markets (``crypto``, ``forex``, ``stocks``).
         seed: Non-negative integer; the same seed returns identical candles.
             If omitted a random seed is chosen and exposed as ``result.seed``.
-        timeframes: Any of m1, m5, m15, m30, H1, H4, D1, W1.
+        timeframes: Any of m1, m2, m3, m5, m10, m15, m20, m30, H1, H2, H3, H4,
+            H6, H8, H12, D1, W1.
         anomalies: Optional ``spikes`` and/or ``flash_crash``.
         include_regime: Add a ``regime`` column (market regime name at candle close).
         include_spread: Add a ``spread`` column: the mean quoted bid-ask spread

@@ -15,11 +15,20 @@ class Timeframe(Enum):
     """Candle timeframes, valued in minutes."""
 
     m1 = 1
+    m2 = 2
+    m3 = 3
     m5 = 5
+    m10 = 10
     m15 = 15
+    m20 = 20
     m30 = 30
     H1 = 60
+    H2 = 120
+    H3 = 180
     H4 = 240
+    H6 = 360
+    H8 = 480
+    H12 = 720
     D1 = 1440
     W1 = 10080
 

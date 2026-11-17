@@ -25,16 +25,8 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.time import MINUTES_PER_DAY
 from marketforge.domain.timeframes import Timeframe
 
-SUPPORTED_TIMEFRAMES = (
-    Timeframe.m1,
-    Timeframe.m5,
-    Timeframe.m15,
-    Timeframe.m30,
-    Timeframe.H1,
-    Timeframe.H4,
-    Timeframe.D1,
-    Timeframe.W1,
-)
+# Every timeframe: each divides a day (aligned to the market's anchor) or is W1.
+SUPPORTED_TIMEFRAMES = tuple(Timeframe)
 
 
 def bucket_keys(

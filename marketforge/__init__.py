@@ -19,6 +19,7 @@ from marketforge.api.estimating import Estimate, estimate
 from marketforge.api.memory import GeneratedData, generate, generate_many
 from marketforge.api.parsing import parse_time
 from marketforge.api.reading import read
+from marketforge.api.resampling import resample
 from marketforge.api.validating import validate
 
 __author__ = "REICHHART Damien"
@@ -36,5 +37,6 @@ __all__ = [
     "instruments",
     "parse_time",
     "read",
+    "resample",
     "validate",
 ]

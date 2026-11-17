@@ -64,7 +64,8 @@ from marketforge.output.manifest import dataset_files
     "-t",
     default="m1,m5,m15,m30,H1,H4,D1,W1",
     show_default=True,
-    help="Comma-separated, in any letter case: m1,m5,m15,m30,H1,H4,D1,W1.",
+    help="Comma-separated, in any letter case. Any of m1,m2,m3,m5,m10,m15,m20,m30,"
+    "H1,H2,H3,H4,H6,H8,H12,D1,W1; the default is the eight shown.",
 )
 @click.option(
     "--anomalies", metavar="LIST", help="Optional unrealistic events: spikes, flash_crash."
