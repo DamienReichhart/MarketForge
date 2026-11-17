@@ -33,6 +33,9 @@ jobs_option = click.option(
 progress_option = click.option(
     "--progress/--no-progress", default=True, show_default=True, help="Show a progress bar."
 )
+quiet_option = click.option(
+    "--quiet", "-q", is_flag=True, help="Print nothing but warnings and errors (for scripts)."
+)
 days_option = click.option(
     "--days",
     type=click.IntRange(min=1),
@@ -57,13 +60,14 @@ def run(
     jobs: int | None,
     progress: bool,
     overwrite: bool = False,
+    quiet: bool = False,
 ) -> None:
     """Write a request's candles to ``output_dir`` and report what was done."""
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
     t0 = time.time()
     bar = None
     lock = threading.Lock()
-    if progress:
+    if progress and not quiet:
         total = request.n_days * len(request.plans)
         bar = tqdm(total=total, unit="day", desc="Simulating", ncols=90, file=sys.stderr)
 
@@ -88,6 +92,10 @@ def run(
             if bar is not None:
                 bar.close()
     elapsed = time.time() - t0
+    if quiet:
+        for warning in caught:
+            click.secho(f"Warning: {warning.message}", fg="yellow", err=True)
+        return
     click.secho(
         f"\nDone in {elapsed:.1f}s: {report.n_files} files in {Path(output_dir).resolve()}",
         fg="green",

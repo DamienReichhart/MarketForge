@@ -12,7 +12,14 @@ import click
 
 from marketforge.api.disk import plan_extension
 from marketforge.cli.plan_summary import print_plan
-from marketforge.cli.running import days_option, end_of_range, jobs_option, progress_option, run
+from marketforge.cli.running import (
+    days_option,
+    end_of_range,
+    jobs_option,
+    progress_option,
+    quiet_option,
+    run,
+)
 from marketforge.output.manifest import read_manifest
 
 
@@ -28,6 +35,7 @@ from marketforge.output.manifest import read_manifest
 @jobs_option
 @click.option("--dry-run", is_flag=True, help="Print what would be added and exit.")
 @progress_option
+@quiet_option
 def extend(
     dataset: str,
     end: str | None,
@@ -35,6 +43,7 @@ def extend(
     jobs: int | None,
     dry_run: bool,
     progress: bool,
+    quiet: bool,
 ) -> None:
     """
     Continue DATASET forward in time.
@@ -45,6 +54,7 @@ def extend(
     """
     new_end = end_of_range(read_manifest(dataset).end, end, days)
     request, fmt, timestamps = plan_extension(dataset, new_end)
-    print_plan(request, fmt, dataset, random_seed=False, jobs=jobs)
+    if not quiet or dry_run:
+        print_plan(request, fmt, dataset, random_seed=False, jobs=jobs)
     if not dry_run:
-        run(request, dataset, fmt, timestamps, jobs, progress)
+        run(request, dataset, fmt, timestamps, jobs, progress, quiet=quiet)

@@ -121,6 +121,8 @@ options and parameters.
   dataset, one line per file, with an overall exit code.
 - **`--json`** on `info`, `validate` and `list-instruments` prints
   machine-readable output for scripts and CI.
+- **`-q`/`--quiet`** on `generate` and `extend` prints nothing but warnings
+  and errors.
 
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and

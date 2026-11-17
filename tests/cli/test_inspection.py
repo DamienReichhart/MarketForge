@@ -71,3 +71,12 @@ def test_validating_a_dataset_without_m1_says_so(tmp_path):
     res = _run("validate", "--input", str(tmp_path))
     assert res.exit_code == 2
     assert "has no m1 files" in res.output and "-t m1" in res.output
+
+
+def test_quiet_prints_nothing_on_success(tmp_path):
+    common = ("--from", "2024-01-02", "--days", "1", "-i", "AAPL", "-t", "D1", "--seed", "1")
+    res = CliRunner().invoke(cli, ["generate", "-o", str(tmp_path), *common, "-q"])
+    assert res.exit_code == 0 and res.output == ""
+    res = CliRunner().invoke(cli, ["extend", str(tmp_path), "--days", "1", "-q"])
+    assert res.exit_code == 0 and res.output == ""
+    assert (tmp_path / "stocks" / "AAPL_D1.csv").exists()

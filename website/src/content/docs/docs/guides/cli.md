@@ -49,6 +49,7 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `--dry-run` | Prints the plan and estimates, then exits. |
 | `--overwrite` | Replaces the dataset already in `--output-dir` instead of refusing it. |
 | `--no-progress` | Hides the progress bar. |
+| `-q, --quiet` | Prints nothing but warnings and errors: for scripts and CI. |
 
 A file that receives no candle (the market was closed for the whole range, or the range is shorter than the candle) is written empty, with a warning. `generate` refuses a directory that already holds a dataset (a manifest, or candle files an interrupted run left behind), so two datasets never mix; `--overwrite` deletes the old dataset's files first and leaves any other file alone.
 

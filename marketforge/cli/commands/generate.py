@@ -13,7 +13,14 @@ import click
 from marketforge.api.parsing import parse_time
 from marketforge.api.planning import plan_request
 from marketforge.cli.plan_summary import print_plan
-from marketforge.cli.running import days_option, end_of_range, jobs_option, progress_option, run
+from marketforge.cli.running import (
+    days_option,
+    end_of_range,
+    jobs_option,
+    progress_option,
+    quiet_option,
+    run,
+)
 from marketforge.output.manifest import dataset_files
 
 
@@ -106,6 +113,7 @@ from marketforge.output.manifest import dataset_files
     help="Replace the dataset already in --output-dir. Without it, a directory that holds one is refused.",
 )
 @progress_option
+@quiet_option
 def generate(
     output_dir: str | None,
     start: str,
@@ -125,6 +133,7 @@ def generate(
     dry_run: bool,
     overwrite: bool,
     progress: bool,
+    quiet: bool,
 ) -> None:
     """Generate a dataset: candle files and the manifest that records how they were made."""
     if not dry_run and not output_dir:
@@ -155,8 +164,10 @@ def generate(
         include_spread=with_spread,
         overrides=overrides,
     )
-    print_plan(request, fmt, output_dir, seed is None, jobs)
+    if not quiet or dry_run:
+        print_plan(request, fmt, output_dir, seed is None, jobs)
     if dry_run or not output_dir:
         return
-    run(request, output_dir, fmt, timestamps, jobs, progress, overwrite)
-    click.echo(f"Reproduce with --seed {request.seed}")
+    run(request, output_dir, fmt, timestamps, jobs, progress, overwrite, quiet)
+    if not quiet:
+        click.echo(f"Reproduce with --seed {request.seed} (the manifest records every setting)")
