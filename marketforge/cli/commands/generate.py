@@ -128,6 +128,11 @@ def generate(
     """Generate a dataset: candle files and the manifest that records how they were made."""
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
+    if fmt != "csv" and timestamps == "iso":
+        raise click.UsageError(
+            f"--timestamps iso is for CSV files; {fmt} stores Unix seconds. Drop --timestamps "
+            "or use --format csv."
+        )
     if output_dir and not dry_run and not overwrite and (existing := dataset_files(output_dir)):
         raise click.ClickException(
             f"{output_dir} already holds a MarketForge dataset ({len(existing)} files). "

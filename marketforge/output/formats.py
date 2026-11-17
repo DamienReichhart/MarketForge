@@ -23,3 +23,9 @@ class TimestampFormat(StrEnum):
 
     UNIX = "unix"  # 1704205800
     ISO = "iso"  # 2024-01-02T14:30:00Z
+
+
+def check_formats(fmt: OutputFormat, timestamps: TimestampFormat) -> None:
+    """Refuse a combination of file format and timestamps that cannot be written."""
+    if timestamps == TimestampFormat.ISO and fmt != OutputFormat.CSV:
+        raise ValueError("ISO timestamps are for CSV files; Parquet stores Unix seconds")

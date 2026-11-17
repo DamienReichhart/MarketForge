@@ -28,7 +28,7 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.file_limits import ensure_open_file_capacity
-from marketforge.output.formats import OutputFormat, TimestampFormat
+from marketforge.output.formats import OutputFormat, TimestampFormat, check_formats
 from marketforge.output.manifest import (
     Manifest,
     begin_extension,
@@ -94,6 +94,7 @@ def generate_to_disk(
     Raises:
         FileExistsError: if ``output_dir`` holds a dataset and ``overwrite`` is false.
     """
+    check_formats(OutputFormat(fmt), TimestampFormat(timestamps))
     request = plan_request(
         instruments,
         markets,

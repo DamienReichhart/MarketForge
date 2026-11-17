@@ -31,7 +31,7 @@ import pyarrow.parquet as pq
 from marketforge.domain.bars import Bars
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.encoding import candle_schema, record_batch, rounded_columns
-from marketforge.output.formats import OutputFormat, TimestampFormat
+from marketforge.output.formats import OutputFormat, TimestampFormat, check_formats
 from marketforge.output.manifest import REWRITE_SUFFIX
 
 # Rows buffered per file before it is written: one Parquet row group. Day-sized
@@ -69,8 +69,7 @@ class CandleWriter:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fmt = OutputFormat(fmt)
         self._iso = TimestampFormat(timestamps) == TimestampFormat.ISO
-        if self._iso and self.fmt != OutputFormat.CSV:
-            raise ValueError("ISO timestamps are for CSV files; Parquet stores Unix seconds")
+        check_formats(self.fmt, TimestampFormat(timestamps))
         self.include_regime = include_regime
         self.schema = candle_schema(include_regime, include_spread)
         self._symbols = list(symbols)

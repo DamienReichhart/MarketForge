@@ -246,3 +246,12 @@ def test_generating_into_a_directory_of_other_files_is_allowed(tmp_path):
         tmp_path, "AAPL", start="2024-01-02", end="2024-01-03", seed=1, timeframes="D1"
     )
     assert (tmp_path / "stocks" / "AAPL_D1.csv").exists()
+
+
+def test_iso_timestamps_in_parquet_are_refused_before_anything_is_written(tmp_path):
+    out = tmp_path / "out"
+    with pytest.raises(ValueError, match="ISO timestamps are for CSV"):
+        mf.generate_to_disk(
+            out, "AAPL", start="2024-01-02", end="2024-01-03", fmt="parquet", timestamps="iso"
+        )
+    assert not out.exists()

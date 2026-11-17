@@ -239,3 +239,26 @@ def test_generate_refuses_to_mix_datasets_without_overwrite(tmp_path):
     assert "--overwrite" in res.output and "marketforge extend" in res.output
     res = _run(*args, "--overwrite")
     assert res.exit_code == 0, res.output
+
+
+def test_iso_timestamps_in_parquet_are_a_usage_error_before_the_plan(tmp_path):
+    res = _run(
+        "generate",
+        "-o",
+        str(tmp_path / "out"),
+        "--from",
+        "2024-01-02",
+        "--days",
+        "1",
+        "-i",
+        "AAPL",
+        "--format",
+        "parquet",
+        "--timestamps",
+        "iso",
+        "--no-progress",
+    )
+    assert res.exit_code == 2
+    assert "--timestamps iso" in res.output
+    assert "MarketForge" not in res.output  # the plan was not printed
+    assert not (tmp_path / "out").exists()
