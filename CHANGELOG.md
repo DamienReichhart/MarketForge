@@ -10,6 +10,13 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **Forex sessions keep their own clocks.** Forex seasonality was a step
+  function at fixed UTC hours, so the London open stayed at 07:00 UTC all
+  year. Tokyo, London and New York sessions now ramp in and out on their own
+  clocks, with bursts at the London open, at 08:30 New York (US data) and at
+  the 16:00 London fix, and thinner Friday afternoons and Sunday opens.
+- **Crypto bursts at funding times.** Volatility now rises briefly at the
+  00:00, 08:00 and 16:00 UTC funding settlements of perpetual futures.
 - **Big candles have wicks.** Highs and lows came from the expected
   volatility only, so the biggest minutes were bare bodies (range 1.05 times
   the body), unlike real ones, which retrace. A minute's wicks now grow with

@@ -22,7 +22,10 @@ In high-volatility and crash regimes a common shock is added to every instrument
 - σ<sub>f</sub> is the per-minute level implied by the instrument's annual volatility on its market's calendar.
 - h<sub>t</sub> is a **GJR-GARCH(1,1)** multiplier with unit mean. It gives volatility clustering and the **leverage effect**: down-moves raise volatility more than up-moves.
 - g<sub>t</sub> is the **regime** multiplier, smoothed so regime changes ramp in.
-- s<sub>t</sub> is **intraday seasonality**: the U shape of stocks, the session pattern of forex, the US-open peak and quieter weekends of crypto.
+- s<sub>t</sub> is **intraday seasonality**:
+  - **Stocks:** the U shape of the session, with first minutes about three times as volatile as midday.
+  - **Forex:** the Tokyo, London and New York sessions, each on its own clock, so London's open moves an hour in UTC with British summer time. Add bursts at the London open, at 08:30 New York (US data releases) and at the 16:00 London fix, and thinner Friday afternoons and Sunday opens.
+  - **Crypto:** a peak around the US open, quieter weekends, and short bursts at the 00:00, 08:00 and 16:00 UTC funding settlements of perpetual futures.
 
 ## Regimes
 

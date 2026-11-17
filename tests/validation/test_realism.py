@@ -176,3 +176,52 @@ def test_big_moves_have_wicks(symbol, seed, end):
     big = m1[z > 8]
     assert len(big) > 50
     assert ((big["high"] - big["low"]) / (big["close"] - big["open"]).abs()).median() > 1.25
+
+
+def _abs_returns_by_minute(frame: pd.DataFrame) -> pd.Series:
+    """Median |log return| per UTC minute of the day."""
+    r = np.log(frame["close"]).diff().abs().dropna()
+    return r.groupby(r.index.hour * 60 + r.index.minute).median()
+
+
+def test_stocks_open_far_more_volatile_than_midday():
+    # Real first minutes are 3-4 times as volatile as midday.
+    m1 = mf.generate("AAPL", start="2024-01-02", end="2024-04-01", seed=8)["AAPL"]["m1"]
+    r = np.log(m1["close"]).diff().abs()
+    ny = r.index.tz_convert("America/New_York")
+    minute = ny.hour * 60 + ny.minute
+    first = r[(minute >= 570) & (minute < 575)].median()
+    midday = r[(minute >= 720) & (minute < 840)].median()
+    assert first > 2.5 * midday
+
+
+def test_forex_london_open_follows_british_summer_time():
+    # London opens at 08:00 local: 08:00 UTC in winter, 07:00 UTC in summer.
+    def open_jump(start, end):
+        by_minute = _abs_returns_by_minute(
+            mf.generate("EURUSD", start=start, end=end, seed=6)["EURUSD"]["m1"]
+        )
+        return by_minute.loc[420:479].mean() / by_minute.loc[360:419].mean()
+
+    assert open_jump("2024-06-03", "2024-08-03") > 1.3 * open_jump("2024-01-08", "2024-03-08")
+
+
+def test_crypto_volatility_bumps_at_funding_times():
+    # Perpetual futures settle funding at 00:00, 08:00 and 16:00 UTC.
+    by_minute = _abs_returns_by_minute(
+        mf.generate("BTCUSD", start="2024-01-01", end="2024-04-01", seed=9)["BTCUSD"]["m1"]
+    )
+    at_funding = by_minute.loc[[479, 480, 481]].mean()
+    before = by_minute.loc[450:470].mean()
+    assert at_funding > 1.15 * before
+
+
+def test_forex_thins_out_on_friday_afternoon():
+    m1 = mf.generate("EURUSD", start="2024-01-07", end="2024-04-07", seed=5)["EURUSD"]["m1"]
+    r = np.log(m1["close"]).diff().abs()
+    ny = r.index.tz_convert("America/New_York")
+    afternoon = (ny.hour >= 13) & (ny.hour < 17)
+    assert (
+        r[afternoon & (ny.dayofweek == 4)].median()
+        < 0.85 * r[afternoon & (ny.dayofweek == 2)].median()
+    )
