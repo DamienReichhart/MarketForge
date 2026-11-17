@@ -222,6 +222,6 @@ def test_forex_thins_out_on_friday_afternoon():
     ny = r.index.tz_convert("America/New_York")
     afternoon = (ny.hour >= 13) & (ny.hour < 17)
     assert (
-        r[afternoon & (ny.dayofweek == 4)].median()
-        < 0.85 * r[afternoon & (ny.dayofweek == 2)].median()
+        r[afternoon & (ny.day_of_week == 4)].median()
+        < 0.85 * r[afternoon & (ny.day_of_week == 2)].median()
     )
