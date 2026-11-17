@@ -40,7 +40,7 @@ After a closure of *C* minutes, the open jumps by a shock whose variance grows w
 
 ## High and low
 
-The exact maximum and minimum of a **Brownian bridge** from open to close, sampled from their closed-form distribution, so `high >= max(open, close)` and `low <= min(open, close)` by construction. The excursion uses a fraction of the bar's volatility (0.62 for crypto), because real minutes wander less inside the bar than a pure random walk.
+The exact maximum and minimum of a **Brownian bridge** from open to close, sampled from their closed-form distribution, so `high >= max(open, close)` and `low <= min(open, close)` by construction. The excursion uses a fraction of the bar's volatility (0.62 for crypto), because real minutes wander less inside the bar than a pure random walk. A minute that moved far was turbulent, so 40% of its squared body is added to that variance: the biggest moves keep retracement wicks (range about 1.3 to 1.4 times the body) instead of being bare bodies.
 
 ## Volume
 

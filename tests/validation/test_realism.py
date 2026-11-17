@@ -160,3 +160,19 @@ def test_correlations_rise_in_a_crash(pair, seed):
     regime = data[pair[0]]["m5"]["regime"].reindex(r.index)
     by_regime = {name: r[regime == name].corr().iloc[0, 1] for name in ("range", "crash")}
     assert abs(by_regime["crash"]) > abs(by_regime["range"]) + 0.1
+
+
+# Stocks trade 390 minutes a day: three months give as many big minutes as one of crypto.
+@pytest.mark.parametrize(
+    ("symbol", "seed", "end"), [("BTCUSD", 1, "2024-02-01"), ("AAPL", 2, "2024-04-01")]
+)
+def test_big_moves_have_wicks(symbol, seed, end):
+    # Real minutes that move a lot also retrace: their range exceeds their body
+    # by a third or more. 3.x drew wicks from the expected volatility only, so
+    # its biggest minutes were bare bodies (range/body 1.05).
+    m1 = mf.generate(symbol, start="2024-01-01", end=end, seed=seed)[symbol]["m1"]
+    body = (m1["close"] - m1["open"]).abs()
+    z = body / body.rolling(240, min_periods=60).median()
+    big = m1[z > 8]
+    assert len(big) > 50
+    assert ((big["high"] - big["low"]) / (big["close"] - big["open"]).abs()).median() > 1.25

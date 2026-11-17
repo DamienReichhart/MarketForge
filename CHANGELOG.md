@@ -10,6 +10,10 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **Big candles have wicks.** Highs and lows came from the expected
+  volatility only, so the biggest minutes were bare bodies (range 1.05 times
+  the body), unlike real ones, which retrace. A minute's wicks now grow with
+  its move: range is about 1.3 to 1.4 times the body on the largest minutes.
 - **Correlations intensify under stress.** One correlation matrix drove every
   regime, so BTC and a gaming coin were as correlated in a crash as in a
   range. A common shock is now added in high-volatility and crash regimes:

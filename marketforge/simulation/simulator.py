@@ -400,6 +400,7 @@ class MarketSimulator:
             body,
             sigma_i,
             self.spec.defaults.intrabar_volatility_ratio,
+            self.spec.defaults.intrabar_body_share,
             np.log(1.0 - self._select(u_high, rows)),
             np.log(1.0 - self._select(u_low, rows)),
             self._sigma_ref,

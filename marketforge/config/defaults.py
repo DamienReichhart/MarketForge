@@ -53,6 +53,8 @@ class MarketDefaults:
             scale * C ** exponent. Produces overnight and weekend gaps.
         intrabar_volatility_ratio: Fraction of the bar's volatility used for
             the high/low excursion around the open-to-close path.
+        intrabar_body_share: Share of the squared body added to that excursion's
+            variance, so large moves keep retracement wicks.
     """
 
     market_type: MarketType
@@ -68,6 +70,10 @@ class MarketDefaults:
     # less inside the bar than a Brownian path would (range/body ~1.5-1.7
     # instead of 2.0), so high/low are drawn with this fraction of sigma.
     intrabar_volatility_ratio: float = 1.0
+    # Share of the squared body added to the bar's variance for its high and
+    # low: a minute that moved far was turbulent and retraced, so its biggest
+    # moves keep wicks (range ~1.3x the body) instead of bare bodies.
+    intrabar_body_share: float = 0.4
     # Volume is a count (forex tick volume): emit whole numbers, at least 1.
     integer_volume: bool = False
 

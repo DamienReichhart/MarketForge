@@ -152,11 +152,11 @@ def test_bar_kernels_equal_the_numpy_expressions_bit_for_bit():
     e_volume = rng.standard_normal((n, m))
     noise = rng.uniform(0.1, 0.5, m)
     correction = rng.uniform(0.0, 0.3, m)
-    ratio, lam, kappa, phi = 0.62, 0.35, 0.8, 0.9
+    ratio, share, lam, kappa, phi = 0.62, 0.25, 0.35, 0.8, 0.9
     memory0 = rng.normal(0, 0.5, m)
 
-    # 3.0 engine code
-    hi, lo = bridge_extremes(body, sigma_i * ratio, u_high, u_low)
+    # The model's NumPy expressions
+    hi, lo = bridge_extremes(body, sigma_i * ratio, u_high, u_low, share)
     open_, close = np.exp(log_open), np.exp(log_close)
     high = np.maximum(np.exp(log_open + hi), np.maximum(open_, close))
     low = np.minimum(np.exp(log_open + lo), np.minimum(open_, close))
@@ -169,7 +169,7 @@ def test_bar_kernels_equal_the_numpy_expressions_bit_for_bit():
     prices = np.empty((4, n, m))
     level = np.empty((n, m))
     bar_arguments(
-        log_open, log_close, body, sigma_i, ratio, np.log(u_high), np.log(u_low),
+        log_open, log_close, body, sigma_i, ratio, share, np.log(u_high), np.log(u_low),
         sigma_ref, season, prices, level,
     )  # fmt: skip
     np.exp(prices, out=prices)
@@ -218,7 +218,7 @@ def test_compiled_kernels_equal_their_interpreted_python_bit_for_bit():
     log_open = rng.normal(3, 1, (n, m))
     sigma_i = rng.uniform(1e-5, 2e-3, (n, m))
     season = rng.uniform(0.3, 2.0, n)
-    bar_args = (log_open, log_open + body, body, sigma_i, 0.6, np.log(rng.random((n, m))),
+    bar_args = (log_open, log_open + body, body, sigma_i, 0.6, 0.25, np.log(rng.random((n, m))),
                 np.log(rng.random((n, m))), rng.uniform(1e-5, 2e-3, m), season)  # fmt: skip
     outs = [(np.empty((4, n, m)), np.empty((n, m))) for _ in range(2)]
     bar_arguments(*bar_args, *outs[0])

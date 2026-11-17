@@ -245,6 +245,7 @@ def bar_arguments(
     body: np.ndarray,
     sigma_i: np.ndarray,
     intrabar_ratio: float,
+    body_share: float,
     log_u_high: np.ndarray,
     log_u_low: np.ndarray,
     sigma_ref: np.ndarray,
@@ -256,8 +257,10 @@ def bar_arguments(
     Fill the arguments of the per-bar transcendentals, in place.
 
     ``exp_args`` (4, n, I) receives log open, log close and the log of the
-    Brownian-bridge high and low (:func:`bridge_extremes` with
-    ``bar_std = sigma_i * intrabar_ratio``); ``level`` (n, I) receives the
+    Brownian-bridge high and low (:func:`bridge_extremes` with a bar variance
+    ``(sigma_i * intrabar_ratio)^2 + body_share * body^2``: a minute that moved
+    far was turbulent, so its path wandered and it keeps wicks); ``level``
+    (n, I) receives the
     turbulence ``sigma_i / (sigma_ref * season)`` whose log drives volume.
     The caller applies ``np.exp`` / ``np.log`` to them in place.
     """
@@ -266,8 +269,8 @@ def bar_arguments(
         for j in range(m):
             b = body[t, j]
             bar_std = sigma_i[t, j] * intrabar_ratio
-            s2 = bar_std * bar_std
             b2 = b * b
+            s2 = bar_std * bar_std + body_share * b2
             hi = 0.5 * (b + np.sqrt(b2 - 2.0 * s2 * log_u_high[t, j]))
             lo = 0.5 * (b - np.sqrt(b2 - 2.0 * s2 * log_u_low[t, j]))
             lo_t = log_open[t, j]
@@ -334,6 +337,7 @@ def bridge_extremes(
     bar_std: np.ndarray,
     u_high: np.ndarray,
     u_low: np.ndarray,
+    body_share: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Exact maximum and minimum of a Brownian bridge, sampled by inversion.
@@ -348,12 +352,13 @@ def bridge_extremes(
         log_body: log(close / open) per bar.
         bar_std: per-bar standard deviation of the log price.
         u_high, u_low: uniforms in (0, 1].
+        body_share: share of ``log_body**2`` added to the bridge variance.
 
     Returns:
         (log_high, log_low) relative to the log open.
     """
-    s2 = bar_std * bar_std
     b2 = log_body * log_body
+    s2 = bar_std * bar_std + body_share * b2
     high = 0.5 * (log_body + np.sqrt(b2 - 2.0 * s2 * np.log(u_high)))
     low = 0.5 * (log_body - np.sqrt(b2 - 2.0 * s2 * np.log(u_low)))
     return high, low
