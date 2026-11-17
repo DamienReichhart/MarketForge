@@ -5,11 +5,13 @@
 //   CHANGELOG.md   -> src/content/docs/changelog.md
 //   GLOSSARY.md    -> src/content/docs/docs/reference/glossary.md
 //   docs/adr/*.md  -> src/content/docs/docs/adr/*.md
+//   docs/brand/README.md -> src/content/docs/docs/brand.md
+//   docs/brand/assets/*  -> public/brand/*
 //
 // Relative links are rewritten: links to synced files point to their page on
 // the site, any other repository path points to the file on GitHub.
 
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +29,7 @@ const BRANCH = 'main';
 function sitePath(repoPath) {
 	if (repoPath === 'CHANGELOG.md') return 'changelog/';
 	if (repoPath === 'GLOSSARY.md') return 'docs/reference/glossary/';
+	if (repoPath === 'docs/brand/README.md') return 'docs/brand/';
 	const adr = /^docs\/adr\/([^/]+)\.md$/.exec(repoPath);
 	if (adr) return `docs/adr/${adr[1].toLowerCase()}/`;
 	return undefined;
@@ -49,6 +52,8 @@ function rewriteLinks(markdown, sourcePath, page = sitePath(sourcePath)) {
 		const [path, anchor] = target.split('#');
 		const resolved = posix.normalize(posix.join(sourceDir, path)).replace(/\/$/, '');
 		const hash = anchor ? `#${anchor}` : '';
+		const asset = /^docs\/brand\/assets\/([^/]+)$/.exec(resolved);
+		if (asset) return `](${posix.relative(page, `brand/${asset[1]}`)})`;
 		const published = sitePath(resolved);
 		if (published) return `](${pageLink(page, published)}${hash})`;
 		const kind = /\.[a-z0-9]+$/i.test(resolved) ? 'blob' : 'tree';
@@ -138,4 +143,35 @@ const notice = (repoPath) =>
 		);
 	}
 	console.log(`synced CHANGELOG.md, GLOSSARY.md and ${files.length} ADRs into ${relative(repoDir, contentDir)}`);
+}
+
+// Brand guidelines and their assets
+{
+	const page = 'docs/brand';
+	const { body } = takeTitle(read('docs/brand/README.md'));
+	const assetsDir = join(repoDir, 'docs', 'brand', 'assets');
+	const publicDir = join(websiteDir, 'public', 'brand');
+	rmSync(publicDir, { recursive: true, force: true });
+	mkdirSync(publicDir, { recursive: true });
+	for (const name of readdirSync(assetsDir)) copyFileSync(join(assetsDir, name), join(publicDir, name));
+	// GitHub picks the <picture> source from the OS colour scheme; the site has its own theme
+	// switch, so show both lockups and let the theme hide the wrong one.
+	const themed = body.replace(
+		/<picture>\s*<source[^>]*srcset="([^"]+)"[^>]*>\s*<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>\s*<\/picture>|<picture>\s*<source[^>]*srcset="([^"]+)"[^>]*>\s*<img[^>]*alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>\s*<\/picture>/,
+		(_, s1, i1, a1, s2, a2, i2) =>
+			`<img class="mf-on-dark" src="${s1 ?? s2}" alt="${a1 ?? a2}" height="64">\n<img class="mf-on-light" src="${i1 ?? i2}" alt="${a1 ?? a2}" height="64">`,
+	);
+	// Raw HTML in the guidelines (<picture>, <img>) points at assets/ too.
+	const html = themed.replace(/\b(src|srcset)="assets\/([^"]+)"/g, (_, attr, name) => `${attr}="${posix.relative(page, `brand/${name}`)}"`);
+	write(
+		join(contentDir, 'docs', 'brand.md'),
+		frontmatter({
+			title: 'Brand',
+			description: 'The MarketForge identity: logo, colours, typography and how to use them.',
+			editUrl: `${REPO_URL}/edit/dev/docs/brand/README.md`,
+		}) +
+			notice('docs/brand/README.md') +
+			rewriteLinks(html, 'docs/brand/README.md'),
+	);
+	console.log('synced docs/brand into the site');
 }

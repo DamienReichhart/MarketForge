@@ -16,6 +16,10 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
 
+## Brand
+
+The identity is **Regimes**; the guidelines, tokens and every logo are in `docs/brand/` (`README.md`). Colours come from `docs/brand/tokens.json`, mirrored in `website/src/styles/theme.css` (a test fails if they drift); never hard-code a colour or recolour the mark. Regime colours mean a market regime and nothing else, and the up/down green and red mean candle direction and nothing else. Rebuild the assets with `python scripts/build_brand_assets.py` after changing the tokens. The site's Brand page is generated from `docs/brand/README.md`; edit that file.
+
 ## CI/CD
 
 CI runs `ruff check`, `ruff format --check`, `lint-imports` (package layering, see the README's project layout), `mypy marketforge` and `pytest` (install the tools with `pip install -e . --group dev`); run them before pushing. CI also fails if any seed's output differs from the latest release without a major version bump, and a release is blocked if a commit marked breaking (`type!:` or `BREAKING CHANGE:`) ships without a major bump. A push to `main` releases the version in `pyproject.toml` when it is not yet tagged, and PRs into `main` must bump it and add a `CHANGELOG.md` section, so merge to `main` only to release. CI also fails when the code is more than 15% slower than the latest release (an intended slowdown takes an `Accept-Slowdown: N%` commit trailer), and when a code block of `README.md` or of the website's pages no longer works: they are run against the built wheel (`python -I .github/scripts/doc_examples.py`), and a block too long to run is marked `check=static` after its language. See `docs/ci-cd.md`.

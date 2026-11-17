@@ -96,6 +96,12 @@ The major version is for the renamed options and parameters.
 - The README and the package description present MarketForge for what it
   is used for: training and testing AI trading models and backtesters, with
   a plain statement of what synthetic data cannot do.
+- **MarketForge has a visual identity, "Regimes".** The logo is the five
+  market regimes as colour bands crossed by one price path, and the same
+  colours shade the regimes on the website's chart. The guidelines, the colour
+  and type tokens, and every logo, favicon and social image are in
+  [`docs/brand`](docs/brand/README.md) and on the site's Brand page. The site
+  now sets type in DM Sans and DM Mono, and link previews carry an image.
 
 ## 3.1.1
 

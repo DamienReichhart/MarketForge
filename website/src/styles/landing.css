@@ -225,7 +225,7 @@
 .mf-btn-primary {
 	border-color: var(--sl-color-accent);
 	background: var(--sl-color-accent);
-	color: #14100a !important;
+	color: #12161b !important;
 }
 
 :root[data-theme='light'] .mf-btn-primary {

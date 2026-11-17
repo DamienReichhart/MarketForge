@@ -217,20 +217,24 @@ const last = candles.at(-1)!;
 		touch-action: pan-y;
 		cursor: crosshair;
 	}
+	/* Each regime band is its brand colour, tinted so candles stay readable. */
 	.band {
 		fill: transparent;
 	}
 	.band.r-trend_up {
-		fill: var(--mf-regime-trend-up);
+		fill: color-mix(in srgb, var(--mf-regime-trend-up) 14%, transparent);
 	}
 	.band.r-trend_down {
-		fill: var(--mf-regime-trend-down);
+		fill: color-mix(in srgb, var(--mf-regime-trend-down) 22%, transparent);
+	}
+	.band.r-range {
+		fill: color-mix(in srgb, var(--mf-regime-range) 10%, transparent);
 	}
 	.band.r-high_volatility {
-		fill: var(--mf-regime-high-vol);
+		fill: color-mix(in srgb, var(--mf-regime-high-vol) 14%, transparent);
 	}
 	.band.r-crash {
-		fill: var(--mf-regime-crash);
+		fill: color-mix(in srgb, var(--mf-regime-crash) 24%, transparent);
 	}
 	.grid {
 		stroke: var(--mf-line);
@@ -339,19 +343,18 @@ const last = candles.at(-1)!;
 	}
 	.mf-legend i.r-trend_up {
 		background: var(--mf-regime-trend-up);
-		border-color: color-mix(in srgb, var(--mf-up) 45%, transparent);
 	}
 	.mf-legend i.r-trend_down {
 		background: var(--mf-regime-trend-down);
-		border-color: color-mix(in srgb, var(--mf-down) 45%, transparent);
+	}
+	.mf-legend i.r-range {
+		background: var(--mf-regime-range);
 	}
 	.mf-legend i.r-high_volatility {
 		background: var(--mf-regime-high-vol);
-		border-color: color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
 	}
 	.mf-legend i.r-crash {
 		background: var(--mf-regime-crash);
-		border-color: var(--mf-down);
 	}
 	.mf-chart-cmd {
 		font-family: var(--sl-font-mono);
@@ -365,14 +368,19 @@ const last = candles.at(-1)!;
 		font-weight: 600;
 	}
 	:global(.mf-regime-tag.r-trend_up) {
-		color: var(--mf-up);
+		color: var(--mf-regime-trend-up-text);
 	}
-	:global(.mf-regime-tag.r-trend_down),
-	:global(.mf-regime-tag.r-crash) {
-		color: var(--mf-down);
+	:global(.mf-regime-tag.r-trend_down) {
+		color: var(--mf-regime-trend-down-text);
+	}
+	:global(.mf-regime-tag.r-range) {
+		color: var(--mf-regime-range-text);
 	}
 	:global(.mf-regime-tag.r-high_volatility) {
-		color: var(--sl-color-accent);
+		color: var(--mf-regime-high-vol-text);
+	}
+	:global(.mf-regime-tag.r-crash) {
+		color: var(--mf-regime-crash-text);
 	}
 	@media (max-width: 40rem) {
 		.mf-hide-sm {

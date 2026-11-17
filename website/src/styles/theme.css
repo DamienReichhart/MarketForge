@@ -1,43 +1,56 @@
 /*
  * MarketForge design tokens, shared by the docs (Starlight) and the landing page.
+ * Mirrors docs/brand/tokens.json, the source of truth (a test fails if they drift);
+ * the rules for using them are in docs/brand/README.md.
  *
- * One accent (amber, used sparingly), neutral graphite greys, and the two
- * market colours (up / down) reserved for data. Dark is the default; the light
- * theme mirrors every token.
+ * Ink grounds, one amber accent used sparingly, and two colour families that
+ * never mix: the five regime colours (what state the market is in) and the up /
+ * down pair (which way a candle moved). Dark is the default; the light theme
+ * mirrors every token.
  */
 
 :root {
-	--sl-font: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--sl-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+	--sl-font: 'DM Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--sl-font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
 	/* Dark (default) */
-	--sl-color-accent-low: #2a1f0c;
-	--sl-color-accent: #e8a33d;
-	--sl-color-accent-high: #f6d39a;
-	--sl-color-white: #f2f4f6;
-	--sl-color-gray-1: #dde1e6;
-	--sl-color-gray-2: #b4bbc3;
-	--sl-color-gray-3: #8a939d;
-	--sl-color-gray-4: #5c6670;
-	--sl-color-gray-5: #2c3238;
-	--sl-color-gray-6: #171b20;
-	--sl-color-gray-7: #0f1215;
-	--sl-color-black: #0a0c0f;
+	--sl-color-accent-low: #2b2210;
+	--sl-color-accent: #e0a030;
+	--sl-color-accent-high: #f2ce8c;
+	--sl-color-white: #e9edf1;
+	--sl-color-gray-1: #d6dce2;
+	--sl-color-gray-2: #b2bbc4;
+	--sl-color-gray-3: #8e99a4;
+	--sl-color-gray-4: #5e6a75;
+	--sl-color-gray-5: #2e363e;
+	--sl-color-gray-6: #1d242b;
+	--sl-color-gray-7: #171c22;
+	--sl-color-black: #12161b;
 
-	--mf-bg: #0a0c0f;
-	--mf-panel: #0f1215;
-	--mf-line: #1f252b;
-	--mf-line-strong: #2c3238;
-	--mf-text: #f2f4f6;
-	--mf-muted: #8a939d;
+	--mf-bg: #12161b;
+	--mf-panel: #171c22;
+	--mf-raised: #1d242b;
+	--mf-line: #262d35;
+	--mf-line-strong: #323b44;
+	--mf-text: #e9edf1;
+	--mf-muted: #8e99a4;
+	--mf-grid: rgb(255 255 255 / 0.04);
+
+	/* Direction of a candle. Data only, never a brand or status colour. */
 	--mf-up: #2ebd85;
 	--mf-down: #e5484d;
-	--mf-regime-trend-up: rgb(46 189 133 / 0.07);
-	--mf-regime-trend-down: rgb(229 72 77 / 0.07);
-	--mf-regime-range: transparent;
-	--mf-regime-high-vol: rgb(232 163 61 / 0.09);
-	--mf-regime-crash: rgb(229 72 77 / 0.16);
-	--mf-grid: rgb(255 255 255 / 0.04);
+
+	/* Market regime. Fill for shapes, text for labels (contrast-checked). */
+	--mf-regime-trend-up: #5b8db8;
+	--mf-regime-trend-down: #3e6188;
+	--mf-regime-range: #8a978e;
+	--mf-regime-high-vol: #e0a030;
+	--mf-regime-crash: #b5373f;
+	--mf-regime-trend-up-text: #8db6e8;
+	--mf-regime-trend-down-text: #6f96c4;
+	--mf-regime-range-text: #a3afa6;
+	--mf-regime-high-vol-text: #e0a030;
+	--mf-regime-crash-text: #e5646b;
 
 	--sl-text-h1: 2.25rem;
 	--sl-text-h2: 1.6rem;
@@ -50,29 +63,38 @@
 	--sl-color-accent-low: #fbecd2;
 	--sl-color-accent: #9a5b00;
 	--sl-color-accent-high: #4d2d00;
-	--sl-color-white: #0d1013;
+	--sl-color-white: #12161b;
 	--sl-color-gray-1: #1d2329;
 	--sl-color-gray-2: #353d45;
-	--sl-color-gray-3: #59636d;
+	--sl-color-gray-3: #58626c;
 	--sl-color-gray-4: #8a939d;
-	--sl-color-gray-5: #cdd2d7;
-	--sl-color-gray-6: #eceef0;
-	--sl-color-gray-7: #f6f7f8;
+	--sl-color-gray-5: #cbd1d6;
+	--sl-color-gray-6: #e8ebed;
+	--sl-color-gray-7: #f5f7f8;
 	--sl-color-black: #ffffff;
 
 	--mf-bg: #ffffff;
-	--mf-panel: #f6f7f8;
-	--mf-line: #e3e6e9;
-	--mf-line-strong: #cdd2d7;
-	--mf-text: #0d1013;
-	--mf-muted: #59636d;
+	--mf-panel: #f5f7f8;
+	--mf-raised: #eceff1;
+	--mf-line: #e1e5e8;
+	--mf-line-strong: #cbd1d6;
+	--mf-text: #12161b;
+	--mf-muted: #58626c;
+	--mf-grid: rgb(0 0 0 / 0.045);
+
 	--mf-up: #0f8a5f;
 	--mf-down: #c9363b;
-	--mf-regime-trend-up: rgb(15 138 95 / 0.06);
-	--mf-regime-trend-down: rgb(201 54 59 / 0.06);
-	--mf-regime-high-vol: rgb(154 91 0 / 0.08);
-	--mf-regime-crash: rgb(201 54 59 / 0.13);
-	--mf-grid: rgb(0 0 0 / 0.045);
+
+	--mf-regime-trend-up: #3f7099;
+	--mf-regime-trend-down: #2d4a6e;
+	--mf-regime-range: #7c8a80;
+	--mf-regime-high-vol: #d18f12;
+	--mf-regime-crash: #a12c35;
+	--mf-regime-trend-up-text: #2f6190;
+	--mf-regime-trend-down-text: #2d4a6e;
+	--mf-regime-range-text: #5c6b60;
+	--mf-regime-high-vol-text: #9a5b00;
+	--mf-regime-crash-text: #a12c35;
 }
 
 /* ---------- Docs chrome ---------- */
@@ -261,4 +283,10 @@ h1#_top {
 .starlight-aside--note {
 	--sl-color-asides-border: var(--sl-color-gray-3);
 	--sl-color-asides-text-accent: var(--sl-color-white);
+}
+
+/* Brand page: show the lockup made for the current theme (the page ships both). */
+:root[data-theme='light'] .mf-on-dark,
+:root:not([data-theme='light']) .mf-on-light {
+	display: none;
 }

@@ -1,4 +1,9 @@
-# MarketForge
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/DamienReichhart/MarketForge/main/docs/brand/assets/lockup-dark.svg">
+    <img alt="MarketForge" src="https://raw.githubusercontent.com/DamienReichhart/MarketForge/main/docs/brand/assets/lockup-light.svg" height="64">
+  </picture>
+</h1>
 
 [![PyPI](https://img.shields.io/pypi/v/marketforge)](https://pypi.org/project/marketforge/)
 [![Python](https://img.shields.io/pypi/pyversions/marketforge)](https://pypi.org/project/marketforge/)
