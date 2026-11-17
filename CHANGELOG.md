@@ -2,10 +2,20 @@
 
 ## 4.0.0
 
-Datasets can be extended, candles can carry a bid-ask spread, and the Python
-API covers what the command line does. **Every seed produces exactly the
-candles 3.1.1 produced**, with one exception listed under Breaking changes.
-The major version is for the renamed options and parameters.
+Datasets can be extended, candles can carry a bid-ask spread, the Python API
+covers what the command line does, and MarketForge is now Apache-2.0.
+**Realism now comes before seed stability**: seeds produce different candles
+from 3.1.1 (see Output changes), and any later release may change them again
+when that makes the data more realistic. The major version is for the renamed
+options and parameters.
+
+### Output changes
+- **Flash crashes on a partly covered day move.** With the `flash_crash`
+  anomaly, a crash was placed among the candles the range kept of its day, so
+  changing `--to` within that day moved it and rewrote earlier candles,
+  against the promise that `--to` does not change earlier candles. It is now placed in the day's whole
+  session. Only days the range covers partly (a range that does not start or
+  end at midnight UTC) are affected, and only with `flash_crash`.
 
 ### Licence
 - **MarketForge is now Apache-2.0**, not AGPL-3.0-or-later, so it can be
@@ -22,12 +32,13 @@ The major version is for the renamed options and parameters.
   `TypeError`; 1.5 used to be truncated to 1 without a word.
 - **`validate` refuses candles that are not m1.** The bands describe minute
   returns, and an H1 file used to pass as realistic.
-- **Flash crashes on a partly covered day move.** With the `flash_crash`
-  anomaly, a crash was placed among the candles the range kept of its day, so
-  changing `--to` within that day moved it and rewrote earlier candles,
-  against the reproducibility contract. It is now placed in the day's whole
-  session. Only days the range covers partly (a range that does not start or
-  end at midnight UTC) are affected, and only with `flash_crash`.
+- **Reproducible per version, not per major version.** A seed's candles are
+  fixed for one exact version (and platform), and any release may change them
+  to make the data more realistic, listing the change under *Output changes*
+  and incrementing `marketforge.MODEL_REVISION`. The manifest records the
+  revision, and `extend` continues only datasets written with the same one.
+  Pin the version to keep a dataset identical. See
+  [ADR 0011](docs/adr/0011-realism-over-seed-stability.md).
 
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and

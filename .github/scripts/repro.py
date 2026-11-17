@@ -1,10 +1,12 @@
 """Seed-reproducibility gate (ADR 0006, ADR 0007).
 
-Users rely on seeds for reproducible backtests, so any change to the candles
-an existing seed produces must ship in a new major version. This script
-checks that contract by fingerprinting a fixed set of scenarios with the code
-under test and with the latest release, in the same environment (same
-dependency versions, same CPU), and comparing them bit for bit.
+Realism comes before seed stability (ADR 0011): a release may change the
+candles an existing seed produces, but only on purpose. This script
+fingerprints a fixed set of scenarios with the code under test and with the
+latest release, in the same environment (same dependency versions, same CPU),
+and compares them bit for bit. A difference passes only when the code under
+test increments `MODEL_REVISION` and CHANGELOG.md has an "Output changes"
+section for its version.
 
 Subcommands:
 
@@ -12,8 +14,10 @@ Subcommands:
                        checkout: run with `python -I` from outside the repo).
     baseline           Print the version to compare against: $BASELINE_VERSION
                        if set, else the latest stable release on PyPI.
-    compare BASE HEAD  Compare two fingerprints. A difference fails unless
-                       HEAD's major version is greater than BASE's.
+    compare BASE HEAD [--changelog CHANGELOG.md]
+                       Compare two fingerprints. A difference fails unless
+                       HEAD's model revision is greater than BASE's and the
+                       changelog announces Output changes for HEAD's version.
 
 `capture` needs marketforge, numpy and pandas; the rest is stdlib.
 """
@@ -121,8 +125,14 @@ def capture(out: Path) -> None:
                     sys.exit(f"::error::scenario {name} returned no {symbol} {timeframe} candles")
                 digests[f"{name}/{symbol}/{timeframe}"] = _frame_digest(frame)
 
+    # Releases before 4.0 have no model revision: they count as revision 0.
+    revision = getattr(mf, "MODEL_REVISION", 0)
     out.write_text(
-        json.dumps({"version": mf.__version__, "digests": digests}, indent=1, sort_keys=True),
+        json.dumps(
+            {"version": mf.__version__, "model_revision": revision, "digests": digests},
+            indent=1,
+            sort_keys=True,
+        ),
         encoding="utf-8",
     )
     print(f"{mf.__version__}: {len(digests)} fingerprints -> {out}")
@@ -136,11 +146,20 @@ def latest_release() -> str:
         return str(json.load(response)["info"]["version"])
 
 
-def _major(version: str) -> int:
-    match = re.match(r"\d+", version)
+def _release(version: str) -> str:
+    """The release part of a version: 4.0.0rc1 and 4.0.0.dev0 are 4.0.0."""
+    match = re.match(r"\d+(?:\.\d+)*", version)
     if not match:
-        raise ValueError(f"cannot read the major version of '{version}'")
-    return int(match.group())
+        raise ValueError(f"cannot read the release of '{version}'")
+    return match.group()
+
+
+def announces_output_changes(changelog: str, version: str) -> bool:
+    """Whether the changelog section of ``version`` has an "Output changes" heading."""
+    section = re.search(
+        rf"^## {re.escape(_release(version))}\s*$(.*?)(?=^## |\Z)", changelog, re.M | re.S
+    )
+    return bool(section and re.search(r"^### Output changes\s*$", section.group(1), re.M))
 
 
 def compare(base: dict[str, Any], head: dict[str, Any]) -> tuple[bool, list[str]]:
@@ -163,7 +182,7 @@ def _summary(markdown: str) -> None:
             fh.write(markdown + "\n")
 
 
-def cmd_compare(base_path: Path, head_path: Path) -> int:
+def cmd_compare(base_path: Path, head_path: Path, changelog_path: Path) -> int:
     base = json.loads(base_path.read_text(encoding="utf-8"))
     head = json.loads(head_path.read_text(encoding="utf-8"))
     identical, lines = compare(base, head)
@@ -180,16 +199,31 @@ def cmd_compare(base_path: Path, head_path: Path) -> int:
         + "\n".join(shown)
         + "\n```"
     )
-    if _major(head["version"]) > _major(base["version"]):
+    base_revision = base.get("model_revision", 0)
+    head_revision = head.get("model_revision", 0)
+    announced = announces_output_changes(
+        changelog_path.read_text(encoding="utf-8"), head["version"]
+    )
+    if head_revision > base_revision and announced:
         print(
             f"::notice title=Seed output changed::{len(lines)} outputs differ from "
-            f"{base['version']}; allowed because {head['version']} is a new major version"
+            f"{base['version']}; announced as Output changes in model revision {head_revision}"
         )
         return 0
+    missing = []
+    if head_revision <= base_revision:
+        missing.append(
+            f"increment MODEL_REVISION in marketforge/_version.py (it is {head_revision}, "
+            f"the release has {base_revision})"
+        )
+    if not announced:
+        missing.append(
+            f"add an '### Output changes' section under '## {_release(head['version'])}' "
+            "in CHANGELOG.md"
+        )
     print(
         f"::error title=Seed output changed::{len(lines)} outputs differ from release "
-        f"{base['version']}. Existing seeds must keep producing the same candles "
-        "(docs/adr/0006). If the change is intended, bump the major version in pyproject.toml"
+        f"{base['version']}. If the change is intended (ADR 0011), " + " and ".join(missing)
     )
     return 1
 
@@ -202,6 +236,7 @@ def main(argv: list[str] | None = None) -> int:
     cmp = sub.add_parser("compare")
     cmp.add_argument("base", type=Path)
     cmp.add_argument("head", type=Path)
+    cmp.add_argument("--changelog", type=Path, default=Path("CHANGELOG.md"))
     args = parser.parse_args(argv)
 
     if args.command == "capture":
@@ -210,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "baseline":
         print(latest_release())
         return 0
-    return cmd_compare(args.base, args.head)
+    return cmd_compare(args.base, args.head, args.changelog)
 
 
 if __name__ == "__main__":

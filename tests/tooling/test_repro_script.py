@@ -38,17 +38,66 @@ def test_every_kind_of_difference_is_reported():
     assert lines == ["new in 3.2.0: added", "changed: changed", "missing in 3.2.0: dropped"]
 
 
+CHANGELOG_WITH_OUTPUT_CHANGES = """# Changelog
+
+## 3.2.0
+
+### Output changes
+- Regimes now trend.
+
+## 3.1.0
+
+- Earlier.
+"""
+CHANGELOG_WITHOUT = """# Changelog
+
+## 3.2.0
+
+### Fixes
+- A typo.
+
+## 3.1.0
+
+### Output changes
+- An older change does not count for 3.2.0.
+"""
+
+
 @pytest.mark.parametrize(
-    ("head_version", "exit_code"),
-    [("3.2.0", 1), ("3.1.1", 1), ("4.0.0", 0), ("4.0.0rc1", 0), ("4.0.0.dev0", 0)],
+    ("head_revision", "changelog", "exit_code"),
+    [
+        (2, CHANGELOG_WITH_OUTPUT_CHANGES, 0),
+        (1, CHANGELOG_WITH_OUTPUT_CHANGES, 1),  # the revision was not incremented
+        (2, CHANGELOG_WITHOUT, 1),  # the change is not announced for this version
+        (1, CHANGELOG_WITHOUT, 1),
+    ],
 )
-def test_changed_output_needs_a_major_bump(tmp_path, capsys, head_version, exit_code):
-    base, head = tmp_path / "base.json", tmp_path / "head.json"
-    base.write_text(json.dumps(_fingerprint("3.1.0", a="1")))
-    head.write_text(json.dumps(_fingerprint(head_version, a="2")))
-    assert repro.cmd_compare(base, head) == exit_code
+def test_changed_output_needs_a_new_model_revision_and_an_output_changes_entry(
+    tmp_path, capsys, head_revision, changelog, exit_code
+):
+    base, head, log = tmp_path / "base.json", tmp_path / "head.json", tmp_path / "CHANGELOG.md"
+    base.write_text(json.dumps({**_fingerprint("3.1.0", a="1"), "model_revision": 1}))
+    head.write_text(json.dumps({**_fingerprint("3.2.0", a="2"), "model_revision": head_revision}))
+    log.write_text(changelog)
+    assert repro.cmd_compare(base, head, log) == exit_code
     out = capsys.readouterr().out
     assert ("::error" in out) == (exit_code == 1)
+
+
+def test_a_release_without_a_model_revision_counts_as_revision_0(tmp_path):
+    base, head, log = tmp_path / "base.json", tmp_path / "head.json", tmp_path / "CHANGELOG.md"
+    base.write_text(json.dumps(_fingerprint("3.1.0", a="1")))  # 3.x has no MODEL_REVISION
+    head.write_text(json.dumps({**_fingerprint("3.2.0", a="2"), "model_revision": 1}))
+    log.write_text(CHANGELOG_WITH_OUTPUT_CHANGES)
+    assert repro.cmd_compare(base, head, log) == 0
+
+
+def test_identical_output_passes_whatever_the_revision_and_changelog(tmp_path):
+    base, head, log = tmp_path / "base.json", tmp_path / "head.json", tmp_path / "CHANGELOG.md"
+    base.write_text(json.dumps({**_fingerprint("3.1.0", a="1"), "model_revision": 1}))
+    head.write_text(json.dumps({**_fingerprint("3.2.0", a="1"), "model_revision": 2}))
+    log.write_text(CHANGELOG_WITHOUT)
+    assert repro.cmd_compare(base, head, log) == 0
 
 
 def test_baseline_can_be_pinned(monkeypatch):
