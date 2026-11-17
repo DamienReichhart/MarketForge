@@ -26,14 +26,13 @@ import marketforge as mf
 
 SPLITS = {"train": range(0, 64), "val": range(64, 72), "test": range(72, 80)}
 
-def load(seed: int):
-    data = mf.generate(
-        "BTCUSD,ETHUSD,SOLUSD",
-        start="2024-01-01", end="2024-04-01",
-        seed=seed, timeframes=["m5"],
+def load(split: str):
+    # One generation per seed, in parallel processes, yielded in seed order
+    yield from mf.generate_many(
+        "BTCUSD,ETHUSD,SOLUSD", seeds=SPLITS[split],
+        start="2024-01-01", end="2024-04-01", timeframes=["m5"],
         include_regime=True, include_spread=True,
     )
-    return data
 ```
 
 Every seed starts from the catalog's start prices, so **model returns, not price levels**: the level carries no information.

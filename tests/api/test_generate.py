@@ -384,3 +384,13 @@ def test_estimate_predicts_files_rows_and_size_without_generating(tmp_path):
     assert guess.disk_bytes == pytest.approx(size, rel=0.5)
     assert guess.memory_bytes > 0 and guess.seconds > 0
     assert guess.wall_seconds(jobs=3) <= guess.seconds
+
+
+def test_generate_many_yields_each_seed_as_generate_would_in_seed_order():
+    kwargs = {"start": "2024-01-02", "days": 1, "timeframes": "H1"}
+    got = list(mf.generate_many("BTCUSD,EURUSD", seeds=[3, 1, 2], jobs=2, **kwargs))
+    assert [data.seed for data in got] == [3, 1, 2]
+    for data in got:
+        expected = mf.generate("BTCUSD,EURUSD", seed=data.seed, **kwargs)
+        for symbol in expected:
+            pd.testing.assert_frame_equal(data[symbol]["H1"], expected[symbol]["H1"])

@@ -118,16 +118,15 @@ Every option is in the
 ```python check=static
 import marketforge as mf
 
-# Disjoint seeds: train, validation and test never share a path
-for seed in range(64):
-    data = mf.generate(
-        "BTCUSD,ETHUSD,SOLUSD",
-        start="2024-01-01", end="2024-04-01",
-        seed=seed, timeframes=["m5"],
-        include_regime=True, include_spread=True,
-    )
-    closes = data.panel("close", "m5")              # time x instrument, NaN when closed
-    labels = data["BTCUSD"]["m5"]["regime"]         # ground-truth regime per candle
+# Disjoint seeds: train, validation and test never share a path.
+# One generation per seed, in parallel processes, yielded in seed order.
+for data in mf.generate_many(
+    "BTCUSD,ETHUSD,SOLUSD", seeds=range(64),
+    start="2024-01-01", end="2024-04-01", timeframes=["m5"],
+    include_regime=True, include_spread=True,
+):
+    x, times, symbols = data.to_numpy("m5")          # (time, instrument, OHLCV), NaN when closed
+    labels = data["BTCUSD"]["m5"]["regime"]          # ground-truth regime per candle
     ...
 
 # Years of data, streamed to disk; continued later

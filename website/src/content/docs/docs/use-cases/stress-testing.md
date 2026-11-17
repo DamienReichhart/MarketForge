@@ -17,9 +17,10 @@ def max_drawdown(equity: np.ndarray) -> float:
     return float((equity / np.maximum.accumulate(equity) - 1).min())
 
 results = []
-for seed in range(200):
-    data = mf.generate("SPXUSD,XAUUSD,EURUSD", start="2024-01-01", end="2025-01-01",
-                       seed=seed, timeframes=["H1"], include_spread=True, include_regime=True)
+# 200 alternative years, generated in parallel processes, yielded in seed order
+for data in mf.generate_many("SPXUSD,XAUUSD,EURUSD", seeds=range(200), start="2024-01-01",
+                             end="2025-01-01", timeframes=["H1"], include_spread=True,
+                             include_regime=True):
     equity = run_my_strategy(data)            # your backtest, returning an equity curve
     results.append(max_drawdown(equity))
 

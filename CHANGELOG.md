@@ -89,6 +89,10 @@ options and parameters.
   [ADR 0011](docs/adr/0011-realism-over-seed-stability.md).
 
 ### Machine-learning ergonomics
+- **`mf.generate_many(..., seeds=range(64), jobs=8)`** runs `generate()` once
+  per seed in parallel processes and yields the results in seed order, so
+  many-seed training sets and stress tests use every core without holding
+  everything in memory.
 - **`mf.read(dataset)`** loads a dataset, or some of its instruments and
   timeframes, back as the `GeneratedData` that `generate()` returns: UTC
   index, float columns, categorical regime. No more hand-written

@@ -16,7 +16,7 @@ from marketforge._version import MODEL_REVISION, __version__
 from marketforge.api.catalog import instruments
 from marketforge.api.disk import extend, generate_to_disk
 from marketforge.api.estimating import Estimate, estimate
-from marketforge.api.memory import GeneratedData, generate
+from marketforge.api.memory import GeneratedData, generate, generate_many
 from marketforge.api.parsing import parse_time
 from marketforge.api.reading import read
 from marketforge.api.validating import validate
@@ -31,6 +31,7 @@ __all__ = [
     "estimate",
     "extend",
     "generate",
+    "generate_many",
     "generate_to_disk",
     "instruments",
     "parse_time",

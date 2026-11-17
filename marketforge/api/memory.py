@@ -8,7 +8,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import multiprocessing
+import os
+from collections.abc import Iterable, Iterator, Sequence
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -178,6 +183,45 @@ def generate(
         (symbol, name) for symbol, frames in out.items() for name, f in frames.items() if f.empty
     )
     return out
+
+
+def generate_many(
+    instruments: Names | None = None,
+    *,
+    seeds: Iterable[int],
+    jobs: int | None = None,
+    **kwargs: Any,
+) -> Iterator[GeneratedData]:
+    """
+    :func:`generate` once per seed, in parallel processes, yielding in seed order.
+
+    Disjoint seeds give paths that share nothing: train, validation and test
+    sets, or the hundreds of alternative histories of a stress test. Results
+    are yielded as they are ready, in the order of ``seeds``, so only a few are
+    in memory at once; each is exactly what ``generate(..., seed=s)`` returns.
+
+    Args:
+        instruments: As for :func:`generate`.
+        seeds: The seeds, one generation each.
+        jobs: Processes to use (default: the CPU count). Each process compiles
+            the kernels once (a couple of seconds on a cold cache).
+        **kwargs: Every other argument of :func:`generate` except ``seed``.
+    """
+    if "seed" in kwargs:
+        raise TypeError("generate_many() takes seeds=, not seed=")
+    seeds = [int(s) for s in seeds]
+    workers = max(1, min(jobs or os.cpu_count() or 1, len(seeds)))
+    run = partial(_generate_seed, instruments, kwargs)
+    if workers == 1:
+        yield from map(run, seeds)
+        return
+    with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn")) as pool:
+        yield from pool.map(run, seeds)
+
+
+def _generate_seed(instruments: Names | None, kwargs: dict[str, Any], seed: int) -> GeneratedData:
+    data = generate(instruments, seed=seed, **kwargs)
+    return data
 
 
 _FRAME_COLUMNS = ("open", "high", "low", "close", "volume")
