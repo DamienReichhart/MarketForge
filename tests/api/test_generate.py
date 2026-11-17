@@ -311,3 +311,18 @@ def test_instruments_outside_the_requested_markets_are_warned_about():
 def test_ranges_before_1970_are_refused_with_a_clear_message():
     with pytest.raises(ValueError, match=r"starts before 1970-01-01"):
         mf.generate("BTCUSD", start="1969-12-31", end="1970-01-02")
+
+
+@pytest.mark.parametrize("fmt", ["csv", "parquet"])
+def test_regime_names_are_the_same_on_disk_as_in_memory(tmp_path, fmt):
+    kwargs = {"start": "2024-01-01", "end": "2024-01-08", "seed": 3, "timeframes": "H1"}
+    mem = mf.generate("BTCUSD", include_regime=True, **kwargs)["BTCUSD"]["H1"]["regime"]
+    report = mf.generate_to_disk(tmp_path, "BTCUSD", include_regime=True, fmt=fmt, **kwargs)
+    path = report.paths["crypto"]["BTCUSD"]["H1"]
+    disk = pd.read_csv(path)["regime"] if fmt == "csv" else pd.read_parquet(path)["regime"]
+    assert disk.tolist() == mem.tolist()  # names like "trend_up", not codes
+    assert set(disk) <= {"trend_up", "trend_down", "range", "high_volatility", "crash"}
+    if fmt == "parquet":
+        # The same categorical as in memory, so the codes agree too.
+        assert list(disk.cat.categories) == list(mem.cat.categories)
+        assert disk.cat.codes.tolist() == mem.cat.codes.tolist()

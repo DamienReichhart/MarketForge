@@ -43,7 +43,7 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `--timestamps` | `unix` (default) or `iso` (`2024-01-02T14:30:00Z`), for CSV files. |
 | `--anomalies` | Optional, deliberately unrealistic events: `spikes`, `flash_crash`. |
 | `--with-spread` | Adds a `spread` column: the mean quoted bid-ask spread of the candle, in price units. See [Bid-ask spread](../../reference/spread/). |
-| `--with-regime` | Adds a `regime` column: `0` trend_up, `1` trend_down, `2` range, `3` high_volatility, `4` crash. |
+| `--with-regime` | Adds a `regime` column: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. |
 | `--config` | A TOML [override file](../custom-instruments/). |
 | `-j, --jobs` | Markets simulated in parallel. Default: one per market, up to the CPU count. |
 | `--dry-run` | Prints the plan and estimates, then exits. |

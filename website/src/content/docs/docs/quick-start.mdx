@@ -40,7 +40,7 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
    df = pd.read_csv("data/crypto/BTCUSD_H1.csv")
    df["time"] = pd.to_datetime(df["timestamp"], unit="s", utc=True)
-   # In files the regime is a code: 0 trend_up, 1 trend_down, 2 range, 3 high_volatility, 4 crash
+   # The regime is a name: trend_up, trend_down, range, high_volatility or crash
    print(df[["time", "close", "spread", "regime"]].tail())
    ```
    </TabItem>

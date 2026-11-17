@@ -33,6 +33,11 @@ options and parameters.
   so a glob over the directory mixed two datasets and the manifest no longer
   described it. Pass `--overwrite` (`overwrite=True`) to replace it: the old
   manifest and candle files are deleted first, and other files are left alone.
+- **Files write the regime as its name**, as frames in memory always did:
+  `trend_up`, `trend_down`, `range`, `high_volatility` or `crash` instead of
+  the codes 0 to 4. Parquet stores it as a categorical, so `pd.read_parquet`
+  returns exactly the in-memory column; `.cat.codes` gives the codes. Code
+  written as `df.regime == 2` against files becomes `df.regime == "range"`.
 - **A seed must be an integer.** `seed=1.5`, `seed=True` and `seed="7"` raise
   `TypeError`; 1.5 used to be truncated to 1 without a word.
 - **`validate` refuses candles that are not m1.** The bands describe minute

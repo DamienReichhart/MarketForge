@@ -155,13 +155,14 @@ data/
 
 ```csv
 timestamp,open,high,low,close,volume,spread,regime
-1704067200,67500,67841.28465635,67497.68731519,67837.68959567,548.7391,0.13516156,2
+1704067200,67500,67841.28465635,67497.68731519,67837.68959567,548.7391,0.13516156,range
 ```
 
 Timestamps are the start of the candle in Unix seconds (UTC), or ISO 8601
 with `--timestamps iso`. Prices are mid prices: `bid = price - spread / 2`.
-The regime is a code: `0` trend_up, `1` trend_down, `2` range,
-`3` high_volatility, `4` crash. `high >= max(open, close)` and
+The regime is one of `trend_up`, `trend_down`, `range`, `high_volatility` and
+`crash`, in files as in memory (a categorical whose codes are 0 to 4 in that
+order). `high >= max(open, close)` and
 `low <= min(open, close)` always hold, and partial candles are never written.
 See [Output format](https://damienreichhart.github.io/MarketForge/docs/guides/output/).
 

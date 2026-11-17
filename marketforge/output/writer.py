@@ -168,7 +168,7 @@ class CandleWriter:
                 path.with_name(path.name + REWRITE_SUFFIX) if self._extend else path,
                 self.schema,
                 compression="zstd",
-                use_dictionary=["timestamp"],
+                use_dictionary=["timestamp", "regime"],
                 use_byte_stream_split=[f.name for f in self.schema if f.type == pa.float64()],
             )
             self._parquet[path] = writer

@@ -91,7 +91,7 @@ from marketforge.output.manifest import dataset_files
 @click.option(
     "--with-regime",
     is_flag=True,
-    help="Add a 'regime' column (0=trend_up 1=trend_down 2=range 3=high_volatility 4=crash).",
+    help="Add a 'regime' column: trend_up, trend_down, range, high_volatility or crash.",
 )
 @jobs_option
 @click.option(

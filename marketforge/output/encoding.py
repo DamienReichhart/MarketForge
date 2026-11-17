@@ -14,11 +14,17 @@ import numpy as np
 import pyarrow as pa
 
 from marketforge.domain.bars import Bars
+from marketforge.domain.regimes import RegimeType
 
 PRICE_DECIMALS = 8
 VOLUME_DECIMALS = 4
 
 _PRICE_FIELDS = ("open", "high", "low", "close")
+
+# The regime is written as its name ("trend_up"), dictionary-encoded on the
+# regime codes, so files read back as the same categorical as in memory.
+REGIME_NAMES = pa.array([r.value for r in RegimeType], pa.string())
+REGIME_TYPE = pa.dictionary(pa.int8(), pa.string())
 
 
 def candle_schema(include_regime: bool, include_spread: bool = False) -> pa.Schema:
@@ -28,7 +34,7 @@ def candle_schema(include_regime: bool, include_spread: bool = False) -> pa.Sche
     if include_spread:
         fields.append(pa.field("spread", pa.float64()))
     if include_regime:
-        fields.append(pa.field("regime", pa.int8()))
+        fields.append(pa.field("regime", REGIME_TYPE))
     return pa.schema(fields)
 
 
@@ -58,5 +64,9 @@ def record_batch(parts: list[tuple[np.ndarray, ...]], schema: pa.Schema) -> pa.R
     for k, field in enumerate(schema):
         chunk = [p[k] for p in parts]
         values = chunk[0] if len(chunk) == 1 else np.concatenate(chunk)
-        arrays.append(pa.array(values, field.type))
+        if field.type == REGIME_TYPE:
+            codes = pa.array(np.asarray(values, dtype=np.int8), pa.int8())
+            arrays.append(pa.DictionaryArray.from_arrays(codes, REGIME_NAMES))
+        else:
+            arrays.append(pa.array(values, field.type))
     return pa.RecordBatch.from_arrays(arrays, schema=schema)
