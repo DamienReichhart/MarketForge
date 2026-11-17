@@ -45,6 +45,6 @@ def extend(
     """
     new_end = end_of_range(read_manifest(dataset).end, end, days)
     request, fmt, timestamps = plan_extension(dataset, new_end)
-    print_plan(request, fmt, dataset, random_seed=False)
+    print_plan(request, fmt, dataset, random_seed=False, jobs=jobs)
     if not dry_run:
         run(request, dataset, fmt, timestamps, jobs, progress)

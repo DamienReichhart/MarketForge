@@ -25,6 +25,7 @@ from marketforge.api.parsing import (
     parse_seed,
     parse_time,
     parse_timeframes,
+    range_end,
 )
 from marketforge.config.loader import load_catalog
 from marketforge.config.overrides import Overrides, resolve_overrides
@@ -101,13 +102,14 @@ def plan_request(
     markets: Names | None = None,
     *,
     start: TimeLike,
-    end: TimeLike,
+    end: TimeLike | None = None,
     seed: int | None = None,
     timeframes: Names = DEFAULT_TIMEFRAMES,
     anomalies: Names = (),
     include_regime: bool = False,
     include_spread: bool = False,
     overrides: Overrides | None = None,
+    days: int | None = None,
 ) -> Request:
     """
     Resolve user input into a :class:`Request`.
@@ -125,7 +127,8 @@ def plan_request(
             invalid time range.
         TypeError: on a seed that is not an integer.
     """
-    t0, t1 = parse_time(start), parse_time(end)
+    t0 = parse_time(start)
+    t1 = range_end(t0, end, days)
     if t0 >= t1:
         raise ValueError(f"start ({t0}) must be before end ({t1})")
     if t0 < 0:

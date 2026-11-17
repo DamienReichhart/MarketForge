@@ -150,7 +150,7 @@ def generate(
         include_spread=with_spread,
         overrides=overrides,
     )
-    print_plan(request, fmt, output_dir, seed is None)
+    print_plan(request, fmt, output_dir, seed is None, jobs)
     if dry_run or not output_dir:
         return
     run(request, output_dir, fmt, timestamps, jobs, progress, overwrite)

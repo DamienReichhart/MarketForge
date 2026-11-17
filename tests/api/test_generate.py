@@ -360,3 +360,27 @@ def test_to_numpy_is_time_by_instrument_by_column_with_nan_when_closed():
     np.testing.assert_array_equal(array[:, 0, 0], btc["close"].reindex(index).to_numpy())
     np.testing.assert_array_equal(array[:, 0, 1], btc["regime"].cat.codes.reindex(index).to_numpy())
     assert np.isnan(array[:, 1, 0]).sum() == len(index) - len(data["AAPL"]["H1"])  # closed hours
+
+
+def test_days_is_an_alternative_to_end():
+    by_days = mf.generate("BTCUSD", start="2024-01-02", days=2, seed=1)
+    by_end = mf.generate("BTCUSD", start="2024-01-02", end="2024-01-04", seed=1)
+    pd.testing.assert_frame_equal(by_days["BTCUSD"]["m1"], by_end["BTCUSD"]["m1"])
+    with pytest.raises(ValueError, match="exactly one of end and days"):
+        mf.generate("BTCUSD", start="2024-01-02", end="2024-01-04", days=2)
+    with pytest.raises(ValueError, match="exactly one of end and days"):
+        mf.generate("BTCUSD", start="2024-01-02")
+
+
+def test_estimate_predicts_files_rows_and_size_without_generating(tmp_path):
+    kwargs = {"start": "2024-01-01", "days": 10, "timeframes": "m1,H1", "seed": 1}
+    guess = mf.estimate("BTCUSD,AAPL,EURUSD", fmt="csv", **kwargs)
+    report = mf.generate_to_disk(tmp_path, "BTCUSD,AAPL,EURUSD", **kwargs)
+    files = [p for syms in report.paths.values() for tfs in syms.values() for p in tfs.values()]
+    rows = sum(len(p.read_text().splitlines()) - 1 for p in files)
+    size = sum(p.stat().st_size for p in files)
+    assert guess.files == len(files) == 6
+    assert guess.rows == pytest.approx(rows, rel=0.05)
+    assert guess.disk_bytes == pytest.approx(size, rel=0.5)
+    assert guess.memory_bytes > 0 and guess.seconds > 0
+    assert guess.wall_seconds(jobs=3) <= guess.seconds

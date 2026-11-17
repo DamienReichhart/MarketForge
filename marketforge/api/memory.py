@@ -109,7 +109,8 @@ def generate(
     instruments: Names | None = None,
     *,
     start: TimeLike,
-    end: TimeLike,
+    end: TimeLike | None = None,
+    days: int | None = None,
     markets: Names | None = None,
     seed: int | None = None,
     timeframes: Names = ("m1",),
@@ -126,6 +127,7 @@ def generate(
             every instrument of ``markets`` (default: all markets).
         start, end: Range ``[start, end)`` as Unix seconds, ISO 8601 strings or
             date/datetime objects (naive = UTC).
+        days: Length of the range in days, instead of ``end``.
         markets: Restrict to these markets (``crypto``, ``forex``, ``stocks``).
         seed: Non-negative integer; the same seed returns identical candles.
             If omitted a random seed is chosen and exposed as ``result.seed``.
@@ -148,6 +150,7 @@ def generate(
         markets,
         start=start,
         end=end,
+        days=days,
         seed=seed,
         timeframes=timeframes,
         anomalies=anomalies,

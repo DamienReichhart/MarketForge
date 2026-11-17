@@ -41,6 +41,7 @@ print(report.passed, report.summary())
 | `GeneratedData.to_numpy(timeframe, columns)` | A `(time, instrument, column)` float array for tensors, with its time index and symbol list; NaN where a market was closed, regime as its codes. |
 | `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
 | `read(dataset, instruments=None, *, timeframes=None)` | Loads a dataset (or part of it) back into memory: the same `GeneratedData` that `generate()` returns for its settings, with a UTC index, float columns and a categorical regime. |
+| `estimate(...)` | What a generation would produce without running it: `files`, `rows`, `disk_bytes`, `memory_bytes` (for `generate()`), `seconds` on one core and `wall_seconds(jobs)`. Takes the arguments of `generate_to_disk()`. |
 | `extend(dataset, end)` | Continues a dataset, as `marketforge extend` does. |
 | `instruments(markets=None, overrides=None)` | The catalog as a DataFrame indexed by symbol: market, start price, volatility, drift, base volume, and whether the instrument is a derived forex cross. |
 | `validate(data, market=None)` | Checks `m1` candles (a DataFrame or a CSV/Parquet path) against a market's validation bands. The market can be omitted for a file MarketForge wrote. |
@@ -50,14 +51,14 @@ print(report.passed, report.summary())
 
 ```python check=signature
 mf.generate(
-    instruments=None, *, start, end, markets=None, seed=None,
+    instruments=None, *, start, end=None, days=None, markets=None, seed=None,
     timeframes=("m1",), anomalies=(), include_regime=False, include_spread=False,
     overrides=None,
 ) -> GeneratedData
 ```
 
 - `instruments`: a list or one comma-separated string, in any letter case. If omitted, every instrument of `markets` (default: all markets).
-- `start`, `end`: the range `[start, end)` as Unix seconds, ISO 8601 strings, or `date`/`datetime` objects (naive means UTC).
+- `start`, `end`: the range `[start, end)` as Unix seconds, ISO 8601 strings, or `date`/`datetime` objects (naive means UTC). Give `days=` instead of `end` for a range of whole days.
 - `seed`: a non-negative integer. The same seed returns identical candles. A float, a bool or a string raises `TypeError`.
 - `timeframes`: defaults to `m1` only in memory; `generate_to_disk` defaults to all eight.
 - `overrides`: the path of a TOML [override file](../custom-instruments/), or the same content as a dict: `{"BTCUSD": {"start_price": 42000}}`.

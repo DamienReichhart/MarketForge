@@ -123,3 +123,15 @@ def parse_anomalies(values: Names) -> frozenset[AnomalyType]:
                 f"Unknown anomaly {v!r}; choose from {', '.join(a.value for a in AnomalyType)}"
             ) from None
     return frozenset(out)
+
+
+def range_end(start: int, end: TimeLike | None, days: int | None) -> int:
+    """The end of a range given as exactly one of ``end`` and ``days`` (from ``start``)."""
+    if (end is None) == (days is None):
+        raise ValueError("Give exactly one of end and days")
+    if days is not None:
+        if isinstance(days, bool) or not isinstance(days, int | np.integer) or days < 1:
+            raise ValueError(f"days must be a positive integer, got {days!r}")
+        return start + int(days) * 86_400
+    assert end is not None
+    return parse_time(end)

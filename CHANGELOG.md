@@ -96,6 +96,12 @@ options and parameters.
 - **`GeneratedData.to_long()`** stacks every instrument into one frame
   indexed by `(symbol, time)`, and **`to_numpy()`** gives a `(time,
   instrument, column)` array with its axes, NaN where a market was closed.
+- **`mf.estimate()`** says what a generation would produce (files, rows,
+  disk size, the memory `generate()` would need, time) without running it,
+  as `--dry-run` does, and `--dry-run` now estimates the time for the
+  markets it simulates in parallel instead of one core.
+- **`days=`** is accepted instead of `end=` in Python, as `--days` is on the
+  command line.
 
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and
