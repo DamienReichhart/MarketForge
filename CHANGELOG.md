@@ -28,6 +28,11 @@ options and parameters.
   3.0. `--assets`/`-a` is `--instruments`/`-i`, `list-assets` is
   `list-instruments`, and `generate()` and `generate_to_disk()` take
   `instruments=` instead of `assets=`. The old names are removed.
+- **`generate` refuses a directory that already holds a dataset.** Generating
+  again into one used to leave the old dataset's files beside the new ones,
+  so a glob over the directory mixed two datasets and the manifest no longer
+  described it. Pass `--overwrite` (`overwrite=True`) to replace it: the old
+  manifest and candle files are deleted first, and other files are left alone.
 - **A seed must be an integer.** `seed=1.5`, `seed=True` and `seed="7"` raise
   `TypeError`; 1.5 used to be truncated to 1 without a word.
 - **`validate` refuses candles that are not m1.** The bands describe minute

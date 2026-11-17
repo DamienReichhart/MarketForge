@@ -32,8 +32,8 @@ from marketforge.output.formats import OutputFormat, TimestampFormat
 from marketforge.output.manifest import (
     Manifest,
     begin_extension,
+    clear_dataset,
     commit_extension,
-    discard_manifest,
     iso_time,
     read_manifest,
     recover,
@@ -74,6 +74,7 @@ def generate_to_disk(
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,
+    overwrite: bool = False,
 ) -> DiskReport:
     """
     Generate a dataset: ``{output_dir}/{market}/{SYMBOL}_{tf}.{fmt}`` and a manifest.
@@ -84,6 +85,14 @@ def generate_to_disk(
     not grow with the length of the range. The manifest (``marketforge.json``)
     records how the dataset was produced, so that it can be reproduced, and
     continued later with :func:`extend`.
+
+    A directory that already holds a dataset (a manifest, or candle files left
+    by an interrupted run) is refused, so two datasets never mix, unless
+    ``overwrite`` is true: then the old dataset's files are deleted first.
+    Files MarketForge did not write are left alone.
+
+    Raises:
+        FileExistsError: if ``output_dir`` holds a dataset and ``overwrite`` is false.
     """
     request = plan_request(
         instruments,
@@ -98,7 +107,13 @@ def generate_to_disk(
         overrides=overrides,
     )
     return write_request(
-        request, output_dir, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=on_day
+        request,
+        output_dir,
+        fmt=fmt,
+        timestamps=timestamps,
+        jobs=jobs,
+        on_day=on_day,
+        overwrite=overwrite,
     )
 
 
@@ -167,6 +182,7 @@ def write_request(
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,
+    overwrite: bool = False,
 ) -> DiskReport:
     """Run an already resolved request (a new dataset or an extension) into ``output_dir``."""
     fmt = OutputFormat(fmt)
@@ -178,7 +194,7 @@ def write_request(
         ensure_open_file_capacity(n_files)
     if not extending:
         root.mkdir(parents=True, exist_ok=True)
-        discard_manifest(root)
+        clear_dataset(root, overwrite=overwrite)
     writers = {
         plan.market: CandleWriter(
             root,

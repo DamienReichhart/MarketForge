@@ -14,6 +14,7 @@ from marketforge.api.parsing import parse_time
 from marketforge.api.planning import plan_request
 from marketforge.cli.plan_summary import print_plan
 from marketforge.cli.running import days_option, end_of_range, jobs_option, progress_option, run
+from marketforge.output.manifest import dataset_files
 
 
 @click.command()
@@ -98,6 +99,11 @@ from marketforge.cli.running import days_option, end_of_range, jobs_option, prog
     is_flag=True,
     help="Print what would be generated (files, rows, size, time) and exit.",
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Replace the dataset already in --output-dir. Without it, a directory that holds one is refused.",
+)
 @progress_option
 def generate(
     output_dir: str | None,
@@ -116,11 +122,17 @@ def generate(
     with_regime: bool,
     jobs: int | None,
     dry_run: bool,
+    overwrite: bool,
     progress: bool,
 ) -> None:
     """Generate a dataset: candle files and the manifest that records how they were made."""
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
+    if output_dir and not dry_run and not overwrite and (existing := dataset_files(output_dir)):
+        raise click.ClickException(
+            f"{output_dir} already holds a MarketForge dataset ({len(existing)} files). "
+            "Add --overwrite to replace it, or continue it with `marketforge extend`."
+        )
     request = plan_request(
         instruments,
         markets,
@@ -136,5 +148,5 @@ def generate(
     print_plan(request, fmt, output_dir, seed is None)
     if dry_run or not output_dir:
         return
-    run(request, output_dir, fmt, timestamps, jobs, progress)
+    run(request, output_dir, fmt, timestamps, jobs, progress, overwrite)
     click.echo(f"Reproduce with --seed {request.seed}")

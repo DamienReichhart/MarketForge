@@ -216,3 +216,26 @@ def test_an_unexpected_error_points_to_debug(tmp_path, monkeypatch):
     assert res.exit_code == 1
     assert "Error: kernel went missing" in res.output
     assert "Run again with --debug for the full traceback." in res.output
+
+
+def test_generate_refuses_to_mix_datasets_without_overwrite(tmp_path):
+    args = (
+        "generate",
+        "-o",
+        str(tmp_path),
+        "--from",
+        "2024-01-02",
+        "--days",
+        "1",
+        "-i",
+        "AAPL",
+        "-t",
+        "D1",
+        "--no-progress",
+    )
+    assert _run(*args).exit_code == 0
+    res = _run(*args)
+    assert res.exit_code == 1
+    assert "--overwrite" in res.output and "marketforge extend" in res.output
+    res = _run(*args, "--overwrite")
+    assert res.exit_code == 0, res.output

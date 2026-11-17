@@ -47,9 +47,10 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `--config` | A TOML [override file](../custom-instruments/). |
 | `-j, --jobs` | Markets simulated in parallel. Default: one per market, up to the CPU count. |
 | `--dry-run` | Prints the plan and estimates, then exits. |
+| `--overwrite` | Replaces the dataset already in `--output-dir` instead of refusing it. |
 | `--no-progress` | Hides the progress bar. |
 
-A file that receives no candle (the market was closed for the whole range, or the range is shorter than the candle) is written empty, with a warning. `generate` rewrites every output file and the manifest from scratch, so re-running into the same directory never leaves candles from an earlier run behind.
+A file that receives no candle (the market was closed for the whole range, or the range is shorter than the candle) is written empty, with a warning. `generate` refuses a directory that already holds a dataset (a manifest, or candle files an interrupted run left behind), so two datasets never mix; `--overwrite` deletes the old dataset's files first and leaves any other file alone.
 
 ## extend
 

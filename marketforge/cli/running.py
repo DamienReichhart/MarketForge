@@ -56,6 +56,7 @@ def run(
     timestamps: str,
     jobs: int | None,
     progress: bool,
+    overwrite: bool = False,
 ) -> None:
     """Write a request's candles to ``output_dir`` and report what was done."""
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
@@ -75,7 +76,13 @@ def run(
         warnings.simplefilter("always")
         try:
             report = write_request(
-                request, output_dir, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=tick
+                request,
+                output_dir,
+                fmt=fmt,
+                timestamps=timestamps,
+                jobs=jobs,
+                on_day=tick,
+                overwrite=overwrite,
             )
         finally:
             if bar is not None:

@@ -136,7 +136,9 @@ def test_extend_refuses_what_it_cannot_continue(tmp_path):
 
 def test_generating_again_replaces_the_dataset_and_its_manifest(tmp_path):
     mf.generate_to_disk(tmp_path, "AAPL", start="2024-01-02", end="2024-01-05", seed=1)
-    mf.generate_to_disk(tmp_path, "AAPL", start="2024-01-02", end="2024-01-04", seed=2)
+    mf.generate_to_disk(
+        tmp_path, "AAPL", start="2024-01-02", end="2024-01-04", seed=2, overwrite=True
+    )
     manifest = read_manifest(tmp_path)
     assert (manifest.seed, manifest.end) == (2, 1704326400)
 

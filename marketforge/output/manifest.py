@@ -21,9 +21,13 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from marketforge.domain.markets import MarketType
+from marketforge.domain.timeframes import Timeframe
 
 MANIFEST_NAME = "marketforge.json"
 _JOURNAL_NAME = "marketforge.extending"
@@ -122,10 +126,46 @@ def write_manifest(dataset: str | os.PathLike[str], manifest: Manifest) -> Path:
     return path
 
 
-def discard_manifest(dataset: str | os.PathLike[str]) -> None:
-    """Forget what a directory held, before a new dataset is generated into it."""
-    for name in (MANIFEST_NAME, _PENDING_MANIFEST_NAME, _JOURNAL_NAME):
-        (Path(dataset) / name).unlink(missing_ok=True)
+_MARKET_DIRS = tuple(market.value for market in MarketType)
+_CANDLE_FILE = re.compile(
+    r"^[^/\\]+_(?:" + "|".join(tf.name for tf in Timeframe) + r")\.(?:csv|parquet)(?:\.tmp)?$"
+)
+
+
+def dataset_files(dataset: str | os.PathLike[str]) -> list[Path]:
+    """The files of a MarketForge dataset in a directory: manifest and candle files.
+
+    Candle files count without a manifest too: an interrupted generation leaves
+    them behind. Files MarketForge does not write are never listed.
+    """
+    root = Path(dataset)
+    found = [
+        root / name
+        for name in (MANIFEST_NAME, _PENDING_MANIFEST_NAME, _JOURNAL_NAME)
+        if (root / name).is_file()
+    ]
+    for market in _MARKET_DIRS:
+        folder = root / market
+        if folder.is_dir():
+            found.extend(
+                sorted(p for p in folder.iterdir() if p.is_file() and _CANDLE_FILE.match(p.name))
+            )
+    return found
+
+
+def clear_dataset(dataset: str | os.PathLike[str], *, overwrite: bool) -> None:
+    """Make room for a new dataset: refuse to mix it with an old one unless ``overwrite``."""
+    files = dataset_files(dataset)
+    if not files:
+        return
+    if not overwrite:
+        raise FileExistsError(
+            f"{Path(dataset)} already holds a MarketForge dataset ({len(files)} files). "
+            "Pass overwrite=True (--overwrite on the command line) to replace it, "
+            "or continue it with `marketforge extend` (mf.extend)"
+        )
+    for path in files:
+        path.unlink(missing_ok=True)
 
 
 def begin_extension(dataset: str | os.PathLike[str], csv_files: list[Path]) -> None:

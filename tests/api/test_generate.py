@@ -199,3 +199,50 @@ def test_spread_column_in_memory_and_on_disk(tmp_path):
             "timestamp", "open", "high", "low", "close", "volume", "spread", "regime",
         ]  # fmt: skip
         np.testing.assert_allclose(df["spread"], data["H1"]["spread"], atol=5e-9)
+
+
+def test_generating_into_a_dataset_refuses_unless_asked_to_overwrite(tmp_path):
+    mf.generate_to_disk(
+        tmp_path, "EURUSD", start="2024-01-02", end="2024-01-03", seed=1, timeframes="m5,H1"
+    )
+    (tmp_path / "notes.txt").write_text("mine")
+    with pytest.raises(
+        FileExistsError, match=r"already holds a MarketForge dataset.*overwrite=True"
+    ):
+        mf.generate_to_disk(
+            tmp_path, "AAPL", start="2024-01-02", end="2024-01-03", seed=1, timeframes="D1"
+        )
+    assert (tmp_path / "forex" / "EURUSD_m5.csv").exists()  # nothing was touched
+
+    report = mf.generate_to_disk(
+        tmp_path,
+        "AAPL",
+        start="2024-01-02",
+        end="2024-01-03",
+        seed=1,
+        timeframes="D1",
+        overwrite=True,
+    )
+    files = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file())
+    # The old dataset's candles are gone, so the directory matches its manifest;
+    # files MarketForge did not write are left alone.
+    assert files == ["marketforge.json", "notes.txt", "stocks/AAPL_D1.csv"]
+    assert report.n_files == 1
+
+
+def test_candle_files_without_a_manifest_count_as_a_dataset(tmp_path):
+    # An interrupted generation leaves candle files and no manifest.
+    (tmp_path / "crypto").mkdir()
+    (tmp_path / "crypto" / "BTCUSD_m1.csv").write_text("timestamp,open\n")
+    with pytest.raises(FileExistsError):
+        mf.generate_to_disk(
+            tmp_path, "AAPL", start="2024-01-02", end="2024-01-03", seed=1, timeframes="D1"
+        )
+
+
+def test_generating_into_a_directory_of_other_files_is_allowed(tmp_path):
+    (tmp_path / "README.txt").write_text("not a dataset")
+    mf.generate_to_disk(
+        tmp_path, "AAPL", start="2024-01-02", end="2024-01-03", seed=1, timeframes="D1"
+    )
+    assert (tmp_path / "stocks" / "AAPL_D1.csv").exists()
