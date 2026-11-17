@@ -88,6 +88,12 @@ options and parameters.
   Pin the version to keep a dataset identical. See
   [ADR 0011](docs/adr/0011-realism-over-seed-stability.md).
 
+### Machine-learning ergonomics
+- **`mf.read(dataset)`** loads a dataset, or some of its instruments and
+  timeframes, back as the `GeneratedData` that `generate()` returns: UTC
+  index, float columns, categorical regime. No more hand-written
+  `read_csv` and timestamp conversion.
+
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and
   `mf.extend(dataset, end)` continue a dataset. The result is exactly what one

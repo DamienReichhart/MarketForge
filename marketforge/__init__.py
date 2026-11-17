@@ -17,6 +17,7 @@ from marketforge.api.catalog import instruments
 from marketforge.api.disk import extend, generate_to_disk
 from marketforge.api.memory import GeneratedData, generate
 from marketforge.api.parsing import parse_time
+from marketforge.api.reading import read
 from marketforge.api.validating import validate
 
 __author__ = "REICHHART Damien"
@@ -30,5 +31,6 @@ __all__ = [
     "generate_to_disk",
     "instruments",
     "parse_time",
+    "read",
     "validate",
 ]

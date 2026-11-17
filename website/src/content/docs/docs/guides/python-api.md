@@ -1,6 +1,6 @@
 ---
 title: Python API
-description: "generate(), generate_to_disk(), extend(), instruments(), validate() and parse_time()."
+description: "generate(), generate_to_disk(), read(), extend(), instruments(), validate() and parse_time()."
 ---
 
 Everything the command line does is available from Python. The supported API is what `import marketforge` exposes; module paths below it can change between releases.
@@ -24,6 +24,7 @@ report = mf.generate_to_disk("./data", markets="stocks",
                              seed=1, fmt="parquet", jobs=3)
 print(report.n_files, report.paths["stocks"]["AAPL"]["D1"], report.manifest)
 mf.extend("./data", "2025-02-01")
+stocks = mf.read("./data", "AAPL,MSFT", timeframes="D1")  # back as GeneratedData
 
 mf.instruments("forex")                # the catalog as a DataFrame
 report = mf.validate(data["EURUSD"]["m1"], "forex")
@@ -37,6 +38,7 @@ print(report.passed, report.summary())
 | `generate(...)` | Candles in memory: `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a UTC `DatetimeIndex` named `time` and the columns `open, high, low, close, volume`, plus `spread` with `include_spread=True` and a categorical `regime` with `include_regime=True`. |
 | `GeneratedData.panel(column, timeframe)` | One column of every instrument side by side. The index is the union of all candle times; a value is NaN where that instrument's market was closed, never forward-filled. |
 | `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
+| `read(dataset, instruments=None, *, timeframes=None)` | Loads a dataset (or part of it) back into memory: the same `GeneratedData` that `generate()` returns for its settings, with a UTC index, float columns and a categorical regime. |
 | `extend(dataset, end)` | Continues a dataset, as `marketforge extend` does. |
 | `instruments(markets=None, overrides=None)` | The catalog as a DataFrame indexed by symbol: market, start price, volatility, drift, base volume, and whether the instrument is a derived forex cross. |
 | `validate(data, market=None)` | Checks `m1` candles (a DataFrame or a CSV/Parquet path) against a market's validation bands. The market can be omitted for a file MarketForge wrote. |
@@ -68,6 +70,7 @@ Takes the same arguments as `generate()`, plus:
 - `fmt`: `"csv"` (default) or `"parquet"`.
 - `timestamps`: `"unix"` (default) or `"iso"`, for CSV files.
 - `jobs`: markets simulated in parallel.
+- `overwrite`: replace a dataset already in `output_dir`. Without it, a directory that holds one (a manifest, or candle files an interrupted run left behind) raises `FileExistsError`.
 
 Returns a `DiskReport` with `n_files`, `paths` (`{market: {symbol: {timeframe: path}}}`) and `manifest`, the path of `marketforge.json`.
 

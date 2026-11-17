@@ -52,6 +52,9 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
                       seed=42, timeframes=["H1"], include_regime=True, include_spread=True)
    btc = data["BTCUSD"]["H1"]          # same candles as the CSV, as a DataFrame
    closes = data.panel("close", "H1")  # one column per instrument
+
+   # Or load the dataset you wrote, with the right types:
+   # data = mf.read("data", timeframes="H1")
    ```
    </TabItem>
    </Tabs>
