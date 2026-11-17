@@ -14,7 +14,7 @@ export default defineConfig({
 		starlight({
 			title: 'MarketForge',
 			description:
-				'Open-source synthetic market data for training AI trading models and stress-testing backtesters: labelled regimes, real trading calendars, bit-for-bit reproducible.',
+				'Open-source synthetic market data for training AI trading models and stress-testing backtesters: labelled regimes, real trading calendars, reproducible from a seed.',
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',
 			head: [
@@ -57,6 +57,7 @@ export default defineConfig({
 						{ label: 'Installation', slug: 'docs/installation' },
 						{ label: 'Quick start', slug: 'docs/quick-start' },
 						{ label: 'What it is not', slug: 'docs/limits' },
+						{ label: 'Migrating to 4.0', slug: 'docs/migrating-to-4' },
 					],
 				},
 				{
@@ -98,6 +99,7 @@ export default defineConfig({
 							items: [{ autogenerate: { directory: 'docs/adr' } }],
 						},
 						{ label: 'Brand', slug: 'docs/brand' },
+						{ label: 'Licence', slug: 'docs/licence' },
 						{ label: 'Contributing', slug: 'docs/contributing' },
 						{ label: 'Security', slug: 'docs/security' },
 					],
