@@ -25,9 +25,13 @@ No candle is printed while a market is closed. A **gap** between the last close 
 
 Only one **anchor pair** per currency code is simulated; every **cross** is derived from them, so `EURJPY == EURUSD * USDJPY` at every minute and every triangle is arbitrage-free. Crosses take their volatility and start price from their anchor pairs. See [ADR 0002](../../adr/0002-derive-forex-crosses-from-anchor-pairs/).
 
+## Correlations
+
+Each catalog states the correlations that matter (BTC-ETH 0.88, AAPL-MSFT 0.78, EURUSD-GBPUSD 0.82) and fills the other pairs with a market default. Those values cannot all hold at once, so MarketForge uses the valid correlation matrix that comes closest to the stated pairs, giving the defaults little weight. Crypto and stocks keep their stated pairs to within 0.05. Forex is fitted through its anchors, so the crosses' correlations and volatilities follow from them. It keeps its anchor pairs to 0.04 on average, and its crosses at 0.7 to 1.2 times their stated volatilities, where the catalog contradicts itself. See [ADR 0012](../../adr/0012-fit-correlations-to-what-the-catalog-states/).
+
 ## Catalog parameters
 
-Annual volatility and drift in the catalog are what you get: regime multipliers are normalised so they change *when* volatility and drift happen, not how much. `start_price` is the price at the start of the range, whatever date that is: a range starting in 2015 starts at the same prices as one starting in 2024. Change any of them with an [override file](../../guides/custom-instruments/).
+Annual volatility and drift in the catalog are what you get (for forex crosses, approximately: see Correlations above): regime multipliers are normalised so they change *when* volatility and drift happen, not how much. `start_price` is the price at the start of the range, whatever date that is: a range starting in 2015 starts at the same prices as one starting in 2024. Change any of them with an [override file](../../guides/custom-instruments/).
 
 ## Known simplifications
 

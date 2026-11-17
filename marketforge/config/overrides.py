@@ -43,6 +43,7 @@ import numpy as np
 
 from marketforge.config.catalog.correlation import ensure_positive_semidefinite
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
+from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.domain.markets import MarketType
 
 _FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility", "spread_bps")
@@ -214,13 +215,21 @@ def apply_overrides(
         for a, b, rho in corr_edits[market]:
             i, j = syms.index(a), syms.index(b)
             mat[i, j] = mat[j, i] = rho
-        if float(np.min(np.linalg.eigvalsh(mat))) < 1e-8:
+        # Only the simulated series need a valid matrix: forex crosses are
+        # derived from their anchors (ADR 0002), so the full forex matrix is
+        # singular by construction.
+        structure = (
+            forex_structure(syms) if market == MarketType.FOREX else FactorStructure.identity(syms)
+        )
+        idx = np.array([syms.index(s) for s in structure.factors])
+        block = mat[np.ix_(idx, idx)]
+        if float(np.min(np.linalg.eigvalsh(block))) < 1e-8:
             warnings.warn(
                 f"{market.value}: overridden correlations are not jointly consistent; "
                 "adjusted to the nearest valid correlation matrix",
                 stacklevel=2,
             )
-            mat = ensure_positive_semidefinite(mat)
+            mat[np.ix_(idx, idx)] = ensure_positive_semidefinite(block)
         out[market] = MarketConfig(
             market_type=market,
             instruments={s: instruments[market][s] for s in syms},

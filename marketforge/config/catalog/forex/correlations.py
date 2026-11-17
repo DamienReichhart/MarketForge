@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from marketforge.config.catalog.correlation import ensure_positive_semidefinite
 from marketforge.config.catalog.forex.instruments import INSTRUMENTS
 
 
-def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
+def stated_correlations() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """
     Build the correlation matrix for forex pairs.
 
@@ -25,7 +24,10 @@ def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
     - Commodity currency relationships
 
     Returns:
-        Tuple of (correlation_matrix, symbol_order)
+        (correlations, stated, symbols): the stated value of every pair (the
+        market default where none is stated), which pairs are stated, and the
+        symbol order. Taken together they are not a valid correlation matrix:
+        marketforge/config/catalog/correlation.py fits one.
     """
     symbols = list(INSTRUMENTS)
     n = len(symbols)
@@ -34,6 +36,7 @@ def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
     # Start with moderate base correlation
     corr = np.full((n, n), 0.25)
     np.fill_diagonal(corr, 1.0)
+    stated = np.zeros((n, n), dtype=bool)
 
     # Define correlation rules based on currency relationships
     def set_corr(s1: str, s2: str, value: float) -> None:
@@ -41,6 +44,7 @@ def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
             i, j = symbol_to_idx[s1], symbol_to_idx[s2]
             corr[i, j] = value
             corr[j, i] = value
+            stated[i, j] = stated[j, i] = True
 
     # ===================
     # MAJOR PAIRS
@@ -319,7 +323,4 @@ def build_correlation_matrix() -> tuple[np.ndarray, list[str]]:
     set_corr("WTIUSD", "AUDUSD", 0.45)
     set_corr("WTIUSD", "SPXUSD", 0.35)
 
-    # Ensure matrix is positive semi-definite
-    corr = ensure_positive_semidefinite(corr)
-
-    return corr, symbols
+    return corr, stated, symbols

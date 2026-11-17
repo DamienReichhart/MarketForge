@@ -113,7 +113,7 @@ where = ["."]
 include = ["marketforge*"]
 
 [tool.setuptools.package-data]
-marketforge = ["py.typed"]
+marketforge = ["py.typed", "config/catalog/*/fitted_correlation.json"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

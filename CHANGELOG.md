@@ -10,6 +10,15 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **Correlations are the ones the catalog states.** The stated correlations
+  were made valid by clipping eigenvalues, which moved them as much as the
+  filler values: EURUSD-USDCHF came out -0.45 instead of -0.92, AUDUSD-NZDUSD
+  0.41 instead of 0.88, BTC-ETH 0.73 instead of 0.88. Each market's matrix is
+  now fitted to the stated pairs ([ADR 0012](docs/adr/0012-fit-correlations-to-what-the-catalog-states.md)).
+  Crypto and stocks keep them to within 0.05, and forex is fitted through its
+  anchors. Forex crosses, whose volatility came out about 1.5 times the
+  catalog's (AUDNZD 0.10-0.12 for a stated 0.07), now land at 0.7 to 1.2
+  times it.
 - **Flash crashes on a partly covered day move.** With the `flash_crash`
   anomaly, a crash was placed among the candles the range kept of its day, so
   changing `--to` within that day moved it and rewrote earlier candles,
