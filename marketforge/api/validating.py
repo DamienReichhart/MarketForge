@@ -49,7 +49,12 @@ def validate(
             raise ValueError("market is required to validate a DataFrame")
     else:
         path = Path(data)
-        frame = pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
+        if path.suffix == ".parquet":
+            frame = pd.read_parquet(path)
+        elif path.suffix in (".feather", ".arrow"):
+            frame = pd.read_feather(path)
+        else:
+            frame = pd.read_csv(path)
         source = str(path)
         market = market or _market_of(path)
     try:

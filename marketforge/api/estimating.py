@@ -23,10 +23,10 @@ from marketforge.output.formats import OutputFormat
 _DRAW_SECONDS = 7e-9
 _INSTRUMENT_MINUTE_SECONDS = 35e-9
 _MARKET_DAY_SECONDS = 1e-3  # per-day bookkeeping (calendar, aggregation, buffers)
-_ROW_SECONDS = {"csv": 0.75e-6, "parquet": 0.6e-6, "memory": 0.2e-6}
+_ROW_SECONDS = {"csv": 0.75e-6, "parquet": 0.6e-6, "feather": 0.5e-6, "memory": 0.2e-6}
 # Bytes per written row (timestamp, OHLCV), and for the spread column.
-_ROW_BYTES = {"csv": 68, "parquet": 33}
-_SPREAD_BYTES = {"csv": 11, "parquet": 6}
+_ROW_BYTES = {"csv": 68, "parquet": 33, "feather": 45}
+_SPREAD_BYTES = {"csv": 11, "parquet": 6, "feather": 7}
 
 
 @dataclass(frozen=True)

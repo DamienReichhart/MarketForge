@@ -89,6 +89,12 @@ options and parameters.
   [ADR 0011](docs/adr/0011-realism-over-seed-stability.md).
 
 ### Machine-learning ergonomics
+- **Feather output** (`--format feather`): Arrow IPC files that load fastest
+  and memory-map with no copy. They extend, read back and validate like the
+  other formats.
+- **Native time columns** (`--timestamps datetime`): Parquet and Feather files
+  can store the timestamp as a UTC time type, which Spark, DuckDB and polars
+  read as time, instead of Unix seconds.
 - **`mf.generate_many(..., seeds=range(64), jobs=8)`** runs `generate()` once
   per seed in parallel processes and yields the results in seed order, so
   many-seed training sets and stress tests use every core without holding

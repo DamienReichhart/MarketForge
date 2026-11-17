@@ -72,9 +72,16 @@ def read(
 
 
 def _frame(path: Path, fmt: str) -> pd.DataFrame:
-    raw = pd.read_parquet(path) if fmt == "parquet" else pd.read_csv(path)
+    if fmt == "parquet":
+        raw = pd.read_parquet(path)
+    elif fmt == "feather":
+        raw = pd.read_feather(path)
+    else:
+        raw = pd.read_csv(path)
     stamps = raw.pop("timestamp")
-    if pd.api.types.is_numeric_dtype(stamps):
+    if isinstance(stamps.dtype, pd.DatetimeTZDtype):
+        index = pd.DatetimeIndex(stamps)
+    elif pd.api.types.is_numeric_dtype(stamps):
         index = pd.to_datetime(stamps.to_numpy(), unit="s", utc=True)
     else:
         index = pd.to_datetime(stamps.to_numpy(), utc=True)

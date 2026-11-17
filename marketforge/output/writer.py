@@ -71,7 +71,9 @@ class CandleWriter:
         self._iso = TimestampFormat(timestamps) == TimestampFormat.ISO
         check_formats(self.fmt, TimestampFormat(timestamps))
         self.include_regime = include_regime
-        self.schema = candle_schema(include_regime, include_spread)
+        self.schema = candle_schema(
+            include_regime, include_spread, TimestampFormat(timestamps) == TimestampFormat.DATETIME
+        )
         self._symbols = list(symbols)
         self._columns = list(columns)
         if len(self._symbols) != len(self._columns):
@@ -81,7 +83,7 @@ class CandleWriter:
             for s in symbols
         }
         self._max_buffered = max(ROW_GROUP_ROWS, int(max_buffered_rows))
-        self._parquet: dict[Path, pq.ParquetWriter] = {}
+        self._binary: dict[Path, pq.ParquetWriter | pa.ipc.RecordBatchFileWriter] = {}
         self._started: set[Path] = set()
         self._rows = dict.fromkeys((p for files in self.paths.values() for p in files.values()), 0)
         self._buffers: dict[Path, list[tuple[np.ndarray, ...]]] = {}
@@ -160,25 +162,38 @@ class CandleWriter:
                     fh.write(self._csv_header)
                 pacsv.write_csv(table, fh, self._csv_options)
             return
-        writer = self._parquet.get(path)
-        if writer is None:
+        writer = self._binary.get(path)
+        target = path.with_name(path.name + REWRITE_SUFFIX) if self._extend else path
+        if writer is None and self.fmt == OutputFormat.FEATHER:
+            writer = pa.ipc.new_file(
+                str(target), self.schema, options=pa.ipc.IpcWriteOptions(compression="zstd")
+            )
+            self._binary[path] = writer
+            if self._extend:
+                with pa.memory_map(str(path)) as source:
+                    existing = pa.ipc.open_file(source).read_all()
+                writer.write_table(existing)
+        elif writer is None:
             # Random-walk doubles barely compress as-is; byte-stream-split
             # encoding makes files ~40% of the CSV size instead of ~60%.
             writer = pq.ParquetWriter(
-                path.with_name(path.name + REWRITE_SUFFIX) if self._extend else path,
+                target,
                 self.schema,
                 compression="zstd",
                 use_dictionary=["timestamp", "regime"],
                 use_byte_stream_split=[f.name for f in self.schema if f.type == pa.float64()],
             )
-            self._parquet[path] = writer
+            self._binary[path] = writer
             if self._extend:
                 # Closed before the rewritten file replaces it (Windows cannot
                 # replace a file that is still open).
                 with pq.ParquetFile(path) as existing:
                     for group in range(existing.num_row_groups):
                         writer.write_table(existing.read_row_group(group))
-        writer.write_table(table, row_group_size=table.num_rows)
+        if isinstance(writer, pq.ParquetWriter):
+            writer.write_table(table, row_group_size=table.num_rows)
+        else:
+            writer.write_table(table)
 
     def close(self) -> dict[str, dict[str, Path]]:
         """Finish all files and return {symbol: {timeframe: path}}."""
@@ -186,9 +201,9 @@ class CandleWriter:
             for path in list(self._buffers):
                 self._flush(path)
         finally:
-            for writer in self._parquet.values():
+            for writer in self._binary.values():
                 writer.close()
-            self._parquet.clear()
+            self._binary.clear()
         if self._extend:
             return self.paths
         # Files that received no candle are still valid, empty files.
@@ -199,6 +214,9 @@ class CandleWriter:
                     continue
                 if self.fmt == OutputFormat.CSV:
                     path.write_bytes(self._csv_header)
+                elif self.fmt == OutputFormat.FEATHER:
+                    with pa.ipc.new_file(str(path), self.schema) as sink:
+                        sink.write_table(empty)
                 else:
                     pq.write_table(empty, path)
         return self.paths

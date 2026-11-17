@@ -27,9 +27,15 @@ REGIME_NAMES = pa.array([r.value for r in RegimeType], pa.string())
 REGIME_TYPE = pa.dictionary(pa.int8(), pa.string())
 
 
-def candle_schema(include_regime: bool, include_spread: bool = False) -> pa.Schema:
+# A native time column (timestamps="datetime"): what Spark, DuckDB and polars read as time.
+DATETIME_TYPE = pa.timestamp("s", tz="UTC")
+
+
+def candle_schema(
+    include_regime: bool, include_spread: bool = False, datetime: bool = False
+) -> pa.Schema:
     """Arrow schema of written candles."""
-    fields = [pa.field("timestamp", pa.int64())]
+    fields = [pa.field("timestamp", DATETIME_TYPE if datetime else pa.int64())]
     fields += [pa.field(c, pa.float64()) for c in (*_PRICE_FIELDS, "volume")]
     if include_spread:
         fields.append(pa.field("spread", pa.float64()))

@@ -27,13 +27,13 @@ def test_appends_are_equivalent_to_one_write(tmp_path, fmt):
     paths = w.close()
     p = paths["USDJPY"]["m1"]
     assert p.name == f"USDJPY_m1.{fmt.value}"
-    df = pd.read_csv(p) if fmt == OutputFormat.CSV else pq.read_table(p).to_pandas()
+    df = _read(p, fmt)
     assert list(df.columns) == ["timestamp", "open", "high", "low", "close", "volume", "regime"]
     assert df["timestamp"].tolist() == [0, 60, 120, 180, 240]
     assert df["volume"].iloc[0] == 1234.5679  # rounded to 4 decimals
     # A timeframe that received nothing is still a valid empty file.
     d1 = paths["EURUSD"]["D1"]
-    empty = pd.read_csv(d1) if fmt == OutputFormat.CSV else pq.read_table(d1).to_pandas()
+    empty = _read(d1, fmt)
     assert len(empty) == 0 and "close" in empty.columns
 
 
@@ -46,7 +46,11 @@ def test_csv_prices_are_rounded_to_8_decimals(tmp_path):
 
 
 def _read(path, fmt):
-    return pd.read_csv(path) if fmt == OutputFormat.CSV else pq.read_table(path).to_pandas()
+    if fmt == OutputFormat.CSV:
+        return pd.read_csv(path)
+    if fmt == OutputFormat.FEATHER:
+        return pd.read_feather(path)
+    return pq.read_table(path).to_pandas()
 
 
 @pytest.mark.parametrize("fmt", list(OutputFormat))

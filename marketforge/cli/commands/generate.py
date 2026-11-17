@@ -22,7 +22,7 @@ from marketforge.output.manifest import dataset_files
     "--output-dir",
     "-o",
     type=click.Path(file_okay=False),
-    help="Directory to write {market}/{SYMBOL}_{tf}.{csv|parquet} files into.",
+    help="Directory to write {market}/{SYMBOL}_{tf}.{csv|parquet|feather} files into.",
 )
 @click.option(
     "--from",
@@ -65,17 +65,18 @@ from marketforge.output.manifest import dataset_files
 @click.option(
     "--format",
     "fmt",
-    type=click.Choice(["csv", "parquet"]),
+    type=click.Choice(["csv", "parquet", "feather"]),
     default="csv",
     show_default=True,
-    help="Output file format.",
+    help="Output file format. Feather (Arrow IPC) loads fastest; Parquet is smallest.",
 )
 @click.option(
     "--timestamps",
-    type=click.Choice(["unix", "iso"]),
+    type=click.Choice(["unix", "iso", "datetime"]),
     default="unix",
     show_default=True,
-    help="How CSV files write time: Unix seconds, or ISO 8601 like 2024-01-02T14:30:00Z.",
+    help="How time is written: Unix seconds; ISO 8601 like 2024-01-02T14:30:00Z (CSV); "
+    "or a native UTC time column (Parquet, Feather).",
 )
 @click.option(
     "--config",
@@ -130,8 +131,12 @@ def generate(
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
     if fmt != "csv" and timestamps == "iso":
         raise click.UsageError(
-            f"--timestamps iso is for CSV files; {fmt} stores Unix seconds. Drop --timestamps "
-            "or use --format csv."
+            f"--timestamps iso is for CSV files; for {fmt} use --timestamps datetime (a native "
+            "time column) or unix."
+        )
+    if fmt == "csv" and timestamps == "datetime":
+        raise click.UsageError(
+            "--timestamps datetime is for Parquet and Feather files; for CSV use iso or unix."
         )
     if output_dir and not dry_run and not overwrite and (existing := dataset_files(output_dir)):
         raise click.ClickException(

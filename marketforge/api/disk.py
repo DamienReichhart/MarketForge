@@ -80,9 +80,10 @@ def generate_to_disk(
     """
     Generate a dataset: ``{output_dir}/{market}/{SYMBOL}_{tf}.{fmt}`` and a manifest.
 
-    Takes the same arguments as :func:`generate` plus ``fmt`` (``csv`` or
-    ``parquet``), ``timestamps`` (``unix`` seconds or ``iso`` 8601 in CSV
-    files) and ``jobs`` (markets simulated in parallel). Memory use does
+    Takes the same arguments as :func:`generate` plus ``fmt`` (``csv``,
+    ``parquet`` or ``feather``), ``timestamps`` (``unix`` seconds; ``iso`` 8601
+    in CSV files; ``datetime``, a native UTC time column, in Parquet and
+    Feather files) and ``jobs`` (markets simulated in parallel). Memory use does
     not grow with the length of the range. The manifest (``marketforge.json``)
     records how the dataset was produced, so that it can be reproduced, and
     continued later with :func:`extend`.
@@ -192,7 +193,7 @@ def write_request(
     timestamps = TimestampFormat(timestamps)
     root = Path(output_dir)
     extending = request.extends_from is not None
-    if fmt == OutputFormat.PARQUET:
+    if fmt != OutputFormat.CSV:
         n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
         ensure_open_file_capacity(n_files)
     if not extending:

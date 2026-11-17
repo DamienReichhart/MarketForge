@@ -128,7 +128,9 @@ def write_manifest(dataset: str | os.PathLike[str], manifest: Manifest) -> Path:
 
 _MARKET_DIRS = tuple(market.value for market in MarketType)
 _CANDLE_FILE = re.compile(
-    r"^[^/\\]+_(?:" + "|".join(tf.name for tf in Timeframe) + r")\.(?:csv|parquet)(?:\.tmp)?$"
+    r"^[^/\\]+_(?:"
+    + "|".join(tf.name for tf in Timeframe)
+    + r")\.(?:csv|parquet|feather)(?:\.tmp)?$"
 )
 
 

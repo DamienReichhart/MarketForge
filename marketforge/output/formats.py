@@ -16,16 +16,25 @@ class OutputFormat(StrEnum):
 
     CSV = "csv"
     PARQUET = "parquet"
+    FEATHER = "feather"  # Arrow IPC: memory-mapped, zero-copy reads
 
 
 class TimestampFormat(StrEnum):
-    """How CSV files write a candle's start time (Parquet always stores Unix seconds)."""
+    """How files store a candle's start time."""
 
-    UNIX = "unix"  # 1704205800
-    ISO = "iso"  # 2024-01-02T14:30:00Z
+    UNIX = "unix"  # 1704205800, any format
+    ISO = "iso"  # 2024-01-02T14:30:00Z, CSV
+    DATETIME = "datetime"  # a native UTC timestamp column, Parquet and Feather
 
 
 def check_formats(fmt: OutputFormat, timestamps: TimestampFormat) -> None:
     """Refuse a combination of file format and timestamps that cannot be written."""
     if timestamps == TimestampFormat.ISO and fmt != OutputFormat.CSV:
-        raise ValueError("ISO timestamps are for CSV files; Parquet stores Unix seconds")
+        raise ValueError(
+            f"ISO timestamps are for CSV files; {fmt.value} stores Unix seconds, or a native "
+            "time column with datetime timestamps"
+        )
+    if timestamps == TimestampFormat.DATETIME and fmt == OutputFormat.CSV:
+        raise ValueError(
+            "datetime timestamps are for Parquet and Feather files; CSV takes unix or iso"
+        )

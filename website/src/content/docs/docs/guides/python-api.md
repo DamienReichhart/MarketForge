@@ -71,8 +71,8 @@ mf.generate(
 Takes the same arguments as `generate()`, plus:
 
 - `output_dir`: where to write the dataset.
-- `fmt`: `"csv"` (default) or `"parquet"`.
-- `timestamps`: `"unix"` (default) or `"iso"`, for CSV files.
+- `fmt`: `"csv"` (default), `"parquet"` or `"feather"`.
+- `timestamps`: `"unix"` (default); `"iso"` for CSV files; `"datetime"`, a native UTC time column, for Parquet and Feather files.
 - `jobs`: markets simulated in parallel.
 - `overwrite`: replace a dataset already in `output_dir`. Without it, a directory that holds one (a manifest, or candle files an interrupted run left behind) raises `FileExistsError`.
 
