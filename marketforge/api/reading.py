@@ -11,9 +11,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-from marketforge.api.memory import GeneratedData
+from marketforge.api.memory import GeneratedData, time_index
 from marketforge.api.parsing import Names, as_names, parse_timeframes
 from marketforge.domain.regimes import RegimeType
 from marketforge.output.manifest import read_manifest
@@ -79,17 +80,15 @@ def _frame(path: Path, fmt: str) -> pd.DataFrame:
     else:
         raw = pd.read_csv(path)
     stamps = raw.pop("timestamp")
-    if isinstance(stamps.dtype, pd.DatetimeTZDtype):
-        index = pd.DatetimeIndex(stamps)
-    elif pd.api.types.is_numeric_dtype(stamps):
-        index = pd.to_datetime(stamps.to_numpy(), unit="s", utc=True)
-    else:
-        index = pd.to_datetime(stamps.to_numpy(), utc=True)
+    if pd.api.types.is_numeric_dtype(stamps):
+        seconds = stamps.to_numpy(dtype=np.int64)
+    else:  # an ISO string, or a native time column
+        seconds = pd.DatetimeIndex(pd.to_datetime(stamps, utc=True)).as_unit("s").asi8
     frame = raw[[c for c in _COLUMNS if c in raw.columns]].copy()
     for column in frame.columns:
         if column == "regime":
             frame[column] = frame[column].astype(str).astype(_REGIMES)
         else:
             frame[column] = frame[column].astype("float64")
-    frame.index = pd.DatetimeIndex(index.as_unit("s"), name="time")
+    frame.index = time_index(seconds)
     return frame

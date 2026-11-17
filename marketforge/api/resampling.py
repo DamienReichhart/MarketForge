@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from marketforge.aggregation.streaming import BarAggregator
+from marketforge.api.memory import time_index
 from marketforge.api.parsing import parse_timeframes
 from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.domain.bars import Bars
@@ -81,7 +82,7 @@ def resample(frame: pd.DataFrame, timeframe: str, market: str | MarketType) -> p
             name: getattr(out, name)[:, 0]
             for name in (*_PRICES, *(["spread"] if has_spread else []))
         },
-        index=pd.DatetimeIndex(pd.to_datetime(out.timestamps, unit="s", utc=True), name="time"),
+        index=time_index(out.timestamps),
     )
     if has_regime:
         result["regime"] = pd.Categorical.from_codes(

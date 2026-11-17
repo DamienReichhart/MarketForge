@@ -240,6 +240,16 @@ def _generate_seed(instruments: Names | None, kwargs: dict[str, Any], seed: int)
 _FRAME_COLUMNS = ("open", "high", "low", "close", "volume")
 
 
+def time_index(seconds: np.ndarray) -> pd.DatetimeIndex:
+    """The candle index MarketForge returns: UTC, named ``time``, from Unix seconds.
+
+    Every frame MarketForge builds (generated, read back or resampled) uses it,
+    so their indexes always have the same dtype, whatever unit pandas picks.
+    """
+    stamps = np.asarray(seconds, dtype=np.int64)
+    return pd.DatetimeIndex(pd.to_datetime(stamps, unit="s", utc=True), name="time")
+
+
 def _frames(
     chunks: list[Bars],
     n_instruments: int,
@@ -267,7 +277,7 @@ def _frames(
         ts[row : row + k] = c.timestamps
         regime[row : row + k] = c.regime
         row += k
-    index = pd.DatetimeIndex(pd.to_datetime(ts, unit="s", utc=True), name="time")
+    index = time_index(ts)
     codes = regime.astype(int)
     frames = []
     for j in range(n_instruments):

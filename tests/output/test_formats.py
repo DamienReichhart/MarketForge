@@ -32,8 +32,8 @@ def test_datetime_timestamps_are_a_native_utc_time_column(tmp_path, fmt):
     # Parquet has no seconds unit: pyarrow stores seconds as milliseconds.
     assert pa.types.is_timestamp(kind) and kind.tz == "UTC"
     memory = mf.generate("EURUSD", **KWARGS)["EURUSD"]["H1"]
-    stamps = pd.DatetimeIndex(table["timestamp"].to_pandas()).as_unit("s")
-    assert stamps.equals(memory.index.rename(None))
+    stamps = pd.DatetimeIndex(table["timestamp"].to_pandas())
+    assert stamps.as_unit("s").equals(memory.index.as_unit("s").rename(None))
 
 
 @pytest.mark.parametrize("timestamps", ["unix", "datetime"])
