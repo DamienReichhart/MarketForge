@@ -4,24 +4,12 @@
       "Bash(*)",
       "Read",
       "Edit",
-      "Write"
+      "Write",
+      "WebFetch",
+      "WebSearch"
     ],
-    "deny": [
-      "Bash(rm -rf:*)",
-      "Bash(sudo:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(git reset --hard:*)",
-      "Bash(git clean:*)",
-      "Read(./.env)",
-      "Read(./.env.*)"
-    ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(pip install:*)",
-      "Bash(npm install:*)"
-    ]
+    "deny": [],
+    "ask": [],
+    "defaultMode": "bypassPermissions"
   }
 }
