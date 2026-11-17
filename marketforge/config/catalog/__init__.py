@@ -1,7 +1,7 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the GNU Affero General Public License v3.0 or later.
+# Licensed under the Apache License, Version 2.0.
 # See the LICENSE file in the project root for full license information.
 
 """Built-in instrument catalogs (start prices, volatilities, correlations) per market."""
