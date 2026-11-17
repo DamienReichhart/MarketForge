@@ -17,6 +17,12 @@ when that makes the data more realistic. Upgrading from 3.x? See
 [Migrating to 4.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-4/).
 
 ### Output changes
+- **Your override correlations hold.** Correlations set in an override file
+  that contradicted the market were repaired by clipping eigenvalues, which
+  moved your own values (BTC-ETH set to -0.5 came back +0.49). Your values
+  are now kept exactly while the rest of the market moves to the nearest
+  valid matrix. If your values contradict each other, they move as little as
+  possible, and the warning says how far.
 - **Forex sessions keep their own clocks.** Forex seasonality was a step
   function at fixed UTC hours, so the London open stayed at 07:00 UTC all
   year. Tokyo, London and New York sessions now ramp in and out on their own

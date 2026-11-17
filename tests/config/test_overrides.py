@@ -76,3 +76,41 @@ def test_overrides_can_be_a_mapping():
     assert "MYCOIN" in crypto.symbols
     with pytest.raises(OverrideError, match=r"overrides: \[instruments.BTCUSD\] has unknown key"):
         load_catalog({"BTCUSD": {"price": 1}})
+
+
+def _clipped(matrix):
+    """The eigenvalue clipping 3.x and early 4.0 used: the comparison to beat."""
+    values, vectors = np.linalg.eigh(matrix)
+    out = vectors @ np.diag(np.maximum(values, 1e-6)) @ vectors.T
+    d = np.sqrt(np.diag(out))
+    return out / np.outer(d, d)
+
+
+def test_edited_correlations_hold_exactly_when_the_catalog_must_give_way():
+    # BTC-ETH -0.5 contradicts every other crypto correlation, but it is possible
+    # on its own: the user's value must hold and the rest of the market move.
+    with pytest.warns(UserWarning, match="crypto: overridden correlations"):
+        cfg = load_catalog({"BTCUSD": {"correlations": {"ETHUSD": -0.5}}})[MarketType.CRYPTO]
+    i, j = cfg.symbols.index("BTCUSD"), cfg.symbols.index("ETHUSD")
+    assert cfg.correlation_matrix[i, j] == pytest.approx(-0.5, abs=1e-6)
+    assert np.linalg.eigvalsh(cfg.correlation_matrix).min() > 0
+    np.testing.assert_allclose(np.diag(cfg.correlation_matrix), 1.0)
+
+
+def test_contradictory_edits_get_the_nearest_valid_matrix_and_say_how_far():
+    edits = {
+        "BTCUSD": {"correlations": {"ETHUSD": 0.95, "SOLUSD": 0.95}},
+        "ETHUSD": {"correlations": {"SOLUSD": -0.95}},
+    }
+    with pytest.warns(UserWarning, match=r"cannot all hold; moved by up to \d\.\d+"):
+        cfg = load_catalog(edits)[MarketType.CRYPTO]
+    m = cfg.correlation_matrix
+    assert np.linalg.eigvalsh(m).min() > 0
+    # Nearer to what was asked than eigenvalue clipping gets.
+    raw = m.copy()
+    s = [cfg.symbols.index(x) for x in ("BTCUSD", "ETHUSD", "SOLUSD")]
+    base = load_catalog()[MarketType.CRYPTO].correlation_matrix
+    raw[:] = base
+    for (a, b), rho in {(0, 1): 0.95, (0, 2): 0.95, (1, 2): -0.95}.items():
+        raw[s[a], s[b]] = raw[s[b], s[a]] = rho
+    assert np.linalg.norm(m - raw) <= np.linalg.norm(_clipped(raw) - raw) + 1e-9

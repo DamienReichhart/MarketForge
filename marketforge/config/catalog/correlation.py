@@ -161,5 +161,65 @@ def clipped(matrix: np.ndarray, epsilon: float = 1e-6) -> np.ndarray:
     return np.asarray(adjusted)
 
 
-# Kept for the override loader, which repairs a user's edits of a valid matrix.
-ensure_positive_semidefinite = clipped
+def nearest_correlation(
+    matrix: np.ndarray,
+    fixed: np.ndarray | None = None,
+    *,
+    tol: float = 1e-9,
+    max_iter: int = 5000,
+) -> tuple[np.ndarray, bool]:
+    """The nearest valid correlation matrix (Frobenius norm), keeping ``fixed`` entries.
+
+    Higham's alternating projections with Dykstra's correction (Higham 2002),
+    between positive semi-definite matrices (eigenvalues at least ``EIGEN_FLOOR``,
+    so the result has a Cholesky factor) and matrices with a unit diagonal
+    and the ``fixed`` entries (a boolean mask) at their values. Unlike
+    clipping eigenvalues, this is the matrix that moves the least.
+
+    Returns:
+        (matrix, kept): ``kept`` is False when the fixed entries cannot all
+        hold together; the result then fixes only the diagonal.
+    """
+    target = np.array(matrix, dtype=float)
+    mask = np.eye(len(target), dtype=bool) | (
+        np.zeros_like(target, dtype=bool) if fixed is None else np.asarray(fixed, dtype=bool)
+    )
+    result, converged = _alternate(target, mask, tol, max_iter)
+    if converged:
+        return result, True
+    result, _ = _alternate(target, np.eye(len(target), dtype=bool), tol, max_iter)
+    return result, False
+
+
+# Smallest eigenvalue of a repaired matrix: positive, so it has a Cholesky factor.
+EIGEN_FLOOR = 1e-8
+
+
+def _alternate(
+    target: np.ndarray, mask: np.ndarray, tol: float, max_iter: int
+) -> tuple[np.ndarray, bool]:
+    y = target.copy()
+    correction = np.zeros_like(target)
+    for _ in range(max_iter):
+        r = y - correction
+        values, vectors = np.linalg.eigh((r + r.T) / 2)
+        x = (vectors * np.maximum(values, EIGEN_FLOOR)) @ vectors.T
+        correction = x - r
+        previous = y
+        y = np.where(mask, target, x)
+        if np.linalg.norm(y - previous) <= tol * max(1.0, np.linalg.norm(y)):
+            break
+    y = (y + y.T) / 2
+    values, vectors = np.linalg.eigh(y)
+    lowest = float(values.min())
+    if lowest >= -1e-6:
+        # Feasible to rounding: lift the smallest eigenvalue to the floor. The
+        # diagonal stays 1 and the fixed entries move by about the lift.
+        lift = max(EIGEN_FLOOR - lowest, 0.0)
+        return (y + lift * np.eye(len(y))) / (1.0 + lift), True
+    # Not feasible within tolerance: the positive semi-definite side, renormalised.
+    x = (vectors * np.maximum(values, EIGEN_FLOOR)) @ vectors.T
+    d = np.sqrt(np.diag(x))
+    x = x / np.outer(d, d)
+    np.fill_diagonal(x, 1.0)
+    return (x + x.T) / 2, False

@@ -41,7 +41,7 @@ from typing import Any
 
 import numpy as np
 
-from marketforge.config.catalog.correlation import ensure_positive_semidefinite
+from marketforge.config.catalog.correlation import nearest_correlation
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.domain.markets import MarketType
@@ -224,12 +224,26 @@ def apply_overrides(
         idx = np.array([syms.index(s) for s in structure.factors])
         block = mat[np.ix_(idx, idx)]
         if float(np.min(np.linalg.eigvalsh(block))) < 1e-8:
+            # The user's own pairs hold if they can; the rest of the market gives way.
+            position = {s: k for k, s in enumerate(structure.factors)}
+            edited = np.zeros(block.shape, dtype=bool)
+            for a, b, _ in corr_edits[market]:
+                if a in position and b in position:
+                    edited[position[a], position[b]] = edited[position[b], position[a]] = True
+            repaired, kept = nearest_correlation(block, edited)
+            moved = float(np.max(np.abs(repaired - block)[edited], initial=0.0))
             warnings.warn(
-                f"{market.value}: overridden correlations are not jointly consistent; "
-                "adjusted to the nearest valid correlation matrix",
+                f"{market.value}: overridden correlations are not consistent with the rest "
+                "of the market; "
+                + (
+                    "the others were moved to the nearest valid correlation matrix"
+                    if kept
+                    else f"your values cannot all hold; moved by up to {moved:.2f} to the "
+                    "nearest valid correlation matrix"
+                ),
                 stacklevel=2,
             )
-            mat[np.ix_(idx, idx)] = ensure_positive_semidefinite(block)
+            mat[np.ix_(idx, idx)] = repaired
         out[market] = MarketConfig(
             market_type=market,
             instruments={s: instruments[market][s] for s in syms},

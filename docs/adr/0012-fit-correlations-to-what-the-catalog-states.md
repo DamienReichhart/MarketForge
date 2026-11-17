@@ -14,4 +14,4 @@ Results: crypto and stocks move stated pairs by 0.012 and 0.003 on average (larg
 
 - Every seed's candles change (an *Output changes* entry, ADR 0011).
 - Changing a catalog's stated correlations or volatilities needs `python scripts/fit_correlations.py`, and its printout shows how far the fit had to move them.
-- Override edits are still repaired by clipping, and only on the simulated block. They are edits of an already valid matrix, so clipping moves them little.
+- Override edits that contradict the market are repaired with the nearest correlation matrix (Higham's alternating projections), only on the simulated block. The edited pairs are held fixed when they can all hold, and when they cannot, every entry moves as little as possible. It runs in NumPy, so overrides need no optimiser.
