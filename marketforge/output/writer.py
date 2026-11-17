@@ -178,7 +178,7 @@ class CandleWriter:
             if self._extend:
                 with pa.memory_map(str(path)) as source:
                     existing = pa.ipc.open_file(source).read_all()
-                writer.write_table(existing)
+                writer.write_table(existing.cast(self.schema))
         elif writer is None:
             # Random-walk doubles barely compress as-is; byte-stream-split
             # encoding makes files ~40% of the CSV size instead of ~60%.
@@ -195,7 +195,9 @@ class CandleWriter:
                 # replace a file that is still open).
                 with pq.ParquetFile(path) as existing:
                     for group in range(existing.num_row_groups):
-                        writer.write_table(existing.read_row_group(group))
+                        # Older pyarrow reads the regime dictionary back with
+                        # int32 indices; the file's schema has int8.
+                        writer.write_table(existing.read_row_group(group).cast(self.schema))
         if isinstance(writer, pq.ParquetWriter):
             writer.write_table(table, row_group_size=table.num_rows)
         else:

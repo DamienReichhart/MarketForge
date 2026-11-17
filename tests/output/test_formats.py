@@ -20,7 +20,10 @@ def test_feather_files_hold_the_same_candles_as_parquet(tmp_path):
     b = mf.generate_to_disk(tmp_path / "p", "EURUSD", fmt="parquet", **KWARGS)
     path = a.paths["forex"]["EURUSD"]["H1"]
     assert path.name == "EURUSD_H1.feather"
-    assert feather.read_table(path).equals(pq.read_table(b.paths["forex"]["EURUSD"]["H1"]))
+    pd.testing.assert_frame_equal(
+        feather.read_table(path).to_pandas(),
+        pq.read_table(b.paths["forex"]["EURUSD"]["H1"]).to_pandas(),
+    )
 
 
 @pytest.mark.parametrize("fmt", ["parquet", "feather"])
