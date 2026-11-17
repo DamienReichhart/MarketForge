@@ -390,7 +390,10 @@ def check_command(command: Command) -> None:
     subcommand = cli.commands.get(name)
     if subcommand is None:
         raise ExampleError(command.line, f"`marketforge {name}`: no such command")
-    if name == "generate" and "--dry-run" not in args:
+    # A dry run reads the override file; one the reader provides cannot exist here,
+    # so such an example is only parsed.
+    config = args[args.index("--config") + 1] if "--config" in args[:-1] else None
+    if name == "generate" and "--dry-run" not in args and (config is None or Path(config).exists()):
         code, out = _invoke([*command.args, "--dry-run"])
         if code:
             raise ExampleError(
