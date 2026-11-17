@@ -28,7 +28,7 @@ def excess_kurtosis(returns: np.ndarray) -> float:
     if m2 == 0.0:
         return float("nan")
     g2 = float(np.mean(d**4)) / (m2 * m2) - 3.0
-    return ((n + 1) * g2 + 6.0) * (n - 1) / ((n - 2) * (n - 3))
+    return float(((n + 1) * g2 + 6.0) * (n - 1) / ((n - 2) * (n - 3)))
 
 
 # Standard errors of the statistics above, for the sampling-noise allowance of

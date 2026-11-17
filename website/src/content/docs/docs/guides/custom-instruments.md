@@ -60,3 +60,21 @@ Forex crosses take their start price, volatility, drift and correlations from th
 The resolved overrides are written into the dataset's [manifest](../output/#the-manifest), as values, so a dataset made with an override file can be reproduced and extended without it. Anyone you share the dataset with can read those parameters.
 
 Use `marketforge list-instruments --config my_instruments.toml` to check the catalog after your overrides.
+
+## Fit instruments to your own data
+
+`marketforge calibrate` fits instruments to m1 candle files you have (and are allowed to use), and writes an override file:
+
+```bash check=static
+marketforge calibrate real/EURUSD_m1.csv real/GBPUSD_m1.csv --market forex -o mine.toml
+marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --config mine.toml
+```
+
+Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`), with a `timestamp` (or `time`) column and `close`, plus `volume` if you have it. A catalog symbol gets new parameters, and any other symbol becomes a new instrument. For each file it fits:
+
+- the start price (the last close);
+- the annualised volatility, gaps included;
+- the volume level;
+- the correlations of hourly returns with the files before it.
+
+Drift is not fitted: below several years of data it is noise. In Python, `mf.calibrate(files, market)` returns the same overrides as a dict.

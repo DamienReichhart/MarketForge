@@ -44,6 +44,7 @@ print(report.passed, report.summary())
 | `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
 | `read(dataset, instruments=None, *, timeframes=None)` | Loads a dataset (or part of it) back into memory: the same `GeneratedData` that `generate()` returns for its settings, with a UTC index, float columns and a categorical regime. |
 | `estimate(...)` | What a generation would produce without running it: `files`, `rows`, `disk_bytes`, `memory_bytes` (for `generate()`), `seconds` on one core and `wall_seconds(jobs)`. Takes the arguments of `generate_to_disk()`. |
+| `calibrate(files, market)` | Fits instruments to your own m1 candle files (start price, volatility, volume, correlations) and returns overrides to pass as `overrides=`, as `marketforge calibrate` does. |
 | `extend(dataset, end)` | Continues a dataset, as `marketforge extend` does. |
 | `instruments(markets=None, overrides=None)` | The catalog as a DataFrame indexed by symbol: market, start price, volatility, drift, base volume, and whether the instrument is a derived forex cross. |
 | `validate(data, market=None)` | Checks `m1` candles (a DataFrame or a CSV/Parquet path) against a market's validation bands. The market can be omitted for a file MarketForge wrote. |

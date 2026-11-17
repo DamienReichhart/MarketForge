@@ -20,6 +20,7 @@ from typing import Any
 import click
 
 from marketforge import __version__
+from marketforge.cli.commands.calibrate import calibrate
 from marketforge.cli.commands.extend import extend
 from marketforge.cli.commands.generate import generate
 from marketforge.cli.commands.info import info
@@ -61,6 +62,7 @@ def cli(debug: bool) -> None:
 cli.add_command(generate)
 cli.add_command(extend)
 cli.add_command(info)
+cli.add_command(calibrate)
 cli.add_command(list_instruments)
 cli.add_command(validate)
 cli.add_command(verify)

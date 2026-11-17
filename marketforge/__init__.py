@@ -13,6 +13,7 @@ with correlations, realistic market behavior, and multiple timeframes.
 """
 
 from marketforge._version import MODEL_REVISION, __version__
+from marketforge.api.calibrating import calibrate
 from marketforge.api.catalog import instruments
 from marketforge.api.disk import extend, generate_to_disk
 from marketforge.api.estimating import Estimate, estimate
@@ -29,6 +30,7 @@ __all__ = [
     "Estimate",
     "GeneratedData",
     "__version__",
+    "calibrate",
     "estimate",
     "extend",
     "generate",

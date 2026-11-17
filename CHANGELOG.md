@@ -127,6 +127,10 @@ options and parameters.
 - **`marketforge info DATASET`** summarises a dataset from its manifest
   (version, model revision, seed, range, instruments, files and size) and
   says whether it can be extended, and if not with which version.
+- **`marketforge calibrate FILES --market M`** (`mf.calibrate`) fits
+  instruments to your own m1 candle files (start price, volatility with gaps,
+  volume, hourly correlations) and writes an override file to generate data
+  like yours.
 - **`marketforge verify DATASET`** regenerates a dataset from its manifest
   and compares every file byte for byte: proof that a dataset is untouched
   and reproducible here.
