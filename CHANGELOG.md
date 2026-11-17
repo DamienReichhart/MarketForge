@@ -10,6 +10,9 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **A stock crash is the most volatile regime.** Its volatility multiplier was
+  1.5 against 1.8 for high volatility (crypto and forex use 3.0); it is now
+  2.6.
 - **Regimes trend.** A regime used to scale the catalog drift, a few percent
   a year (zero for every forex pair), so `trend_up` had no detectable trend
   and averaged a negative return over 90 days of BTC. Each regime now has a

@@ -126,3 +126,18 @@ def test_forex_trends_move_pairs_with_their_correlation():
     up = {s: _spell_returns(data[s]["H1"]).query("regime == 'trend_up'")["ret"] for s in data}
     assert np.sign(up["EURUSD"].mean()) == -np.sign(up["USDCHF"].mean())
     assert (np.sign(up["EURUSD"]) != np.sign(up["USDCHF"])).mean() > 0.65
+
+
+@pytest.mark.parametrize(("symbol", "seed"), [("AAPL", 3), ("BTCUSD", 2), ("EURUSD", 4)])
+def test_crashes_are_the_most_volatile_regime(symbol, seed):
+    frame = mf.generate(
+        symbol,
+        start="2022-01-01",
+        end="2024-01-01",
+        seed=seed,
+        timeframes="m5",
+        include_regime=True,
+    )[symbol]["m5"]
+    r = np.log(frame["close"]).diff()
+    vol = r.groupby(frame["regime"], observed=True).std()
+    assert vol["crash"] > vol["high_volatility"] > vol["range"]

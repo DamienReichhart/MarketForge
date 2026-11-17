@@ -184,7 +184,9 @@ STOCKS_DEFAULTS = MarketDefaults(
             (0.05, 0.05, 0.10, 0.30, 0.50),
         ),
         trend_strength=TREND_STRENGTH,
-        volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 1.5),
+        # A crash is the most volatile regime, as in every market (3.x had it
+        # calmer than high_volatility, 1.5 against 1.8).
+        volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 2.6),
         initial_regime=RegimeType.RANGE,
         # Provisional (no real equity m1 reference yet): trends last ~4
         # sessions, crashes ~1 session.
