@@ -64,4 +64,4 @@ volatility = 1.20   # twice its usual annualised volatility
 drift = -0.5        # a bear market
 ```
 
-Regime multipliers are normalised, so they change *when* volatility and drift happen, not how much: the annual figures you set are what you get.
+Regimes are normalised, so they change *when* volatility and returns happen, not how much: the annual figures you set are what you get.

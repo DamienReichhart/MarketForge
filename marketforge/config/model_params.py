@@ -57,15 +57,24 @@ class RegimeParams:
     The transition matrix applies once per ``minutes_per_step`` open minutes;
     the simulator runs the equivalent per-minute chain, I + (P - I) / minutes_per_step,
     so regime *i* lasts ``minutes_per_step / (1 - P[i][i])`` open minutes on
-    average. Multipliers are rescaled by the simulator so that, over the long run,
-    the mean drift multiplier is 1 and the mean squared volatility multiplier
-    is 1: regimes reshape *when* drift and volatility happen, not how much.
+    average. Volatility multipliers are rescaled by the simulator so that their
+    long-run mean square is 1, and trends so that their long-run mean is 0:
+    regimes reshape *when* volatility and returns happen, not how much, so the
+    catalog's annual volatility and drift are what you get.
+
+    A regime's trend is the expected log return over an average spell of the
+    regime, divided by the spell's own volatility: +1.0 means a spell of
+    ``trend_up`` ends higher about 84% of the time (Phi(1)), before the
+    centering that keeps the long-run drift at the catalog's. It moves the
+    market's main factor, so instruments trend together in the direction of
+    their correlation with it (in forex, EURUSD and USDCHF trend opposite ways).
 
     Attributes:
         transition_matrix: Rows = current regime, columns = next regime, in
             :class:`RegimeType` order.
         minutes_per_step: Open minutes per transition step (time scale).
-        drift_multipliers: Drift scaling per regime.
+        trend_strength: Expected return of an average spell of each regime, in
+            units of that spell's volatility, along the market's main factor.
         volatility_multipliers: Volatility scaling per regime.
         initial_regime: Regime at the first simulated minute.
     """
@@ -77,7 +86,7 @@ class RegimeParams:
         (0.05, 0.10, 0.15, 0.65, 0.05),
         (0.05, 0.05, 0.10, 0.30, 0.50),
     )
-    drift_multipliers: tuple[float, ...] = (2.0, -2.0, 0.0, 0.0, -5.0)
+    trend_strength: tuple[float, ...] = (1.0, -1.4, 0.0, -0.3, -1.5)
     volatility_multipliers: tuple[float, ...] = (0.8, 0.8, 0.6, 2.0, 4.0)
     initial_regime: RegimeType = RegimeType.RANGE
     minutes_per_step: float = 1.0

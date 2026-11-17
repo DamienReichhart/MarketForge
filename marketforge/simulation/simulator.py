@@ -57,7 +57,13 @@ from marketforge.simulation.kernels import (
     regime_chain,
 )
 from marketforge.simulation.projection import Projection, SessionShape
-from marketforge.simulation.regimes import REGIME_SMOOTHING, normalised_regime_targets
+from marketforge.simulation.regimes import (
+    REGIME_SMOOTHING,
+    dollar_portfolio,
+    main_factor_loadings,
+    normalised_regime_targets,
+    spell_trends,
+)
 from marketforge.simulation.seasonality import get_seasonality
 from marketforge.simulation.spec import MarketSpec
 from marketforge.simulation.spread import minutes_since_reopen, quoted_spread
@@ -144,7 +150,7 @@ class MarketSimulator:
         r0 = rp.get_regime_index(rp.initial_regime)
         self._regime_drift, self._regime_vol = normalised_regime_targets(
             self._regime_cum,
-            np.asarray(rp.drift_multipliers, dtype=float),
+            spell_trends(rp),
             np.asarray(rp.volatility_multipliers, dtype=float),
             r0,
         )
@@ -160,6 +166,11 @@ class MarketSimulator:
         )
         self._sigma = sigma[fa]
         self._mu = mu[fa]
+        # A trend moves the market's main factor: each series by its volatility
+        # times its loading on that factor (ADR 0013).
+        # In forex the main factor is the dollar: trend_up is the dollar falling.
+        portfolio = dollar_portfolio(structure.factors) if spec.market == MarketType.FOREX else None
+        self._trend = (sigma * main_factor_loadings(spec.factor_correlation, portfolio))[fa]
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
@@ -331,7 +342,17 @@ class MarketSimulator:
 
         # Factor paths, then instruments.
         sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
-            h, vol_m, drift_m, season, z, self._sigma, self._mu, gap_rows, gap, st.log_price
+            h,
+            vol_m,
+            drift_m,
+            season,
+            z,
+            self._sigma,
+            self._mu,
+            self._trend,
+            gap_rows,
+            gap,
+            st.log_price,
         )
         st.log_price = log_close_f[-1].copy()
         st.last_timestamp = int(ts[-1])

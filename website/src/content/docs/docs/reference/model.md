@@ -24,7 +24,9 @@ Crypto shocks have 6 degrees of freedom, the heaviest tails of the three markets
 
 ## Regimes
 
-A market-wide hidden state: **trend up**, **trend down**, **range**, **high volatility** or **crash**. It scales drift and volatility for every instrument of the market at once. Regimes last hours to days: crypto trends average about 1.7 days and crashes about 13 hours. Multipliers are normalised, so the annual volatility and drift in the catalog are what you get over the long run. With `--with-regime`, the regime of each candle is written next to it.
+A market-wide hidden state: **trend up**, **trend down**, **range**, **high volatility** or **crash**. It sets the trend and scales the volatility of every instrument of the market at once. Regimes last hours to days: crypto trends average about 1.7 days and crashes about 13 hours.
+
+A regime trends along the market's main factor: all coins together, all stocks together, and in forex the dollar (`trend_up` is the dollar falling, so EURUSD rises and USDCHF falls). A spell of `trend_up` or `trend_down` ends in its direction about 70-90% of the time, and a crash falls by about 1.5 of its own standard deviations. Within a minute the trend is small next to the noise, as in real markets: it shows over hours. Trends average to zero and volatility multipliers are normalised, so the annual volatility and drift in the catalog are what you get over the long run. See [ADR 0013](../../adr/0013-regimes-trend-along-the-market-factor/). With `--with-regime`, the regime of each candle is written next to it.
 
 ## Returns
 

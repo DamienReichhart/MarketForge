@@ -10,6 +10,15 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **Regimes trend.** A regime used to scale the catalog drift, a few percent
+  a year (zero for every forex pair), so `trend_up` had no detectable trend
+  and averaged a negative return over 90 days of BTC. Each regime now has a
+  trend strength per spell, along the market's main factor: coins and stocks
+  together, and the dollar in forex (`trend_up` is the dollar falling). A
+  `trend_up` or `trend_down` spell ends in its direction about 70-90% of the
+  time, and a crash falls by about 1.5 of its own standard deviations. The
+  catalog's annual drift is still the long-run drift
+  ([ADR 0013](docs/adr/0013-regimes-trend-along-the-market-factor.md)).
 - **Correlations are the ones the catalog states.** The stated correlations
   were made valid by clipping eigenvalues, which moved them as much as the
   filler values: EURUSD-USDCHF came out -0.45 instead of -0.92, AUDUSD-NZDUSD

@@ -72,3 +72,57 @@ def test_stated_correlations_survive_into_the_data(market, a, b, stated):
     data = mf.generate([a, b], start="2024-01-01", end="2024-04-01", seed=5, timeframes="H1")
     realised = _returns(data, "H1").corr().iloc[0, 1]
     assert realised == pytest.approx(stated, abs=0.1)
+
+
+def _spell_returns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Log return and regime of every spell (run of one regime) of a frame."""
+    spell = (frame["regime"] != frame["regime"].shift()).cumsum()
+    log_close = np.log(frame["close"])
+    out = pd.DataFrame(
+        {
+            "regime": frame["regime"].groupby(spell).first().astype(str),
+            "ret": log_close.groupby(spell).last() - np.log(frame["open"]).groupby(spell).first(),
+        }
+    )
+    return out
+
+
+@pytest.fixture(scope="module")
+def crypto_year():
+    return mf.generate(
+        "BTCUSD,ETHUSD",
+        start="2023-01-01",
+        end="2024-01-01",
+        seed=2,
+        timeframes="H1",
+        include_regime=True,
+    )
+
+
+def test_trend_regimes_trend(crypto_year):
+    # A label is only ground truth for a classifier if it shows in the data: over a
+    # spell, trend_up rises and trend_down falls more often than not.
+    for symbol in ("BTCUSD", "ETHUSD"):
+        spells = _spell_returns(crypto_year[symbol]["H1"])
+        up = spells.loc[spells.regime == "trend_up", "ret"]
+        down = spells.loc[spells.regime == "trend_down", "ret"]
+        assert (up > 0).mean() > 0.65, symbol
+        assert (down < 0).mean() > 0.65, symbol
+        crash = spells.loc[spells.regime == "crash", "ret"]
+        assert crash.mean() < down.mean() < 0 < up.mean(), symbol
+
+
+def test_forex_trends_move_pairs_with_their_correlation():
+    # A trend is the market's main factor moving: EURUSD and USDCHF, which move
+    # against each other, trend in opposite directions, even with no catalog drift.
+    data = mf.generate(
+        "EURUSD,USDCHF",
+        start="2023-01-01",
+        end="2024-01-01",
+        seed=4,
+        timeframes="H1",
+        include_regime=True,
+    )
+    up = {s: _spell_returns(data[s]["H1"]).query("regime == 'trend_up'")["ret"] for s in data}
+    assert np.sign(up["EURUSD"].mean()) == -np.sign(up["USDCHF"].mean())
+    assert (np.sign(up["EURUSD"]) != np.sign(up["USDCHF"])).mean() > 0.65

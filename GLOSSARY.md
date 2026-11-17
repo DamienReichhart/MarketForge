@@ -84,7 +84,7 @@ The standardized random innovation that drives one minute of one anchor series.
 _Avoid_: noise, innovation (in user-facing text), epsilon
 
 **Regime**:
-The market-wide hidden state (trend up, trend down, range, high volatility, crash) that scales drift and volatility for every instrument of a market at once.
+The market-wide hidden state (trend up, trend down, range, high volatility, crash) that sets the trend and scales the volatility of every instrument of a market at once. A trend moves the market's main factor: all coins, all stocks, or the dollar.
 _Avoid_: phase, mode, state
 
 **Anomaly**:

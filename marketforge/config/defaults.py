@@ -26,6 +26,14 @@ from marketforge.config.model_params import (
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
 
+# Trend of a spell of each regime, in units of its volatility (see RegimeParams).
+# Trends are centred so the catalog drift is the long-run drift; offsetting
+# the crashes lifts every regime by ~0.3-0.4, so trend_down is set stronger
+# than trend_up: after centering, a spell of either ends in its direction
+# about 70-90% of the time, and a crash spell falls ~1.5 of its own (large)
+# standard deviations.
+TREND_STRENGTH = (1.0, -1.4, 0.0, -0.3, -1.5)
+
 
 @dataclass(frozen=True)
 class MarketDefaults:
@@ -75,7 +83,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
             (0.06, 0.10, 0.14, 0.62, 0.08),
             (0.08, 0.08, 0.12, 0.32, 0.40),
         ),
-        drift_multipliers=(2.5, -2.5, 0.0, 0.0, -6.0),
+        trend_strength=TREND_STRENGTH,
         volatility_multipliers=(0.9, 0.9, 0.7, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
         # Calibrated on Binance BTC/ETH/SOL m1 (Feb 2024): trends last ~1.7
@@ -126,7 +134,7 @@ FOREX_DEFAULTS = MarketDefaults(
             (0.04, 0.08, 0.18, 0.68, 0.02),
             (0.10, 0.10, 0.20, 0.40, 0.20),
         ),
-        drift_multipliers=(1.5, -1.5, 0.0, 0.0, -3.0),
+        trend_strength=TREND_STRENGTH,
         volatility_multipliers=(0.7, 0.7, 0.5, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
         # Provisional (no real FX m1 reference yet): trends last ~2.8 days.
@@ -175,7 +183,7 @@ STOCKS_DEFAULTS = MarketDefaults(
             (0.05, 0.10, 0.15, 0.65, 0.05),
             (0.05, 0.05, 0.10, 0.30, 0.50),
         ),
-        drift_multipliers=(2.0, -2.0, 0.0, 0.0, -5.0),
+        trend_strength=TREND_STRENGTH,
         volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 1.5),
         initial_regime=RegimeType.RANGE,
         # Provisional (no real equity m1 reference yet): trends last ~4

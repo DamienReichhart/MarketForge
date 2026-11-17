@@ -79,9 +79,9 @@ def test_bridge_extremes_bracket_the_body_and_match_brownian_range():
 
 
 # ---------------------------------------------------------------------------
-# Fused kernels must equal, bit for bit, the NumPy expressions they replaced
-# (the reproducibility contract: a seed's output never changes in a minor
-# release). The references below are the 3.0 engine code, verbatim.
+# Fused kernels must equal, bit for bit, the NumPy expressions they replace
+# (ADR 0007: an optimisation never changes a seed's output). The references
+# below are the model's NumPy expressions.
 
 
 def _random_day(seed: int, n: int = 1440, f: int = 7):
@@ -94,6 +94,7 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
         "z": rng.standard_t(4, (n, f)),
         "sigma": rng.uniform(1e-5, 1e-3, f),
         "mu": rng.normal(0, 1e-7, f),
+        "trend": rng.normal(0, 1e-4, f),
         "log_price": np.log(rng.uniform(0.01, 50_000, f)),
     }
 
@@ -101,7 +102,7 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
 def _reference_paths(d, gap_rows, gap_values):
     level = np.sqrt(d["h"]) * d["vol_m"][:, None]
     sigma_f = d["sigma"] * level * d["season"][:, None]
-    returns_f = d["mu"] * d["drift_m"][:, None] + sigma_f * d["z"]
+    returns_f = d["mu"] + d["trend"] * d["drift_m"][:, None] + sigma_f * d["z"]
     gap_f = np.zeros_like(returns_f)
     gap_f[gap_rows] = gap_values
     log_close = d["log_price"] + np.cumsum(gap_f + returns_f, axis=0)
@@ -115,7 +116,7 @@ def test_factor_paths_equal_the_numpy_expressions_bit_for_bit(gap_rows):
     rows = np.asarray(gap_rows, dtype=np.int64)
     gaps = np.random.default_rng(12).normal(0, 1e-3, (rows.size, d["z"].shape[1]))
     got = factor_paths(
-        d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"],
+        d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
         rows, gaps, d["log_price"],
     )  # fmt: skip
     for a, b in zip(got, _reference_paths(d, rows, gaps), strict=True):
@@ -194,7 +195,9 @@ def test_compiled_kernels_equal_their_interpreted_python_bit_for_bit():
     n, f = 60, 3
     d = _random_day(4, n=n, f=f)
     rows, gaps = np.array([0, 17], dtype=np.int64), rng.normal(0, 1e-3, (2, f))
-    paths_args = (d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"])
+    paths_args = (
+        d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
+    )  # fmt: skip
     cases = [
         (factor_paths, (*paths_args, rows, gaps, d["log_price"])),
         (regime_chain, (rng.random(n), _cum([[0.9, 0.1], [0.2, 0.8]]), np.array([1.0, -1.0]),
