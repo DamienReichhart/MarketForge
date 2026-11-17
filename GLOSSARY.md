@@ -87,6 +87,18 @@ _Avoid_: noise, innovation (in user-facing text), epsilon
 The market-wide hidden state (trend up, trend down, range, high volatility, crash) that sets the trend and scales the volatility of every instrument of a market at once. A trend moves the market's main factor: all coins, all stocks, or the dollar.
 _Avoid_: phase, mode, state
 
+**Trend strength**:
+A regime's expected log return over an average spell of the regime, in units of that spell's volatility, along the market's main factor.
+_Avoid_: drift multiplier (the 3.x mechanism it replaced)
+
+**Stress**:
+The weight of a common shock added to every instrument's shock in high-volatility and crash regimes, which makes correlations intensify.
+_Avoid_: contagion, correlation breakdown
+
+**Model revision**:
+The integer that names a generation of the model's output (`marketforge.MODEL_REVISION`). It is incremented in any release that changes what a seed produces; `extend` only continues a dataset written with the same one.
+_Avoid_: model version, output version
+
 **Anomaly**:
 An optional, deliberately unrealistic event layered on top of the base simulation: a spike or a flash crash.
 _Avoid_: event, glitch, gap (gaps are not anomalies)

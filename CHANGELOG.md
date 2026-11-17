@@ -2,12 +2,19 @@
 
 ## 4.0.0
 
-Datasets can be extended, candles can carry a bid-ask spread, the Python API
-covers what the command line does, and MarketForge is now Apache-2.0.
+The most realistic MarketForge yet, and the easiest to build on:
+- **A more realistic model.** Regimes that trend, correlations that hold and
+  intensify in crashes, wicks on big candles, and forex sessions on their own
+  clocks.
+- **Easier to build on.** An ML-first Python API (`generate_many`, `read`,
+  `to_numpy`, Feather, `resample`), bid and ask quotes, calibration to your
+  own data, and datasets you can extend, inspect and verify.
+- **A new licence.** MarketForge is now Apache-2.0.
+
 **Realism now comes before seed stability**: seeds produce different candles
 from 3.1.1 (see Output changes), and any later release may change them again
-when that makes the data more realistic. The major version is for the renamed
-options and parameters.
+when that makes the data more realistic. Upgrading from 3.x? See
+[Migrating to 4.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-4/).
 
 ### Output changes
 - **Forex sessions keep their own clocks.** Forex seasonality was a step
@@ -123,7 +130,7 @@ options and parameters.
   fewer version to reconcile with an ML stack). Validation computes the
   excess kurtosis with NumPy, to the same value.
 
-### Command line
+### New commands
 - **`marketforge info DATASET`** summarises a dataset from its manifest
   (version, model revision, seed, range, instruments, files and size) and
   says whether it can be extended, and if not with which version.

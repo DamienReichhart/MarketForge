@@ -63,22 +63,29 @@ and stress-test, and real data to decide whether anything earns money. See
 
 - **Ground-truth regimes.** With `--with-regime`, each candle carries the
   market's hidden state: trend up, trend down, range, high volatility or
-  crash. Real data never tells you which one you were in.
+  crash. Regimes trend along the market's main factor, so the labels show in
+  the data, and real data never tells you which one you were in.
 - **Real trading calendars.** Stocks trade the NYSE session (09:30-16:00 New
   York, DST-aware) and skip NYSE holidays and early closes. Forex trades from
   Sunday 17:00 to Friday 17:00 New York time. Crypto never closes. No candles
   are printed while a market is closed, and gaps come from the price moving
   during the closure, as they do in reality.
 - **One market, one story.** Every instrument of a market is simulated
-  jointly: a full correlation matrix, Student-t shocks with tail dependence
-  (sell-offs hit everything at once), and a shared regime.
+  jointly: the correlations the catalog states, Student-t shocks with tail
+  dependence, correlations that intensify in crashes (diversification fails
+  when it matters), and a shared regime.
 - **Arbitrage-free forex.** One anchor pair per currency is simulated and
   every cross is derived from them, so `EURJPY == EURUSD * USDJPY` at every
   minute.
 - **Validated, not eyeballed.** Heavy tails, volatility clustering, long
-  memory, the leverage effect, intrabar range and the spread are checked
-  against bands measured on real minute data, for every instrument, across
-  seeds. The validator ships with the package.
+  memory, the leverage effect, intrabar range and the spread are checked for
+  every instrument, across seeds, against bands measured on real crypto minute
+  data (forex and stock bands are still provisional). The validator ships with
+  the package, and `marketforge calibrate` fits instruments to your own data.
+- **Built for ML pipelines.** `generate_many()` runs seeds in parallel
+  processes for leak-free splits, `to_numpy()` gives `(time, instrument,
+  feature)` tensors, `read()` loads datasets back with the right types, and
+  Feather files load with no copy.
 - **Reproducible.** A seed fixes every random shock by market and minute. The
   same seed and version give the same EURUSD, bit for bit on a given
   platform, whether you generate it alone or with 207 other instruments. CI
