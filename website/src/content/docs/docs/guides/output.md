@@ -48,11 +48,12 @@ timestamp,open,high,low,close,volume
 
 ## The manifest
 
-Every dataset has a `marketforge.json`. It records the MarketForge version, the seed, the range, the instruments, timeframes, format, timestamps, anomalies and columns asked for, and the **resolved overrides** (the values, not a path, so the dataset stands on its own), plus the checkpoint [`extend`](../extend/) resumes from.
+Every dataset has a `marketforge.json`. It records the MarketForge version and model revision, the seed, the range, the instruments, timeframes, format, timestamps, anomalies and columns asked for, and the **resolved overrides** (the values, not a path, so the dataset stands on its own), plus the checkpoint [`extend`](../extend/) resumes from.
 
 ```json
 {
   "marketforge": "4.0.0",
+  "model_revision": 1,
   "seed": 1,
   "start": "2024-01-01T00:00:00Z",
   "end": "2024-01-03T00:00:00Z",

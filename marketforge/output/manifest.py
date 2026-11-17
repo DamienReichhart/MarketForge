@@ -38,6 +38,7 @@ class Manifest:
     """How a dataset was produced, and where its simulation can be resumed."""
 
     version: str  # the MarketForge version that wrote the dataset
+    model_revision: int  # the model generation that produced its candles (ADR 0011)
     seed: int
     start: int  # Unix seconds, inclusive
     end: int  # Unix seconds, exclusive
@@ -54,6 +55,7 @@ class Manifest:
     def to_json(self) -> str:
         doc = {
             "marketforge": self.version,
+            "model_revision": self.model_revision,
             "seed": self.seed,
             "start": iso_time(self.start),
             "end": iso_time(self.end),
@@ -74,6 +76,7 @@ class Manifest:
         doc = json.loads(text)
         return cls(
             version=doc["marketforge"],
+            model_revision=doc["model_revision"],
             seed=doc["seed"],
             start=_unix(doc["start"]),
             end=_unix(doc["end"]),

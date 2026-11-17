@@ -13,7 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from marketforge._version import __version__
+from marketforge._version import MODEL_REVISION, __version__
 from marketforge.api.execution import execute, warn_about_empty
 from marketforge.api.parsing import Names, TimeLike, parse_time
 from marketforge.api.planning import (
@@ -118,7 +118,7 @@ def extend(
 
     Raises:
         ValueError: if the directory is not a dataset, ``end`` is not after the
-            dataset's end, or the dataset was written by another major version.
+            dataset's end, or the dataset was written by another model revision.
     """
     request, fmt, timestamps = plan_extension(dataset, end)
     return write_request(request, dataset, fmt=fmt, timestamps=timestamps, jobs=jobs, on_day=on_day)
@@ -130,10 +130,12 @@ def plan_extension(
     """Resolve the extension of a dataset into a request and the dataset's file formats."""
     recover(dataset)
     manifest = read_manifest(dataset)
-    if manifest.version.split(".")[0] != __version__.split(".")[0]:
+    if manifest.model_revision != MODEL_REVISION:
         raise ValueError(
-            f"{Path(dataset)} was written by MarketForge {manifest.version}; a seed's candles "
-            f"differ between major versions, so {__version__} cannot extend it"
+            f"{Path(dataset)} was written by MarketForge {manifest.version} (model revision "
+            f"{manifest.model_revision}); {__version__} has model revision {MODEL_REVISION} and "
+            "produces different candles, so it cannot extend it. Generate the dataset again, "
+            f"or install marketforge=={manifest.version}"
         )
     new_end = parse_time(end)
     if new_end <= manifest.end:
@@ -225,6 +227,7 @@ def write_request(
         raise error
     manifest = Manifest(
         version=__version__,
+        model_revision=MODEL_REVISION,
         seed=request.seed,
         start=request.start,
         end=request.end,

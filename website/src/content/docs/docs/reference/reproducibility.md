@@ -28,7 +28,7 @@ Major versions are for breaks of the public API (renamed options, removed functi
 
 ## How it is enforced
 
-On every commit, CI fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, in the same environment. A difference is accepted only when `MODEL_REVISION` was incremented and the changelog has an *Output changes* section for the version; otherwise the commit fails, and so does a revision bump with no difference. See [ADR 0011](../../adr/0011-realism-over-seed-stability/) and [ADR 0007](../../adr/0007-optimise-without-changing-a-single-bit/).
+On every commit, CI fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, in the same environment. A difference is accepted only when `MODEL_REVISION` was incremented and the changelog has an *Output changes* section for the version; otherwise the commit fails. See [ADR 0011](../../adr/0011-realism-over-seed-stability/) and [ADR 0007](../../adr/0007-optimise-without-changing-a-single-bit/).
 
 ## Across machines
 

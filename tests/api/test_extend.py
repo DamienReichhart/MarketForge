@@ -100,6 +100,7 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
     assert report.manifest == tmp_path / "marketforge.json"
     assert {k: doc[k] for k in list(doc)[:-1]} == {
         "marketforge": mf.__version__,
+        "model_revision": mf.MODEL_REVISION,
         "seed": 7,
         "start": "2024-01-01T00:00:00Z",
         "end": "2024-01-03T00:00:00Z",
@@ -125,8 +126,8 @@ def test_extend_refuses_what_it_cannot_continue(tmp_path):
         mf.extend(tmp_path, "2024-01-05")
     manifest = tmp_path / "marketforge.json"
     doc = json.loads(manifest.read_text())
-    manifest.write_text(json.dumps({**doc, "marketforge": "2.0.0"}))
-    with pytest.raises(ValueError, match=r"written by MarketForge 2\.0\.0"):
+    manifest.write_text(json.dumps({**doc, "marketforge": "2.0.0", "model_revision": 0}))
+    with pytest.raises(ValueError, match=r"written by MarketForge 2\.0\.0 \(model revision 0\)"):
         mf.extend(tmp_path, "2024-02-01")
     manifest.write_text(json.dumps({k: v for k, v in doc.items() if k != "seed"}))
     with pytest.raises(ValueError, match="not a valid manifest"):
@@ -210,3 +211,13 @@ def test_iso_timestamps_survive_an_extension_and_validation(tmp_path):
     assert mf.validate(m1).passed
     with pytest.raises(ValueError, match="ISO timestamps are for CSV files"):
         mf.generate_to_disk(tmp_path / "pq", "BTCUSD", end="2024-01-03", fmt="parquet", **kwargs)
+
+
+def test_extend_continues_a_dataset_from_another_version_with_the_same_model_revision(tmp_path):
+    # A patch release that does not touch the model must not strand datasets.
+    mf.generate_to_disk(tmp_path, "AAPL", start="2024-01-02", end="2024-01-05", seed=1)
+    manifest = tmp_path / "marketforge.json"
+    doc = json.loads(manifest.read_text())
+    manifest.write_text(json.dumps({**doc, "marketforge": "4.0.1"}))
+    mf.extend(tmp_path, "2024-01-09")
+    assert read_manifest(tmp_path).end == mf.parse_time("2024-01-09")
