@@ -37,7 +37,7 @@ def spell_trends(params: RegimeParams) -> np.ndarray:
     stationary = stationary / stationary.sum()
     vol = np.asarray(params.volatility_multipliers, dtype=float)
     vol = vol / np.sqrt(float(stationary @ vol**2))
-    return np.asarray(params.trend_strength, dtype=float) * vol / np.sqrt(durations)
+    return np.asarray(np.asarray(params.trend_strength, dtype=float) * vol / np.sqrt(durations))
 
 
 def main_factor_loadings(
@@ -56,7 +56,7 @@ def main_factor_loadings(
     else:
         w = np.asarray(portfolio, dtype=float)
         loadings = correlation @ w / np.sqrt(float(w @ correlation @ w))
-    return loadings if loadings[0] >= 0 else -loadings
+    return np.asarray(loadings if loadings[0] >= 0 else -loadings)
 
 
 def dollar_portfolio(anchors: Sequence[str]) -> np.ndarray:

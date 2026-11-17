@@ -207,7 +207,7 @@ def _alternate(
         correction = x - r
         previous = y
         y = np.where(mask, target, x)
-        if np.linalg.norm(y - previous) <= tol * max(1.0, np.linalg.norm(y)):
+        if float(np.linalg.norm(y - previous)) <= tol * max(1.0, float(np.linalg.norm(y))):
             break
     y = (y + y.T) / 2
     values, vectors = np.linalg.eigh(y)
