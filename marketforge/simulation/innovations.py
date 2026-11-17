@@ -47,3 +47,34 @@ def correlated_shocks(
     if nu <= 2.0:
         raise ValueError(f"nu must be > 2 for finite variance, got {nu}")
     return np.asarray(y / np.sqrt(chi2 / nu)[:, None] * np.sqrt((nu - 2.0) / nu))
+
+
+def stressed_shocks(
+    shocks: np.ndarray,
+    stress: np.ndarray,
+    scale: np.ndarray,
+    common: np.ndarray,
+    loading: np.ndarray,
+) -> np.ndarray:
+    """Add a common factor to every shock, by a share ``stress`` (per row).
+
+        z'_i = sqrt(1 - s b_i^2) z_i + sqrt(s) b_i * scale * m
+
+    keeps unit variance and gives correlations
+    sqrt((1 - s b_i^2)(1 - s b_j^2)) C_ij + s b_i b_j: with loadings ``b`` near
+    +-1, pairs that move together move together more, and pairs that move
+    apart move apart more. ``scale`` is each row's Student-t mixing factor, so
+    the common part shares the tails of the shocks it joins.
+
+    Args:
+        shocks: (n, F) correlated unit-variance shocks.
+        stress: (n,) share in [0, 1).
+        scale: (n,) mixing factor of each row (1 for Gaussian shocks).
+        common: (n,) standard normals of the common factor.
+        loading: (F,) loadings on the common factor, |b| < 1.
+    """
+    if not np.any(stress):
+        return shocks
+    keep = np.sqrt(1.0 - stress[:, None] * loading[None, :] ** 2)
+    added = (np.sqrt(stress) * scale * common)[:, None] * loading[None, :]
+    return np.asarray(keep * shocks + added)

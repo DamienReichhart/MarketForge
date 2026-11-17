@@ -13,6 +13,8 @@ Correlated, unit-variance **Student-t shocks** *z*, built as a normal variance m
 
 Crypto shocks have 6 degrees of freedom, the heaviest tails of the three markets.
 
+In high-volatility and crash regimes a common shock is added to every instrument, so **correlations intensify under stress** as they do in real sell-offs. From range to crash, BTC-SAND goes from 0.55 to 0.82, AAPL-XOM from 0.38 to 0.65 and EURUSD-USDCHF from -0.66 to -0.86. See [ADR 0014](../../adr/0014-correlations-intensify-under-stress/).
+
 ## Volatility
 
 σ<sub>f</sub> · √h<sub>t</sub> · g<sub>t</sub> · s<sub>t</sub>, where:

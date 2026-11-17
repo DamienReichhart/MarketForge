@@ -141,3 +141,22 @@ def test_crashes_are_the_most_volatile_regime(symbol, seed):
     r = np.log(frame["close"]).diff()
     vol = r.groupby(frame["regime"], observed=True).std()
     assert vol["crash"] > vol["high_volatility"] > vol["range"]
+
+
+@pytest.mark.parametrize(
+    ("pair", "seed"), [(("BTCUSD", "SANDUSD"), 2), (("AAPL", "XOM"), 3), (("EURUSD", "AUDUSD"), 4)]
+)
+def test_correlations_rise_in_a_crash(pair, seed):
+    # In real sell-offs everything moves together: diversification fails when needed.
+    data = mf.generate(
+        list(pair),
+        start="2022-01-01",
+        end="2024-01-01",
+        seed=seed,
+        timeframes="m5",
+        include_regime=True,
+    )
+    r = _returns(data, "m5")
+    regime = data[pair[0]]["m5"]["regime"].reindex(r.index)
+    by_regime = {name: r[regime == name].corr().iloc[0, 1] for name in ("range", "crash")}
+    assert abs(by_regime["crash"]) > abs(by_regime["range"]) + 0.1

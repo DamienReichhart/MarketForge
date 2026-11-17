@@ -10,6 +10,12 @@ when that makes the data more realistic. The major version is for the renamed
 options and parameters.
 
 ### Output changes
+- **Correlations intensify under stress.** One correlation matrix drove every
+  regime, so BTC and a gaming coin were as correlated in a crash as in a
+  range. A common shock is now added in high-volatility and crash regimes:
+  from range to crash, BTC-SAND goes from 0.55 to 0.82, AAPL-XOM from 0.38 to
+  0.65 and EURUSD-USDCHF from -0.66 to -0.86
+  ([ADR 0014](docs/adr/0014-correlations-intensify-under-stress.md)).
 - **A stock crash is the most volatile regime.** Its volatility multiplier was
   1.5 against 1.8 for high volatility (crypto and forex use 3.0); it is now
   2.6.

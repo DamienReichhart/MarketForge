@@ -48,7 +48,7 @@ from marketforge.domain.markets import MarketType
 from marketforge.domain.time import MINUTES_PER_DAY, SECONDS_PER_DAY
 from marketforge.simulation.annualisation import closure_variance, effective_minutes_per_year
 from marketforge.simulation.anomalies import inject_anomalies
-from marketforge.simulation.innovations import correlated_shocks
+from marketforge.simulation.innovations import correlated_shocks, stressed_shocks
 from marketforge.simulation.kernels import (
     bar_arguments,
     factor_paths,
@@ -72,6 +72,11 @@ from marketforge.simulation.spread import minutes_since_reopen, quoted_spread
 _MARKET_STREAM = {MarketType.CRYPTO: 1, MarketType.FOREX: 2, MarketType.STOCKS: 3}
 # Max session opens (gaps) a calendar can produce within one UTC day.
 _MAX_GAPS_PER_DAY = 4
+# Loading of the most exposed series on the main factor in stressed regimes.
+STRESS_LOADING = 0.95
+# Below 1, pulls weakly exposed series towards that loading too: in a crash
+# even a loosely correlated coin moves with BTC.
+STRESS_COMPRESSION = 0.3
 _MEAN_ABS_Z = float(np.sqrt(2.0 / np.pi))
 _VAR_ABS_Z = 1.0 - 2.0 / np.pi
 _Z_CLIP = 10.0
@@ -170,7 +175,15 @@ class MarketSimulator:
         # times its loading on that factor (ADR 0013).
         # In forex the main factor is the dollar: trend_up is the dollar falling.
         portfolio = dollar_portfolio(structure.factors) if spec.market == MarketType.FOREX else None
-        self._trend = (sigma * main_factor_loadings(spec.factor_correlation, portfolio))[fa]
+        loadings = main_factor_loadings(spec.factor_correlation, portfolio)
+        self._trend = (sigma * loadings)[fa]
+        # Stress pulls shocks onto the same factor, with loadings stretched
+        # towards 0.95 for every series: co-movement intensifies.
+        self._stress = np.asarray(rp.stress, dtype=float)
+        relative = loadings / np.max(np.abs(loadings))
+        self._stress_loading = (
+            STRESS_LOADING * np.sign(relative) * np.abs(relative) ** STRESS_COMPRESSION
+        )[fa]
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
@@ -300,6 +313,7 @@ class MarketSimulator:
         u_high = rng.random((MINUTES_PER_DAY, n_i))
         u_low = rng.random((MINUTES_PER_DAY, n_i))
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
+        m_stress = rng.standard_normal(MINUTES_PER_DAY)
 
         z = session.rows_of(self._correlated(z_all[session.rows], chi_all[session.rows]))
 
@@ -313,6 +327,14 @@ class MarketSimulator:
             st.drift_mult,
             st.vol_mult,
         )
+        if self._stress.any():
+            stress = self._stress[regimes]
+            scale = (
+                np.sqrt((nu - 2.0) / nu) / np.sqrt(chi_all[rows] / nu)
+                if self._nu is not None
+                else np.ones(rows.size)
+            )
+            z = stressed_shocks(z, stress, scale, m_stress[rows], self._stress_loading)
         h, st.garch_variance, st.garch_shock = gjr_garch(
             z, *self._garch, st.garch_variance, st.garch_shock
         )

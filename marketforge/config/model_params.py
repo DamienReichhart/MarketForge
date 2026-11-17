@@ -75,6 +75,9 @@ class RegimeParams:
         minutes_per_step: Open minutes per transition step (time scale).
         trend_strength: Expected return of an average spell of each regime, in
             units of that spell's volatility, along the market's main factor.
+        stress: Weight of a common shock on the market's main factor, added to
+            every shock in each regime: correlations intensify (diversification
+            fails in sell-offs). 0 keeps the catalog correlations.
         volatility_multipliers: Volatility scaling per regime.
         initial_regime: Regime at the first simulated minute.
     """
@@ -90,6 +93,7 @@ class RegimeParams:
     volatility_multipliers: tuple[float, ...] = (0.8, 0.8, 0.6, 2.0, 4.0)
     initial_regime: RegimeType = RegimeType.RANGE
     minutes_per_step: float = 1.0
+    stress: tuple[float, ...] = (0.0, 0.0, 0.0, 0.4, 0.75)
 
     def __post_init__(self) -> None:
         if self.minutes_per_step < 1.0:
