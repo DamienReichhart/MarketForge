@@ -14,6 +14,8 @@ from marketforge.api.parsing import Names, TimeLike
 from marketforge.api.planning import DEFAULT_TIMEFRAMES, MarketPlan, Request, plan_request
 from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.config.overrides import Overrides
+from marketforge.domain.markets import MarketType
+from marketforge.domain.timeframes import Timeframe
 from marketforge.output.formats import OutputFormat
 
 # Cost model (one core, measured on 3.1). Random draws are market-wide and
@@ -104,7 +106,7 @@ def estimate_request(request: Request, fmt: str) -> Estimate:
     for plan in request.plans:
         minutes = get_calendar(plan.market).count_open_minutes(since, request.end)
         open_minutes[plan.market.value] = minutes
-        per_instrument = sum(minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes)
+        per_instrument = sum(_candles(plan.market, minutes, tf) for tf in request.timeframes)
         rows += per_instrument * len(plan.selected)
         market_seconds.append(_simulation_seconds(plan, request.n_days, minutes))
     columns = 6 + request.include_spread + 2 * request.include_bid_ask + request.include_regime
@@ -123,6 +125,19 @@ def estimate_request(request: Request, fmt: str) -> Estimate:
         open_minutes=open_minutes,
         _market_seconds=tuple(market_seconds),
     )
+
+
+# Open minutes in a market's day, and trading days in its week, for D1 and W1.
+_SESSION_MINUTES = {MarketType.CRYPTO: 1440, MarketType.FOREX: 1440, MarketType.STOCKS: 390}
+_WEEK_DAYS = {MarketType.CRYPTO: 7, MarketType.FOREX: 5, MarketType.STOCKS: 5}
+
+
+def _candles(market: MarketType, open_minutes: int, tf: Timeframe) -> int:
+    """Candles of one instrument and timeframe over ``open_minutes`` of its market."""
+    if tf.minutes < 1440:
+        return open_minutes // tf.minutes
+    days = open_minutes / _SESSION_MINUTES[market]
+    return round(days if tf == Timeframe.D1 else days / _WEEK_DAYS[market])
 
 
 def _simulation_seconds(plan: MarketPlan, n_days: int, open_minutes: int) -> float:

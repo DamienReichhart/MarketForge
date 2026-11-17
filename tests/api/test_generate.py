@@ -418,3 +418,10 @@ def test_bid_and_ask_quote_the_close_around_the_mid(tmp_path):
     mf.extend(tmp_path, "2024-01-04")
     back = mf.read(tmp_path)["EURUSD"]["H1"]
     np.testing.assert_allclose(back[["bid", "ask"]], only[["bid", "ask"]], atol=1e-8)
+
+
+def test_estimate_counts_daily_and_weekly_candles_of_stocks(tmp_path):
+    kwargs = {"start": "2024-01-01", "days": 91, "timeframes": "D1,W1", "seed": 1}
+    guess = mf.estimate("AAPL", **kwargs)
+    data = mf.generate("AAPL", **kwargs)["AAPL"]
+    assert guess.rows == pytest.approx(len(data["D1"]) + len(data["W1"]), rel=0.1)
