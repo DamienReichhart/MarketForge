@@ -48,7 +48,6 @@ dependencies = [
     # these floors with a lowest-direct resolution job.
     "numpy>=2.2",
     "numba>=0.61.2",
-    "scipy>=1.13",
     "pandas>=2.2.2",
     "click>=8.1",
     "tqdm>=4.66",
@@ -83,9 +82,14 @@ lint = [
     "import-linter>=2.3",
 ]
 dev = [
+    {include-group = "fit"},
     {include-group = "test"},
     {include-group = "typecheck"},
     {include-group = "lint"},
+]
+# Refitting the catalogs' correlations (scripts/fit_correlations.py).
+fit = [
+    "scipy>=1.13",
 ]
 # Used by CI/CD only (.github/workflows).
 release = [

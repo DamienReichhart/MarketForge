@@ -14,12 +14,21 @@ import numpy as np
 
 
 def excess_kurtosis(returns: np.ndarray) -> float:
-    """Excess kurtosis (0 for a normal distribution; > 0 = fat tails)."""
-    # Imported here: scipy.stats takes about half a second to import, and
-    # `import marketforge` (every CLI call) must not pay it to generate data.
-    from scipy.stats import kurtosis
+    """Excess kurtosis (0 for a normal distribution; > 0 = fat tails).
 
-    return float(kurtosis(np.asarray(returns, dtype=float), fisher=True, bias=False))
+    The bias-corrected sample estimator G2 (scipy's ``kurtosis(fisher=True,
+    bias=False)``), computed with NumPy so that scipy is not a dependency.
+    """
+    x = np.asarray(returns, dtype=float)
+    n = x.size
+    if n < 4:
+        return float("nan")
+    d = x - x.mean()
+    m2 = float(np.mean(d * d))
+    if m2 == 0.0:
+        return float("nan")
+    g2 = float(np.mean(d**4)) / (m2 * m2) - 3.0
+    return ((n + 1) * g2 + 6.0) * (n - 1) / ((n - 2) * (n - 3))
 
 
 # Standard errors of the statistics above, for the sampling-noise allowance of

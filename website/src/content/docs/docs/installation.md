@@ -22,7 +22,7 @@ The first generation in a fresh environment takes a few extra seconds while Numb
 
 ### Dependencies
 
-`numpy` (2.2 or newer), `numba`, `scipy`, `pandas`, `pyarrow` (for Parquet), `click`, `tqdm` and `threadpoolctl`. CI tests every one of them at the lowest version declared, so the floors in `pyproject.toml` are real.
+`numpy` (2.2 or newer), `numba`, `pandas`, `pyarrow` (CSV, Parquet and Feather writing), `click`, `tqdm` and `threadpoolctl`. scipy is not needed: it is only used offline, to refit the catalogs' correlations. CI tests every one of them at the lowest version declared, so the floors in `pyproject.toml` are real.
 
 ## From source
 

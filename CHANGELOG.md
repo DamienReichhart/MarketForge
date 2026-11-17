@@ -118,6 +118,11 @@ options and parameters.
 - **`days=`** is accepted instead of `end=` in Python, as `--days` is on the
   command line.
 
+### Installation
+- **scipy is no longer a dependency** (about 100 MB less to install, and one
+  fewer version to reconcile with an ML stack). Validation computes the
+  excess kurtosis with NumPy, to the same value.
+
 ### Command line
 - **`marketforge info DATASET`** summarises a dataset from its manifest
   (version, model revision, seed, range, instruments, files and size) and
