@@ -19,7 +19,7 @@ when that makes the data more realistic. Upgrading from 3.x? See
 ### Output changes
 - **Your override correlations hold.** Correlations set in an override file
   that contradicted the market were repaired by clipping eigenvalues, which
-  moved your own values (BTC-ETH set to -0.5 came back +0.49). Your values
+  moved your own values (BTC-ETH set to -0.5 came back +0.04). Your values
   are now kept exactly while the rest of the market moves to the nearest
   valid matrix. If your values contradict each other, they move as little as
   possible, and the warning says how far.
