@@ -37,6 +37,8 @@ print(report.passed, report.summary())
 | --- | --- |
 | `generate(...)` | Candles in memory: `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a UTC `DatetimeIndex` named `time` and the columns `open, high, low, close, volume`, plus `spread` with `include_spread=True` and a categorical `regime` with `include_regime=True`. |
 | `GeneratedData.panel(column, timeframe)` | One column of every instrument side by side. The index is the union of all candle times; a value is NaN where that instrument's market was closed, never forward-filled. |
+| `GeneratedData.to_long(timeframe)` | Every instrument of a timeframe in one frame indexed by `(symbol, time)`: the long format of most data and ML tooling. |
+| `GeneratedData.to_numpy(timeframe, columns)` | A `(time, instrument, column)` float array for tensors, with its time index and symbol list; NaN where a market was closed, regime as its codes. |
 | `generate_to_disk(output_dir, ...)` | A dataset on disk: candle files and the manifest. Memory does not grow with the range. |
 | `read(dataset, instruments=None, *, timeframes=None)` | Loads a dataset (or part of it) back into memory: the same `GeneratedData` that `generate()` returns for its settings, with a UTC index, float columns and a categorical regime. |
 | `extend(dataset, end)` | Continues a dataset, as `marketforge extend` does. |

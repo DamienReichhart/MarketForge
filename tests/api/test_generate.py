@@ -326,3 +326,37 @@ def test_regime_names_are_the_same_on_disk_as_in_memory(tmp_path, fmt):
         # The same categorical as in memory, so the codes agree too.
         assert list(disk.cat.categories) == list(mem.cat.categories)
         assert disk.cat.codes.tolist() == mem.cat.codes.tolist()
+
+
+def test_to_long_stacks_every_instrument_of_a_timeframe():
+    data = mf.generate(
+        "BTCUSD,AAPL",
+        start="2024-01-02",
+        end="2024-01-04",
+        seed=1,
+        timeframes="H1",
+        include_regime=True,
+    )
+    long = data.to_long()
+    assert long.index.names == ["symbol", "time"]
+    assert list(long.columns) == ["open", "high", "low", "close", "volume", "regime"]
+    assert len(long) == len(data["BTCUSD"]["H1"]) + len(data["AAPL"]["H1"])
+    pd.testing.assert_frame_equal(long.loc["AAPL"], data["AAPL"]["H1"])
+
+
+def test_to_numpy_is_time_by_instrument_by_column_with_nan_when_closed():
+    data = mf.generate(
+        "BTCUSD,AAPL",
+        start="2024-01-02",
+        end="2024-01-04",
+        seed=1,
+        timeframes="H1",
+        include_regime=True,
+    )
+    array, index, symbols = data.to_numpy(columns=["close", "regime"])
+    assert symbols == ["BTCUSD", "AAPL"]
+    assert array.shape == (len(index), 2, 2) and array.dtype == np.float64
+    btc = data["BTCUSD"]["H1"]
+    np.testing.assert_array_equal(array[:, 0, 0], btc["close"].reindex(index).to_numpy())
+    np.testing.assert_array_equal(array[:, 0, 1], btc["regime"].cat.codes.reindex(index).to_numpy())
+    assert np.isnan(array[:, 1, 0]).sum() == len(index) - len(data["AAPL"]["H1"])  # closed hours

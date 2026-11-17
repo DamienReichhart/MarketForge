@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
@@ -40,20 +42,67 @@ class GeneratedData(dict):
             the instruments' candle times, so a value is NaN where that
             instrument's market was closed; nothing is forward-filled.
         """
+        name = self._timeframe(timeframe)
+        return pd.concat(
+            {symbol: frames[name][column] for symbol, frames in self.items()}, axis=1, sort=True
+        )
+
+    def to_long(self, timeframe: str | None = None) -> pd.DataFrame:
+        """
+        Every instrument of one timeframe in one frame, indexed by (symbol, time).
+
+        The long format most data and ML tooling expects; ``.loc[symbol]`` gives
+        back that instrument's frame. ``timeframe`` may be omitted when only one
+        was generated.
+        """
+        name = self._timeframe(timeframe)
+        return pd.concat(
+            {symbol: frames[name] for symbol, frames in self.items()}, names=["symbol", "time"]
+        )
+
+    def to_numpy(
+        self,
+        timeframe: str | None = None,
+        columns: Sequence[str] = ("open", "high", "low", "close", "volume"),
+    ) -> tuple[np.ndarray, pd.DatetimeIndex, list[str]]:
+        """
+        One timeframe as a (time, instrument, column) float array, for tensors.
+
+        The time axis is the union of every instrument's candle times; a value
+        is NaN where that instrument's market was closed. The regime column
+        gives its codes (0 trend_up ... 4 crash).
+
+        Returns:
+            (array, index, symbols): the array, its time axis and its instrument axis.
+        """
+        name = self._timeframe(timeframe)
+        symbols = list(self)
+        index = pd.DatetimeIndex(
+            sorted(set().union(*(self[s][name].index for s in symbols))), name="time"
+        )
+        out = np.full((len(index), len(symbols), len(columns)), np.nan)
+        for j, symbol in enumerate(symbols):
+            frame = self[symbol][name]
+            rows = index.get_indexer(frame.index)
+            for k, column in enumerate(columns):
+                values = frame[column]
+                if isinstance(values.dtype, pd.CategoricalDtype):
+                    values = values.cat.codes
+                out[rows, j, k] = values.to_numpy(dtype=float)
+        return out, index, symbols
+
+    def _timeframe(self, timeframe: str | None) -> str:
         available = list(dict.fromkeys(tf for frames in self.values() for tf in frames))
         if timeframe is None:
             if len(available) != 1:
                 raise ValueError(f"Choose a timeframe: {', '.join(available)}")
-            name = available[0]
-        else:
-            name = Timeframe.from_string(timeframe).name
-            if name not in available:
-                raise ValueError(
-                    f"Timeframe {name} was not generated; available: {', '.join(available)}"
-                )
-        return pd.concat(
-            {symbol: frames[name][column] for symbol, frames in self.items()}, axis=1, sort=True
-        )
+            return str(available[0])
+        name = Timeframe.from_string(timeframe).name
+        if name not in available:
+            raise ValueError(
+                f"Timeframe {name} was not generated; available: {', '.join(available)}"
+            )
+        return name
 
 
 def generate(

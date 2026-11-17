@@ -93,6 +93,9 @@ options and parameters.
   timeframes, back as the `GeneratedData` that `generate()` returns: UTC
   index, float columns, categorical regime. No more hand-written
   `read_csv` and timestamp conversion.
+- **`GeneratedData.to_long()`** stacks every instrument into one frame
+  indexed by `(symbol, time)`, and **`to_numpy()`** gives a `(time,
+  instrument, column)` array with its axes, NaN where a market was closed.
 
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and
