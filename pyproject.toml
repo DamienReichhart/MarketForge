@@ -42,7 +42,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    # numpy < 2.2 breaks the bit-exact reproducibility contract (extending the
+    # numpy < 2.2 breaks reproducibility within a version (extending the
     # range changes earlier candles by ~1e-14). The other floors are the
     # oldest releases that are binary-compatible with numpy 2. CI enforces
     # these floors with a lowest-direct resolution job.

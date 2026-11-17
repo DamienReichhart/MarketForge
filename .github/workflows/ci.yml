@@ -243,9 +243,9 @@ jobs:
         run: pytest
 
   reproducibility:
-    # The seed contract (docs/adr/0006, 0007): every seed must produce the
-    # same candles as the latest release, bit for bit, unless the major
-    # version is bumped. Both are fingerprinted in ONE environment (same
+    # The seed contract (docs/adr/0011): every seed must produce the same
+    # candles as the latest release, bit for bit, unless MODEL_REVISION is
+    # incremented and CHANGELOG.md announces Output changes. Both are fingerprinted in ONE environment (same
     # dependency versions, same CPU), so SIMD differences between runners
     # cannot cause false alarms; each OS is checked against itself.
     name: Seed reproducibility (${{ matrix.os }})

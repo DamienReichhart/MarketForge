@@ -15,5 +15,5 @@ What keeps a rewrite bit-identical:
 
 - Each fused kernel is tested against the verbatim 3.0 NumPy expression (`tests/simulation/test_kernels.py`), and subset simulation against the whole market for all three projection kinds (`tests/simulation/test_simulator.py`). These tests run on every platform in CI.
 - The release was also checked against 3.0 on 4,717 outputs (in-memory frames, CSV bytes, Parquet columns): every market, spikes and flash crashes, both DST transitions, holidays and early closes, mid-day starts, subsets, overrides and a three-anchor cross. The check passed with the newest dependencies and at the declared floors (Python 3.10, NumPy 2.2.0, Numba 0.61.2).
-- Moving `exp`/`log` into compiled code (or into Rust) would change output on some CPUs and therefore needs a major version.
+- Moving `exp`/`log` into compiled code (or into Rust) would change output on some CPUs and therefore needs a `MODEL_REVISION` increment and an *Output changes* entry (ADR 0011).
 - The whole-market random draws remain the floor of single-instrument runs (about 2.5 ms per simulated forex day); removing them would change every seed.
