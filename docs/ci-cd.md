@@ -132,7 +132,10 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
      a major bump (a minor bump below 1.0). The `!` is a promise to users:
      either bump the major version or reword the commit. It marks breaks of
      the public API; a change to what seeds produce is not one (ADR 0011)
-     and goes under *Output changes* instead.
+     and goes under *Output changes* instead. Only commit types that can
+     change the API count: a `docs!`, `ci!`, `test!`, `style!` or `chore!`
+     commit never requires a major bump, while `build!` does (a dropped
+     Python version or dependency breaks users).
 2. **ci** runs the full CI workflow on the commit, in parallel with the
    guard. This is `main`'s only CI run (`ci.yml` has no push trigger for
    `main`). Nothing is published unless all of it passes.

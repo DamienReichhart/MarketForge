@@ -172,6 +172,28 @@ def test_breaking_commits_ignores_ordinary_commits(message):
     assert release.breaking_commits([message]) == []
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "docs!: make output reproducible per exact version",
+        "ci!: replace the seed gate",
+        "test!: rename the fixtures",
+        "style!: reformat",
+        "chore(agents)!: restrict the permissions\n\nBREAKING CHANGE: agents prompt more",
+    ],
+)
+def test_only_commits_that_can_change_the_public_api_count_as_breaking(message):
+    # ADR 0011: the major version is for breaks of the public API. A docs, CI,
+    # test, style or chore commit cannot break it, whatever its marker says.
+    assert release.breaking_commits([message]) == []
+
+
+def test_build_commits_can_break_users():
+    assert release.breaking_commits(["build!: require Python 3.12"]) == [
+        "build!: require Python 3.12"
+    ]
+
+
 def test_breaking_commits_need_a_major_bump():
     breaking = ["refactor!: change the enums"]
     with pytest.raises(release.ReleaseError, match="not a major release"):

@@ -28,7 +28,7 @@ pytest --cov
 - CI also fails if any seed's output differs from the latest release without a `MODEL_REVISION` increment and an *Output changes* changelog section: see [Reproducibility](../reference/reproducibility/).
 - CI also fails if the code is more than 15% slower than the latest release on any of a fixed set of workloads. A slowdown that buys something is declared with an `Accept-Slowdown: 25%` trailer in a commit message.
 - The code blocks of these pages and of the README are run in CI against the built package. Mark a block that is too long to run, or that needs the reader's own data, with `check=static` after its language (` ```python check=static `): it is then checked against the API without running.
-- Commits follow [Conventional Commits](https://www.conventionalcommits.org/). A commit marked breaking (`feat!:` or a `BREAKING CHANGE:` footer) blocks a release that is not a major bump.
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org/). A commit that breaks the public API is marked `feat!:` (or `fix!:`, `refactor!:`, `build!:`, ...) or has a `BREAKING CHANGE:` footer, and blocks a release that is not a major bump. `docs`, `ci`, `test`, `style` and `chore` commits never count as breaking.
 
 ## The website
 

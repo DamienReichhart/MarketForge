@@ -121,16 +121,23 @@ def check_newer_than_tags(version: Version, tags: Iterable[str]) -> None:
 
 
 # Conventional Commits: `feat!: ...`, `refactor(api)!: ...`, or a footer.
-_BREAKING_SUBJECT = re.compile(r"^[A-Za-z]+(?:\([^)]*\))?!:")
+_BREAKING_SUBJECT = re.compile(r"^([A-Za-z]+)(?:\([^)]*\))?!:")
 _BREAKING_FOOTER = re.compile(r"^BREAKING[ -]CHANGE:", re.MULTILINE)
+_TYPE = re.compile(r"^([A-Za-z]+)(?:\([^)]*\))?!?:")
+# The major version is for breaks of the public API (ADR 0011). Commits of
+# these types cannot change it, whatever their marker says; `build` can (a
+# dropped Python version or dependency breaks users), so it counts.
+_NON_API_TYPES = frozenset({"docs", "ci", "test", "style", "chore"})
 
 
 def breaking_commits(messages: Iterable[str]) -> list[str]:
-    """Subjects of the commit messages marked as breaking changes."""
+    """Subjects of the commit messages that mark a break of the public API."""
     out = []
     for message in messages:
         subject = message.strip().splitlines()[0] if message.strip() else ""
-        if _BREAKING_SUBJECT.match(subject) or _BREAKING_FOOTER.search(message):
+        marked = _BREAKING_SUBJECT.match(subject) or _BREAKING_FOOTER.search(message)
+        kind = _TYPE.match(subject)
+        if marked and not (kind and kind.group(1).lower() in _NON_API_TYPES):
             out.append(subject)
     return out
 
