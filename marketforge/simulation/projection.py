@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from marketforge.simulation.factors import FactorStructure
+from marketforge.config.factors import FactorStructure
 from marketforge.simulation.kernels import project_signed
 
 

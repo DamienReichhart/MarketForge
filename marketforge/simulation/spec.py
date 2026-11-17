@@ -14,10 +14,10 @@ import numpy as np
 
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.defaults import MarketDefaults, get_market_defaults
+from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.config.model_params import AnomalyConfig
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
-from marketforge.simulation.factors import FactorStructure, forex_structure
 
 
 @dataclass(frozen=True)
