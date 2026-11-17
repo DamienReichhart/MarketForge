@@ -20,10 +20,10 @@ marketforge [--debug] COMMAND [OPTIONS]
 
 ```bash
 # One year of EURUSD, every timeframe, reproducible
-marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
+marketforge generate -o ./eurusd --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
 # A whole market as Parquet, with regime labels and the bid-ask spread
-marketforge generate -o ./data --from 2024-01-01 --days 180 --market crypto \
+marketforge generate -o ./crypto --from 2024-01-01 --days 180 --market crypto \
     --format parquet --with-regime --with-spread --seed 7
 
 # What would a run produce (files, rows, disk size, time)? Nothing is written.
@@ -55,7 +55,7 @@ A file that receives no candle (the market was closed for the whole range, or th
 ## extend
 
 ```bash
-marketforge extend ./data --to 2025-03-01     # or --days 30
+marketforge extend ./eurusd --to 2025-03-01   # or --days 30
 ```
 
 Continues a dataset with everything but the new end taken from its manifest. Afterwards it holds exactly the candles one generation up to the new end would have produced. See [Extending a dataset](../extend/).
@@ -71,7 +71,7 @@ Continues a dataset with everything but the new end taken from its manifest. Aft
 ## validate
 
 ```bash
-marketforge validate --input ./data/forex/EURUSD_m1.csv
+marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
 ```
 
 | Option | Meaning |

@@ -94,20 +94,20 @@ and stress-test, and real data to decide whether anything earns money. See
 
 ```bash
 # One year of EURUSD, every timeframe, reproducible
-marketforge generate -o ./data --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
+marketforge generate -o ./eurusd --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
 # A whole market as Parquet, with regime labels and the bid-ask spread
-marketforge generate -o ./data --from 2024-01-01 --days 180 --market crypto \
+marketforge generate -o ./crypto --from 2024-01-01 --days 180 --market crypto \
     --format parquet --with-regime --with-spread --seed 7
 
 # What would a run produce (files, rows, disk size, time)? Nothing is written.
 marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 
 # Continue a dataset: 30 more days, same seed, instruments, timeframes and format
-marketforge extend ./data --days 30
+marketforge extend ./eurusd --days 30
 
 # Check an m1 file against real-market stylized facts (exit code 1 on failure)
-marketforge validate --input ./data/forex/EURUSD_m1.csv
+marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
 ```
 
 Every option is in the
