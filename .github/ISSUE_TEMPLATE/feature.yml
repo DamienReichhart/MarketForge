@@ -1,0 +1,15 @@
+name: Feature request
+description: Something MarketForge should do for training models, backtesting or stress testing.
+labels: [needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task, and what is hard about it today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help?

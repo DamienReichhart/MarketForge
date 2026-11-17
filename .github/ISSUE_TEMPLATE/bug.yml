@@ -1,0 +1,25 @@
+name: Bug report
+description: Something MarketForge does wrong, crashes on, or documents incorrectly.
+labels: [needs-triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The exact command or Python code, with the seed. A dataset's marketforge.json is enough for generation bugs.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: Output of `marketforge --version`, Python version, and OS.
+    validations:
+      required: true

@@ -1,0 +1,26 @@
+name: Realism report
+description: Generated data that does not look like the real market, or statistics measured on real data.
+labels: [needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you. Measurements on real data are the most valuable contribution to MarketForge. Never attach raw market data; derived statistics only.
+  - type: textarea
+    id: observation
+    attributes:
+      label: What is unrealistic, or what did you measure?
+      description: Which instruments, timeframe and statistic (for example the lag-1 autocorrelation of |r| on EURUSD m1), and the value in real data versus MarketForge.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Data source and period
+      description: Where the real data comes from (venue, vendor), the period, and whether its licence allows sharing derived statistics.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output of `marketforge validate --json`, if you ran it
+      render: json
