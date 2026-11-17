@@ -126,7 +126,9 @@ def _call(mf: Any, name: str, spec: dict[str, Any], workdir: Path) -> Callable[[
         return None
     if spec["call"] == "generate_to_disk":
         out = workdir / re.sub(r"\W+", "-", name)
-        return lambda: function(out, list(spec["instruments"]), **spec["kwargs"])
+        # Each timing writes the dataset again; 4.0 refuses that without overwrite.
+        again = {"overwrite": True} if "overwrite" in parameters else {}
+        return lambda: function(out, list(spec["instruments"]), **spec["kwargs"], **again)
     return lambda: function(list(spec["instruments"]), **spec["kwargs"])
 
 
