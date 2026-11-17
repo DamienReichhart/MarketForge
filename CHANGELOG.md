@@ -113,6 +113,15 @@ options and parameters.
 - **`days=`** is accepted instead of `end=` in Python, as `--days` is on the
   command line.
 
+### Command line
+- **`marketforge info DATASET`** summarises a dataset from its manifest
+  (version, model revision, seed, range, instruments, files and size) and
+  says whether it can be extended, and if not with which version.
+- **`marketforge validate --input DATASET`** validates every `m1` file of a
+  dataset, one line per file, with an overall exit code.
+- **`--json`** on `info`, `validate` and `list-instruments` prints
+  machine-readable output for scripts and CI.
+
 ### Extendable datasets
 - **`marketforge extend ./data --to 2025-03-01`** (or `--days 30`) and
   `mf.extend(dataset, end)` continue a dataset. The result is exactly what one

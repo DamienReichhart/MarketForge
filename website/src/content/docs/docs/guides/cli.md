@@ -72,20 +72,32 @@ Continues a dataset with everything but the new end taken from its manifest. Aft
 
 ```bash
 marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
+marketforge validate --input ./eurusd            # every m1 file of a dataset
 ```
 
 | Option | Meaning |
 | --- | --- |
-| `--input` | CSV, Parquet or Feather file of `m1` candles with `open`, `high`, `low` and `close` columns. Other timeframes are refused. |
+| `--input` | A CSV, Parquet or Feather file of `m1` candles with `open`, `high`, `low` and `close` columns, or a dataset directory: every `m1` file in it. Other timeframes are refused. |
 | `--market` | `crypto`, `forex` or `stocks`: whose bands to apply. Optional for a file MarketForge wrote: it is read from the path (`{market}/{SYMBOL}_m1`). |
+| `--json` | Prints each file's statistics, bands and verdict as JSON. |
 
-Prints a report and exits with code 1 if any statistic is outside its band. Works on any file with those columns, including your own real data. See [Validation](../validation/).
+Prints a report (one line per file for a dataset) and exits with code 1 if any statistic is outside its band. Works on any file with those columns, including your own real data. See [Validation](../validation/).
+
+## info
+
+```bash
+marketforge info ./eurusd
+marketforge info ./eurusd --json
+```
+
+Summarises a dataset from its manifest: the MarketForge version and model revision that wrote it, the seed, range, instruments, files and their size, and whether this MarketForge can [extend](../extend/) it (and if not, which version can). `--json` prints the same as JSON, for scripts.
 
 ## list-instruments
 
 ```bash check=static
 marketforge list-instruments --market forex
 marketforge list-instruments --config my_instruments.toml
+marketforge list-instruments --json
 ```
 
 | Option | Meaning |

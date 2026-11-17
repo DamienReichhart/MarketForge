@@ -24,9 +24,14 @@ from marketforge.domain.markets import MarketType
     type=click.Path(exists=True, dir_okay=False),
     help="TOML override file to apply first.",
 )
-def list_instruments(market: str | None, overrides: str | None) -> None:
+@click.option("--json", "as_json", is_flag=True, help="Print the instruments as JSON.")
+def list_instruments(market: str | None, overrides: str | None, as_json: bool) -> None:
     """List available instruments with their start price and volatility."""
     table = instruments(market, overrides=overrides)
+    if as_json:
+        rows = table.reset_index().rename(columns={"index": "symbol"})
+        click.echo(rows.to_json(orient="records", indent=2))
+        return
     for name, rows in table.groupby("market", sort=False):
         click.secho(f"\n{name} ({len(rows)} instruments)", bold=True)
         click.echo(f"  {'SYMBOL':<10}{'START':>14}{'VOL':>8}{'DRIFT':>8}  NOTE")
