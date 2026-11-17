@@ -1,15 +1,46 @@
 {
-    "permissions": {
-      "allow": [
-        "Bash(*)",
-        "Read",
-        "Edit",
-        "Write"
-      ],
-      "deny": [
-        "Bash(rm -rf *)",
-        "Bash(sudo *)"
-      ],
-      "ask": []
-    }
-  }  
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(lint-imports:*)",
+      "Bash(marketforge:*)",
+      "Bash(pip install -e .:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run check-links:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(pip install:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
