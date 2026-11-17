@@ -285,3 +285,24 @@ def test_override_errors_from_a_file_name_the_file(tmp_path):
     path.write_text('[instruments.BTCUSD]\nvolatility = "x"\n')
     with pytest.raises(ValueError, match=r"mine\.toml: \[instruments\.BTCUSD\]\.volatility"):
         mf.generate("BTCUSD", start="2024-01-01", end="2024-01-02", overrides=path)
+
+
+def test_overriding_what_a_forex_cross_derives_from_its_anchors_is_warned_about():
+    with pytest.warns(
+        UserWarning,
+        match=r"EURJPY is a forex cross derived from EURUSD and USDJPY: its start_price, volatility override is ignored",
+    ):
+        data = mf.generate(
+            "EURJPY",
+            start="2024-01-02",
+            end="2024-01-03",
+            seed=1,
+            overrides={"EURJPY": {"volatility": 0.5, "start_price": 100.0, "spread_bps": 3.0}},
+        )
+    assert data["EURJPY"]["m1"]["open"].iloc[0] != 100.0  # the anchors decide
+
+
+def test_instruments_outside_the_requested_markets_are_warned_about():
+    with pytest.warns(UserWarning, match=r"AAPL.*not in the requested markets"):
+        data = mf.generate("BTCUSD,AAPL", markets="crypto", start="2024-01-02", end="2024-01-03")
+    assert list(data) == ["BTCUSD"]

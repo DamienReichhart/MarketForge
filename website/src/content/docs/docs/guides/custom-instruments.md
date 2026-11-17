@@ -53,7 +53,7 @@ mf.generate("BTCUSD", start="2024-01-01", end="2024-03-01",
 
 Correlations you do not specify for a new instrument are implied from the ones you do: a coin 0.6-correlated with BTC is also correlated with ETH. The resulting correlation matrix is always valid.
 
-Forex crosses take their volatility and start price from their anchor pairs, so they stay arbitrage-free.
+Forex crosses take their start price, volatility, drift and correlations from their anchor pairs, so they stay arbitrage-free. Overriding those keys on a built-in cross (EURJPY, for example) has no effect and is warned about: override the anchors (EURUSD, USDJPY) instead. Volume and spread keys do apply to crosses.
 
 ## Reproducibility
 

@@ -9,8 +9,12 @@
 from __future__ import annotations
 
 import difflib
+import warnings
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 from marketforge.api.parsing import (
     Names,
@@ -138,12 +142,20 @@ def plan_request(
         unknown = [a for a in requested if a not in symbol_market]
         if unknown:
             raise ValueError(_unknown_instruments(unknown, list(symbol_market)))
+        dropped = []
         for a in requested:
             m = symbol_market[a]
             if wanted_markets is None or m in wanted_markets:
                 by_market.setdefault(m, []).append(a)
+            else:
+                dropped.append(f"{a} ({m.value})")
         if not by_market:
             raise ValueError("None of the requested instruments belong to the requested markets")
+        if dropped:
+            warnings.warn(
+                f"{', '.join(dropped)} not in the requested markets, so not generated",
+                skip_file_prefixes=_PACKAGE_DIR,
+            )
     else:
         for m in wanted_markets or list(MarketType):
             by_market[m] = list(catalog[m].symbols)
@@ -152,9 +164,38 @@ def plan_request(
         MarketPlan(build_market_spec(catalog[m], anomaly_types), selected)
         for m, selected in by_market.items()
     ]
+    _warn_about_ignored_cross_overrides(plans, resolved)
     return Request(
         plans, t0, t1, seed, tfs, include_regime, anomaly_types, resolved, include_spread
     )
+
+
+# Warnings point at the caller's code, not at MarketForge's.
+_PACKAGE_DIR = (str(Path(__file__).resolve().parents[1]),)
+
+# What a forex cross takes from its anchors, not from its own parameters (ADR 0002).
+_DERIVED_KEYS = ("start_price", "volatility", "drift", "correlations")
+
+
+def _warn_about_ignored_cross_overrides(
+    plans: list[MarketPlan], overrides: dict[str, dict[str, Any]]
+) -> None:
+    for plan in plans:
+        structure = plan.spec.structure
+        if structure.is_identity:
+            continue
+        factors = set(structure.factors)
+        for symbol in plan.spec.symbols:
+            ignored = [k for k in _DERIVED_KEYS if k in overrides.get(symbol, {})]
+            if symbol in factors or not ignored:
+                continue
+            i = structure.instruments.index(symbol)
+            anchors = [structure.factors[j] for j in np.flatnonzero(structure.weights[i])]
+            warnings.warn(
+                f"{symbol} is a forex cross derived from {' and '.join(anchors)}: its "
+                f"{', '.join(ignored)} override is ignored. Override the anchors instead.",
+                skip_file_prefixes=_PACKAGE_DIR,
+            )
 
 
 def _unknown_instruments(unknown: list[str], known: list[str]) -> str:
