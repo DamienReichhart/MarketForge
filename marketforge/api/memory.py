@@ -215,6 +215,10 @@ def generate_many(
         jobs: Processes to use (default: the CPU count). Each process compiles
             the kernels once (a couple of seconds on a cold cache).
         **kwargs: Every other argument of :func:`generate` except ``seed``.
+
+    In a script, call it under ``if __name__ == "__main__":``: worker
+    processes import the script again, as with any Python multiprocessing.
+    Notebooks and the REPL need nothing.
     """
     if "seed" in kwargs:
         raise TypeError("generate_many() takes seeds=, not seed=")

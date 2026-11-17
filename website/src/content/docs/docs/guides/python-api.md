@@ -36,7 +36,7 @@ print(report.passed, report.summary())
 | Function | What it does |
 | --- | --- |
 | `generate(...)` | Candles in memory: `{symbol: {timeframe: DataFrame}}`. Each DataFrame has a UTC `DatetimeIndex` named `time` and the columns `open, high, low, close, volume`, plus `spread` with `include_spread=True` and a categorical `regime` with `include_regime=True`. |
-| `generate_many(instruments, *, seeds, jobs=None, ...)` | `generate()` once per seed, in parallel processes, yielded in seed order: train/validation/test splits or hundreds of stress-test histories. |
+| `generate_many(instruments, *, seeds, jobs=None, ...)` | `generate()` once per seed, in parallel processes, yielded in seed order: train/validation/test splits or hundreds of stress-test histories. In a script, call it under `if __name__ == "__main__":`, as any Python multiprocessing needs; notebooks need nothing. |
 | `GeneratedData.panel(column, timeframe)` | One column of every instrument side by side. The index is the union of all candle times; a value is NaN where that instrument's market was closed, never forward-filled. |
 | `GeneratedData.to_long(timeframe)` | Every instrument of a timeframe in one frame indexed by `(symbol, time)`: the long format of most data and ML tooling. |
 | `GeneratedData.to_numpy(timeframe, columns)` | A `(time, instrument, column)` float array for tensors, with its time index and symbol list; NaN where a market was closed, regime as its codes. |
@@ -55,7 +55,7 @@ print(report.passed, report.summary())
 mf.generate(
     instruments=None, *, start, end=None, days=None, markets=None, seed=None,
     timeframes=("m1",), anomalies=(), include_regime=False, include_spread=False,
-    overrides=None,
+    include_bid_ask=False, overrides=None,
 ) -> GeneratedData
 ```
 

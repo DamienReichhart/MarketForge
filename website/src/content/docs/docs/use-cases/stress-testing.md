@@ -24,10 +24,10 @@ for data in mf.generate_many("SPXUSD,XAUUSD,EURUSD", seeds=range(200), start="20
     equity = run_my_strategy(data)            # your backtest, returning an equity curve
     results.append(max_drawdown(equity))
 
-print(np.percentile(results, [50, 95, 99]))   # typical, bad and very bad drawdown
+print(np.percentile(results, [50, 5, 1]))     # typical, bad and very bad drawdown (negative)
 ```
 
-The 99th percentile of drawdown across 200 histories says far more about risk than the single drawdown of one backtest.
+The worst 1% of drawdowns across 200 histories says far more about risk than the single drawdown of one backtest.
 
 ## Crash and high-volatility regimes
 

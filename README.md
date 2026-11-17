@@ -140,7 +140,10 @@ report = mf.validate(m1, "crypto")
 print(report.summary())
 ```
 
-See the [Python API](https://damienreichhart.github.io/MarketForge/docs/guides/python-api/).
+See the [Python API](https://damienreichhart.github.io/MarketForge/docs/guides/python-api/), and
+[`examples/`](https://github.com/DamienReichhart/MarketForge/tree/main/examples) for runnable
+scripts: a regime classifier, training windows for a neural network, a backtest that fills at
+the quote, and Monte Carlo drawdowns.
 
 ## Output
 
