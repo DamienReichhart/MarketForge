@@ -80,3 +80,15 @@ def test_quiet_prints_nothing_on_success(tmp_path):
     res = CliRunner().invoke(cli, ["extend", str(tmp_path), "--days", "1", "-q"])
     assert res.exit_code == 0 and res.output == ""
     assert (tmp_path / "stocks" / "AAPL_D1.csv").exists()
+
+
+def test_verify_regenerates_a_dataset_and_compares_every_file(tmp_path):
+    _dataset(tmp_path, include_spread=True)
+    res = _run("verify", str(tmp_path))
+    assert res.exit_code == 0, res.output
+    assert "4/4 files identical" in res.output
+    path = tmp_path / "forex" / "EURUSD_H1.csv"
+    path.write_text(path.read_text().replace("1.", "2.", 1))
+    res = _run("verify", str(tmp_path))
+    assert res.exit_code == 1
+    assert "differs: forex/EURUSD_H1.csv" in res.output and "3/4 files identical" in res.output

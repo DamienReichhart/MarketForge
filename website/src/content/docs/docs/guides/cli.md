@@ -94,6 +94,14 @@ marketforge info ./eurusd --json
 
 Summarises a dataset from its manifest: the MarketForge version and model revision that wrote it, the seed, range, instruments, files and their size, and whether this MarketForge can [extend](../extend/) it (and if not, which version can). `--json` prints the same as JSON, for scripts.
 
+## verify
+
+```bash
+marketforge verify ./eurusd
+```
+
+Regenerates a dataset from its manifest in a temporary directory and compares every file byte for byte, listing any that differ, are missing or are extra. It exits with code 1 unless all match: the dataset was modified, or it was written on another kind of machine (see [Reproducibility](../../reference/reproducibility/)). A dataset written by another model revision is refused, with the version to verify it with.
+
 ## list-instruments
 
 ```bash check=static

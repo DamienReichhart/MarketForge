@@ -25,6 +25,7 @@ from marketforge.cli.commands.generate import generate
 from marketforge.cli.commands.info import info
 from marketforge.cli.commands.list_instruments import list_instruments
 from marketforge.cli.commands.validate import validate
+from marketforge.cli.commands.verify import verify
 
 
 class _Group(click.Group):
@@ -62,6 +63,7 @@ cli.add_command(extend)
 cli.add_command(info)
 cli.add_command(list_instruments)
 cli.add_command(validate)
+cli.add_command(verify)
 
 
 def main() -> None:

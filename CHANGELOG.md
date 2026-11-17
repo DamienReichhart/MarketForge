@@ -122,6 +122,9 @@ options and parameters.
 - **`marketforge info DATASET`** summarises a dataset from its manifest
   (version, model revision, seed, range, instruments, files and size) and
   says whether it can be extended, and if not with which version.
+- **`marketforge verify DATASET`** regenerates a dataset from its manifest
+  and compares every file byte for byte: proof that a dataset is untouched
+  and reproducible here.
 - **`marketforge validate --input DATASET`** validates every `m1` file of a
   dataset, one line per file, with an overall exit code.
 - **`--json`** on `info`, `validate` and `list-instruments` prints
