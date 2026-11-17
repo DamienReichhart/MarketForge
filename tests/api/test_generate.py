@@ -306,3 +306,8 @@ def test_instruments_outside_the_requested_markets_are_warned_about():
     with pytest.warns(UserWarning, match=r"AAPL.*not in the requested markets"):
         data = mf.generate("BTCUSD,AAPL", markets="crypto", start="2024-01-02", end="2024-01-03")
     assert list(data) == ["BTCUSD"]
+
+
+def test_ranges_before_1970_are_refused_with_a_clear_message():
+    with pytest.raises(ValueError, match=r"starts before 1970-01-01"):
+        mf.generate("BTCUSD", start="1969-12-31", end="1970-01-02")

@@ -128,6 +128,11 @@ def plan_request(
     t0, t1 = parse_time(start), parse_time(end)
     if t0 >= t1:
         raise ValueError(f"start ({t0}) must be before end ({t1})")
+    if t0 < 0:
+        raise ValueError(
+            f"The range starts before 1970-01-01 (Unix time {t0}); MarketForge simulates "
+            "from 1970-01-01 UTC onwards"
+        )
     seed = parse_seed(seed)
     tfs = parse_timeframes(timeframes)
     anomaly_types = parse_anomalies(anomalies)
