@@ -143,6 +143,8 @@ options and parameters.
   [ADR 0009](docs/adr/0009-extend-datasets-from-an-exact-checkpoint.md).
 
 ### Bid-ask spread
+- **`--with-bid-ask` / `include_bid_ask=True`** adds `bid` and `ask` columns:
+  the quotes around the close, for backtesters that fill at the quote.
 - **`--with-spread` / `include_spread=True`** adds a `spread` column: the mean
   quoted spread of the candle, in price units, around prices that are mid
   prices. It widens in turbulent markets, in quiet hours and when a market

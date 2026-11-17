@@ -58,6 +58,7 @@ class CandleWriter:
         extend: bool = False,
         include_spread: bool = False,
         timestamps: TimestampFormat = TimestampFormat.UNIX,
+        include_bid_ask: bool = False,
     ) -> None:
         """
         With ``extend``, candles are added to the files a dataset already has:
@@ -72,8 +73,13 @@ class CandleWriter:
         check_formats(self.fmt, TimestampFormat(timestamps))
         self.include_regime = include_regime
         self.schema = candle_schema(
-            include_regime, include_spread, TimestampFormat(timestamps) == TimestampFormat.DATETIME
+            include_regime,
+            include_spread,
+            TimestampFormat(timestamps) == TimestampFormat.DATETIME,
+            include_bid_ask,
         )
+        self._spread = include_spread
+        self._bid_ask = include_bid_ask
         self._symbols = list(symbols)
         self._columns = list(columns)
         if len(self._symbols) != len(self._columns):
@@ -122,7 +128,7 @@ class CandleWriter:
     def write(self, timeframe: Timeframe, bars: Bars | None) -> None:
         if bars is None or len(bars) == 0:
             return
-        ts, fields = rounded_columns(bars, self._columns)
+        ts, fields = rounded_columns(bars, self._columns, self._spread, self._bid_ask)
         regime = (bars.regime.astype(np.int8),) if self.include_regime else ()
         rows = len(bars)
         for j, symbol in enumerate(self._symbols):

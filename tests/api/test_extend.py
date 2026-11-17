@@ -110,6 +110,7 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
         "anomalies": [],
         "include_regime": False,
         "include_spread": False,
+        "include_bid_ask": False,
         "instruments": {"crypto": ["MYCOIN"], "forex": ["EURUSD"]},
         "overrides": overrides,
     }

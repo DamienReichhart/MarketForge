@@ -394,3 +394,27 @@ def test_generate_many_yields_each_seed_as_generate_would_in_seed_order():
         expected = mf.generate("BTCUSD,EURUSD", seed=data.seed, **kwargs)
         for symbol in expected:
             pd.testing.assert_frame_equal(data[symbol]["H1"], expected[symbol]["H1"])
+
+
+def test_bid_and_ask_quote_the_close_around_the_mid(tmp_path):
+    kwargs = {"start": "2024-01-02", "days": 2, "seed": 9, "timeframes": "m1,H1"}
+    both = mf.generate("EURUSD", include_spread=True, include_bid_ask=True, **kwargs)["EURUSD"][
+        "H1"
+    ]
+    only = mf.generate("EURUSD", include_bid_ask=True, **kwargs)["EURUSD"]["H1"]
+    assert list(both.columns) == ["open", "high", "low", "close", "volume", "spread", "bid", "ask"]
+    assert list(only.columns) == ["open", "high", "low", "close", "volume", "bid", "ask"]
+    np.testing.assert_allclose(both["ask"] - both["bid"], both["spread"], rtol=1e-9)
+    np.testing.assert_allclose((both["ask"] + both["bid"]) / 2, both["close"], rtol=1e-12)
+    pd.testing.assert_frame_equal(only, both.drop(columns="spread"))
+
+    mf.generate_to_disk(
+        tmp_path,
+        "EURUSD",
+        include_bid_ask=True,
+        end="2024-01-03",
+        **{k: v for k, v in kwargs.items() if k != "days"},
+    )
+    mf.extend(tmp_path, "2024-01-04")
+    back = mf.read(tmp_path)["EURUSD"]["H1"]
+    np.testing.assert_allclose(back[["bid", "ask"]], only[["bid", "ask"]], atol=1e-8)

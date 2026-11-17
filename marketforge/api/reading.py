@@ -18,7 +18,7 @@ from marketforge.api.parsing import Names, as_names, parse_timeframes
 from marketforge.domain.regimes import RegimeType
 from marketforge.output.manifest import read_manifest
 
-_COLUMNS = ("open", "high", "low", "close", "volume", "spread", "regime")
+_COLUMNS = ("open", "high", "low", "close", "volume", "spread", "bid", "ask", "regime")
 _REGIMES = pd.CategoricalDtype([r.value for r in RegimeType])
 
 

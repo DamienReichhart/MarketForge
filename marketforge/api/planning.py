@@ -81,6 +81,12 @@ class Request:
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     include_spread: bool = False
     extends_from: int | None = None  # the end of the dataset this request extends
+    include_bid_ask: bool = False
+
+    @property
+    def simulates_spread(self) -> bool:
+        """Whether the spread is simulated: for its column, or for bid and ask."""
+        return self.include_spread or self.include_bid_ask
 
     @property
     def first_day(self) -> int:
@@ -110,6 +116,7 @@ def plan_request(
     include_spread: bool = False,
     overrides: Overrides | None = None,
     days: int | None = None,
+    include_bid_ask: bool = False,
 ) -> Request:
     """
     Resolve user input into a :class:`Request`.
@@ -174,7 +181,16 @@ def plan_request(
     ]
     _warn_about_ignored_cross_overrides(plans, resolved)
     return Request(
-        plans, t0, t1, seed, tfs, include_regime, anomaly_types, resolved, include_spread
+        plans,
+        t0,
+        t1,
+        seed,
+        tfs,
+        include_regime,
+        anomaly_types,
+        resolved,
+        include_spread,
+        include_bid_ask=include_bid_ask,
     )
 
 

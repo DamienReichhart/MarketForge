@@ -43,7 +43,11 @@ def info(dataset: str, as_json: bool) -> None:
         "timestamps": manifest.timestamps,
         "timeframes": manifest.timeframes,
         "instruments": manifest.instruments,
-        "columns": {"spread": manifest.include_spread, "regime": manifest.include_regime},
+        "columns": {
+            "spread": manifest.include_spread,
+            "bid_ask": manifest.include_bid_ask,
+            "regime": manifest.include_regime,
+        },
         "anomalies": manifest.anomalies,
         "overrides": sorted(manifest.overrides),
         "files": len(files),

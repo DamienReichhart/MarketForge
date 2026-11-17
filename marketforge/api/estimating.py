@@ -27,6 +27,7 @@ _ROW_SECONDS = {"csv": 0.75e-6, "parquet": 0.6e-6, "feather": 0.5e-6, "memory": 
 # Bytes per written row (timestamp, OHLCV), and for the spread column.
 _ROW_BYTES = {"csv": 68, "parquet": 33, "feather": 45}
 _SPREAD_BYTES = {"csv": 11, "parquet": 6, "feather": 7}
+_QUOTE_BYTES = {"csv": 15, "parquet": 8, "feather": 9}  # each of bid and ask
 
 
 @dataclass(frozen=True)
@@ -106,8 +107,12 @@ def estimate_request(request: Request, fmt: str) -> Estimate:
         per_instrument = sum(minutes // max(1, min(tf.minutes, 1440)) for tf in request.timeframes)
         rows += per_instrument * len(plan.selected)
         market_seconds.append(_simulation_seconds(plan, request.n_days, minutes))
-    columns = 6 + request.include_spread + request.include_regime
-    row_bytes = _ROW_BYTES[fmt] + request.include_spread * _SPREAD_BYTES[fmt]
+    columns = 6 + request.include_spread + 2 * request.include_bid_ask + request.include_regime
+    row_bytes = (
+        _ROW_BYTES[fmt]
+        + request.include_spread * _SPREAD_BYTES[fmt]
+        + 2 * request.include_bid_ask * _QUOTE_BYTES[fmt]
+    )
     return Estimate(
         files=sum(len(p.selected) for p in request.plans) * len(request.timeframes),
         rows=rows,

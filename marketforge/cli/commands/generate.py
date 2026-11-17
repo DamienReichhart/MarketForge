@@ -98,6 +98,11 @@ from marketforge.output.manifest import dataset_files
     help="Add a 'spread' column: the mean quoted bid-ask spread of the candle, in price units.",
 )
 @click.option(
+    "--with-bid-ask",
+    is_flag=True,
+    help="Add 'bid' and 'ask' columns: the quotes around the close (close -/+ spread / 2).",
+)
+@click.option(
     "--with-regime",
     is_flag=True,
     help="Add a 'regime' column: trend_up, trend_down, range, high_volatility or crash.",
@@ -129,6 +134,7 @@ def generate(
     timestamps: str,
     overrides: str | None,
     with_spread: bool,
+    with_bid_ask: bool,
     with_regime: bool,
     jobs: int | None,
     dry_run: bool,
@@ -163,6 +169,7 @@ def generate(
         anomalies=anomalies or (),
         include_regime=with_regime,
         include_spread=with_spread,
+        include_bid_ask=with_bid_ask,
         overrides=overrides,
     )
     if not quiet or dry_run:

@@ -52,6 +52,7 @@ class Manifest:
     anomalies: list[str]
     include_regime: bool
     include_spread: bool
+    include_bid_ask: bool
     instruments: dict[str, list[str]]  # market -> symbols, in file order
     overrides: dict[str, dict[str, Any]]
     checkpoint: dict[str, dict[str, Any]]  # market -> where to resume
@@ -69,6 +70,7 @@ class Manifest:
             "anomalies": self.anomalies,
             "include_regime": self.include_regime,
             "include_spread": self.include_spread,
+            "include_bid_ask": self.include_bid_ask,
             "instruments": self.instruments,
             "overrides": self.overrides,
             "checkpoint": self.checkpoint,
@@ -90,6 +92,7 @@ class Manifest:
             anomalies=doc["anomalies"],
             include_regime=doc["include_regime"],
             include_spread=doc["include_spread"],
+            include_bid_ask=doc.get("include_bid_ask", False),
             instruments=doc["instruments"],
             overrides=doc["overrides"],
             checkpoint=doc["checkpoint"],

@@ -122,6 +122,7 @@ def generate(
     anomalies: Names = (),
     include_regime: bool = False,
     include_spread: bool = False,
+    include_bid_ask: bool = False,
     overrides: Overrides | None = None,
 ) -> GeneratedData:
     """
@@ -143,6 +144,8 @@ def generate(
         include_spread: Add a ``spread`` column: the mean quoted bid-ask spread
             over the candle, in price units. ``open``, ``high``, ``low`` and
             ``close`` are mid prices, so bid = price - spread / 2.
+        include_bid_ask: Add ``bid`` and ``ask`` columns: the quotes around the
+            close, ``close -+ spread / 2``.
         overrides: Path to a TOML override file, or the same content as
             ``{SYMBOL: {key: value}}`` (custom prices, new instruments).
 
@@ -162,6 +165,7 @@ def generate(
         anomalies=anomalies,
         include_regime=include_regime,
         include_spread=include_spread,
+        include_bid_ask=include_bid_ask,
         overrides=overrides,
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
@@ -176,7 +180,11 @@ def generate(
         for tf in request.timeframes:
             chunks = parts.get((plan.market, tf))
             frames = _frames(
-                chunks or [], len(plan.selected), request.include_regime, request.include_spread
+                chunks or [],
+                len(plan.selected),
+                request.include_regime,
+                request.include_spread,
+                request.include_bid_ask,
             )
             for symbol, frame in zip(plan.selected, frames, strict=True):
                 out.setdefault(symbol, {})[tf.name] = frame
@@ -229,7 +237,11 @@ _FRAME_COLUMNS = ("open", "high", "low", "close", "volume")
 
 
 def _frames(
-    chunks: list[Bars], n_instruments: int, include_regime: bool, include_spread: bool
+    chunks: list[Bars],
+    n_instruments: int,
+    include_regime: bool,
+    include_spread: bool,
+    include_bid_ask: bool = False,
 ) -> list[pd.DataFrame]:
     """
     One DataFrame per instrument from a market's candle chunks.
@@ -238,7 +250,7 @@ def _frames(
     (instrument, column, row) block; each frame then wraps its own slice
     without another copy, and all frames share one (immutable) time index.
     """
-    columns = (*_FRAME_COLUMNS, "spread") if include_spread else _FRAME_COLUMNS
+    columns = (*_FRAME_COLUMNS, "spread") if include_spread or include_bid_ask else _FRAME_COLUMNS
     n = sum(len(c) for c in chunks)
     block = np.empty((n_instruments, len(columns), n))
     ts = np.empty(n, dtype=np.int64)
@@ -256,6 +268,12 @@ def _frames(
     frames = []
     for j in range(n_instruments):
         df = pd.DataFrame(block[j].T, index=index, columns=list(columns), copy=False)
+        if include_bid_ask:
+            half = df["spread"] / 2
+            df["bid"] = df["close"] - half
+            df["ask"] = df["close"] + half
+            if not include_spread:
+                df = df.drop(columns="spread")
         if include_regime:
             df["regime"] = pd.Categorical.from_codes(
                 codes, categories=[r.value for r in RegimeType]

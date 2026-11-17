@@ -29,6 +29,7 @@ timestamp,open,high,low,close,volume
 | `open`, `high`, `low`, `close` | **Mid prices**, rounded to 8 decimals (trailing zeros are not written). |
 | `volume` | Rounded to 4 decimals. Base asset for crypto (BTC for BTCUSD), shares for stocks, **tick volume** (integer price updates per minute) for forex. |
 | `spread` | With `--with-spread`: the mean quoted bid-ask spread of the candle, in price units. `bid = price - spread / 2`, `ask = price + spread / 2`. |
+| `bid`, `ask` | With `--with-bid-ask`: the quotes around the close, `close - spread / 2` and `close + spread / 2`. |
 | `regime` | With `--with-regime`, last: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. Parquet files and frames in memory hold it as the same categorical, whose codes (`.cat.codes`) are 0 to 4 in that order. |
 
 ## Guarantees

@@ -70,6 +70,7 @@ def generate_to_disk(
     anomalies: Names = (),
     include_regime: bool = False,
     include_spread: bool = False,
+    include_bid_ask: bool = False,
     overrides: Overrides | None = None,
     fmt: str | OutputFormat = OutputFormat.CSV,
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
@@ -108,6 +109,7 @@ def generate_to_disk(
         anomalies=anomalies,
         include_regime=include_regime,
         include_spread=include_spread,
+        include_bid_ask=include_bid_ask,
         overrides=overrides,
     )
     return write_request(
@@ -170,6 +172,7 @@ def plan_extension(
         anomalies=manifest.anomalies,
         include_regime=manifest.include_regime,
         include_spread=manifest.include_spread,
+        include_bid_ask=manifest.include_bid_ask,
         overrides=manifest.overrides,
     )
     request.extends_from = manifest.end
@@ -210,6 +213,7 @@ def write_request(
             request.include_regime,
             extend=extending,
             include_spread=request.include_spread,
+            include_bid_ask=request.include_bid_ask,
             timestamps=timestamps,
         )
         for plan in request.plans
@@ -257,6 +261,7 @@ def write_request(
         anomalies=sorted(request.anomalies),
         include_regime=request.include_regime,
         include_spread=request.include_spread,
+        include_bid_ask=request.include_bid_ask,
         instruments={plan.market.value: plan.selected for plan in request.plans},
         overrides=request.overrides,
         checkpoint={
