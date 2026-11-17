@@ -255,3 +255,33 @@ def test_iso_timestamps_in_parquet_are_refused_before_anything_is_written(tmp_pa
             out, "AAPL", start="2024-01-02", end="2024-01-03", fmt="parquet", timestamps="iso"
         )
     assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        (
+            {"BTCUSD": {"volatility": "high"}},
+            r"\[instruments\.BTCUSD\]\.volatility must be a number, got 'high'",
+        ),
+        ({"BTCUSD": {"drift": True}}, r"\[instruments\.BTCUSD\]\.drift must be a number, got True"),
+        (
+            {"BTCUSD": {"correlations": 0.5}},
+            r"\[instruments\.BTCUSD\]\.correlations must be a table",
+        ),
+        (
+            {"BTCUSD": {"correlations": {"ETHUSD": "x"}}},
+            r"\[instruments\.BTCUSD\]\.correlations\.ETHUSD must be a number",
+        ),
+    ],
+)
+def test_override_values_of_the_wrong_type_say_where_they_are(overrides, match):
+    with pytest.raises(ValueError, match=match):
+        mf.generate("BTCUSD", start="2024-01-01", end="2024-01-02", overrides=overrides)
+
+
+def test_override_errors_from_a_file_name_the_file(tmp_path):
+    path = tmp_path / "mine.toml"
+    path.write_text('[instruments.BTCUSD]\nvolatility = "x"\n')
+    with pytest.raises(ValueError, match=r"mine\.toml: \[instruments\.BTCUSD\]\.volatility"):
+        mf.generate("BTCUSD", start="2024-01-01", end="2024-01-02", overrides=path)

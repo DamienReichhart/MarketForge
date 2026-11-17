@@ -95,8 +95,28 @@ def _checked(entries: Mapping[str, Any], where: str) -> dict[str, dict[str, Any]
                 f"{where}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; "
                 f"valid: {sorted(_KEYS)}"
             )
+        name = f"{where}: [instruments.{symbol}]"
+        for key in _FIELDS:
+            if key in body and not _is_number(body[key]):
+                raise OverrideError(f"{name}.{key} must be a number, got {body[key]!r}")
+        if "correlations" in body:
+            correlations = body["correlations"]
+            if not isinstance(correlations, Mapping):
+                raise OverrideError(
+                    f"{name}.correlations must be a table like {{ BTCUSD = 0.6 }}, "
+                    f"got {correlations!r}"
+                )
+            for other, rho in correlations.items():
+                if not _is_number(rho):
+                    raise OverrideError(
+                        f"{name}.correlations.{other} must be a number, got {rho!r}"
+                    )
         out[str(symbol).upper()] = dict(body)
     return out
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def _imply_new_correlations(
