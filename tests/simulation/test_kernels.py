@@ -243,10 +243,16 @@ def test_without_numba_on_emscripten_the_output_is_unchanged():
     # Pyodide (sys.platform "emscripten") has no Numba: the kernels run as
     # plain Python there and must give the same bits as the compiled ones.
     # Elsewhere a missing Numba must fail loudly, not fall back.
+    #
+    # The platform is faked only while the kernels module is imported, the
+    # one place that reads it. Every other module is first loaded under the
+    # real platform, and the fake is undone before generating: stdlib and
+    # dependencies branch on sys.platform at import and at call time (on
+    # Windows before Python 3.14, threadpoolctl took its Unix libc path and
+    # failed), so a process-wide fake tests a platform that does not exist.
     code = """
 import hashlib, sys
 import numpy as np
-import pandas, pyarrow, threadpoolctl  # import before faking the platform
 
 def fingerprint():
     import marketforge as mf
@@ -257,9 +263,20 @@ def fingerprint():
     return hashlib.sha256(np.ascontiguousarray(values).tobytes()).hexdigest()
 
 if sys.argv[1] == "emscripten":
+    import marketforge  # load every dependency under the real platform
+    for name in [m for m in sys.modules if m.partition(".")[0] == "marketforge"]:
+        del sys.modules[name]
     sys.modules["numba"] = None  # any `import numba` now raises ImportError
+    loaded, real_platform = set(sys.modules), sys.platform
     sys.platform = "emscripten"
-    from marketforge.simulation import kernels
+    try:
+        from marketforge.simulation import kernels
+    finally:
+        sys.platform = real_platform
+    leaked = sorted(
+        m for m in set(sys.modules) - loaded if m.partition(".")[0] != "marketforge"
+    )
+    assert not leaked, f"imported under the fake platform: {leaked}"
     assert not hasattr(kernels.regime_chain, "signatures"), "kernels were compiled"
 elif sys.argv[1] == "missing":
     sys.modules["numba"] = None
@@ -272,9 +289,10 @@ print(fingerprint())
 """
 
     def run(mode: str) -> str:
-        return subprocess.run(
-            [sys.executable, "-c", code, mode], check=True, capture_output=True, text=True
-        ).stdout.strip()
+        done = subprocess.run([sys.executable, "-c", code, mode], capture_output=True, text=True)
+        if done.returncode:
+            pytest.fail(f"{mode} run exited with {done.returncode}:\n{done.stderr}")
+        return done.stdout.strip()
 
     assert run("emscripten") == run("native")
     assert run("missing") == "refused"
