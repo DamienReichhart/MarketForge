@@ -27,11 +27,13 @@ marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --wit
 That is 90 days of all 53 crypto instruments, every default timeframe from `m1` to `W1`, with the regime of every candle, the same on every run with seed 42. The same from Python:
 
 ```python
+import marketforge as mf
+
 data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=42, timeframes=["H1"], include_regime=True)
 candles = data["BTCUSD"]["H1"]  # a pandas DataFrame: open, high, low, close, volume, regime
 ```
 
-The [quick start](quick-start/) goes from here to Parquet, panels, tensors and extending a dataset.
+The [quick start](quick-start/) goes from here to loading, validating and extending a dataset, and [core concepts](concepts/) explains the ideas behind every option in ten minutes.
 
 ## The five regimes
 
@@ -43,9 +45,14 @@ How regimes drive drift, volatility and correlation is in [the model](reference/
 
 ## What is in these docs
 
-- **Guides** walk through a task: the [command line](guides/cli/), the [Python API](guides/python-api/), the [output format](guides/output/), [extending a dataset](guides/extend/), [custom instruments](guides/custom-instruments/) and [validation](guides/validation/).
-- **Reference** states what MarketForge does and why: [markets and calendars](reference/markets/), [the model](reference/model/), [the bid-ask spread](reference/spread/), [reproducibility](reference/reproducibility/) and the [glossary](reference/glossary/).
-- **Project** pages cover the [changelog](../changelog/), [migrating to 4.0](migrating-to-4/), the [design decisions](adr/0001-simulate-whole-market-day-by-day/) and [contributing](contributing/).
+| Section | Read it to | Pages |
+| --- | --- | --- |
+| **Start here** | Get from nothing to a dataset you understand. | [Installation](installation/), [quick start](quick-start/), [core concepts](concepts/) |
+| **Use cases** | See how MarketForge fits your job, with recipes. | [ML](use-cases/machine-learning/), [backtesting](use-cases/backtesting/), [stress testing](use-cases/stress-testing/), [what it is not](limits/) |
+| **Guides** | Do one task well. | [Working with the data](guides/working-with-data/), [custom instruments](guides/custom-instruments/), [extending and verifying](guides/extend/), [validation](guides/validation/), [performance and scale](guides/performance/) |
+| **Reference** | Look up an exact option, type or rule. | [Command line](reference/cli/), [Python API](reference/python-api/), [output format](reference/output/), [markets](reference/markets/), [the model](reference/model/), [spread](reference/spread/), [reproducibility](reference/reproducibility/), [glossary](reference/glossary/) |
+| **Help** | Fix an error or answer a common question. | [FAQ and troubleshooting](faq/) |
+| **Project** | Follow changes and contribute. | [Changelog](../changelog/), [migrating to 4.0](migrating-to-4/), [design decisions](adr/0001-simulate-whole-market-day-by-day/), [contributing](contributing/) |
 
 :::caution[Read this before you train anything]
 Synthetic data teaches a model the generator, not the market. MarketForge has **no alpha to find**: it has the statistics of real markets and no edge that carries over to them. Use it to build, debug, pre-train and stress-test, and real data to decide whether anything earns money. See [What it is not](limits/).

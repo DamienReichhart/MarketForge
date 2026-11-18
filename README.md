@@ -126,7 +126,7 @@ marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
 ```
 
 Every option is in the
-[command-line reference](https://damienreichhart.github.io/MarketForge/docs/guides/cli/).
+[command-line reference](https://damienreichhart.github.io/MarketForge/docs/reference/cli/).
 
 ### Python
 
@@ -155,7 +155,7 @@ report = mf.validate(m1, "crypto")
 print(report.summary())
 ```
 
-See the [Python API](https://damienreichhart.github.io/MarketForge/docs/guides/python-api/), and
+See the [Python API](https://damienreichhart.github.io/MarketForge/docs/reference/python-api/), and
 [`examples/`](https://github.com/DamienReichhart/MarketForge/tree/main/examples) for runnable
 scripts: a regime classifier, training windows for a neural network, a backtest that fills at
 the quote, and Monte Carlo drawdowns.
@@ -181,7 +181,7 @@ The regime is one of `trend_up`, `trend_down`, `range`, `high_volatility` and
 `crash`, in files as in memory (a categorical whose codes are 0 to 4 in that
 order). `high >= max(open, close)` and
 `low <= min(open, close)` always hold, and partial candles are never written.
-See [Output format](https://damienreichhart.github.io/MarketForge/docs/guides/output/).
+See [Output format](https://damienreichhart.github.io/MarketForge/docs/reference/output/).
 
 ## Markets
 

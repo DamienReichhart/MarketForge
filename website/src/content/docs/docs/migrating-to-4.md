@@ -24,7 +24,7 @@ From 4.0 on, any release may change a seed's candles when that makes the data mo
 
 ## Code that reads files
 
-- **The regime column holds names** (`trend_up`, `range`, ...), not codes 0 to 4. Replace `df.regime == 2` with `df.regime == "range"`. Or load with [`mf.read()`](../guides/python-api/), which returns a categorical whose `.cat.codes` are the old codes.
+- **The regime column holds names** (`trend_up`, `range`, ...), not codes 0 to 4. Replace `df.regime == 2` with `df.regime == "range"`. Or load with [`mf.read()`](../reference/python-api/#read), which returns a categorical whose `.cat.codes` are the old codes.
 - **Generating into a directory that holds a dataset is refused.** Pass `--overwrite` (`overwrite=True`) to replace it.
 
 ## Other changes

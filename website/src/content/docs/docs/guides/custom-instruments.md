@@ -57,7 +57,7 @@ Forex crosses take their start price, volatility, drift and correlations from th
 
 ## Reproducibility
 
-The resolved overrides are written into the dataset's [manifest](../output/#the-manifest), as values, so a dataset made with an override file can be reproduced and extended without it. Anyone you share the dataset with can read those parameters.
+The resolved overrides are written into the dataset's [manifest](../../reference/output/#the-manifest), as values, so a dataset made with an override file can be reproduced and extended without it. Anyone you share the dataset with can read those parameters.
 
 Use `marketforge list-instruments --config my_instruments.toml` to check the catalog after your overrides.
 

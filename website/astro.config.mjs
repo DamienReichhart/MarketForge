@@ -13,6 +13,12 @@ export default defineConfig({
 	site: 'https://damienreichhart.github.io',
 	base: '/MarketForge',
 	trailingSlash: 'always',
+	// Pages that moved: their old addresses stay valid for links already out there.
+	redirects: {
+		'/docs/guides/cli/': '/MarketForge/docs/reference/cli/',
+		'/docs/guides/python-api/': '/MarketForge/docs/reference/python-api/',
+		'/docs/guides/output/': '/MarketForge/docs/reference/output/',
+	},
 	integrations: [
 		// Fails the build if a package license-policy.json exempts as not served reaches the site.
 		servedPackages(),
@@ -63,6 +69,7 @@ export default defineConfig({
 						{ label: 'Playground', slug: 'playground', badge: { text: 'No install', variant: 'note' } },
 						{ label: 'Installation', slug: 'docs/installation' },
 						{ label: 'Quick start', slug: 'docs/quick-start' },
+						{ label: 'Core concepts', slug: 'docs/concepts' },
 					],
 				},
 				{
@@ -77,23 +84,29 @@ export default defineConfig({
 				{
 					label: 'Guides',
 					items: [
-						{ label: 'Command line', slug: 'docs/guides/cli' },
-						{ label: 'Python API', slug: 'docs/guides/python-api' },
-						{ label: 'Output format', slug: 'docs/guides/output' },
-						{ label: 'Extending a dataset', slug: 'docs/guides/extend' },
+						{ label: 'Working with the data', slug: 'docs/guides/working-with-data' },
 						{ label: 'Custom instruments', slug: 'docs/guides/custom-instruments' },
+						{ label: 'Extending and verifying', slug: 'docs/guides/extend' },
 						{ label: 'Validation', slug: 'docs/guides/validation' },
+						{ label: 'Performance and scale', slug: 'docs/guides/performance' },
 					],
 				},
 				{
 					label: 'Reference',
 					items: [
+						{ label: 'Command line', slug: 'docs/reference/cli' },
+						{ label: 'Python API', slug: 'docs/reference/python-api' },
+						{ label: 'Output format', slug: 'docs/reference/output' },
 						{ label: 'Markets & calendars', slug: 'docs/reference/markets' },
 						{ label: 'The model', slug: 'docs/reference/model' },
 						{ label: 'Bid-ask spread', slug: 'docs/reference/spread' },
 						{ label: 'Reproducibility', slug: 'docs/reference/reproducibility' },
 						{ label: 'Glossary', slug: 'docs/reference/glossary' },
 					],
+				},
+				{
+					label: 'Help',
+					items: [{ label: 'FAQ and troubleshooting', slug: 'docs/faq' }],
 				},
 				{
 					label: 'Project',

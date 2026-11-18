@@ -1,6 +1,6 @@
 ---
 title: Output format
-description: "Files, columns, rounding, timestamps and the manifest that MarketForge writes."
+description: "The files, columns, types, rounding, timestamps, candle alignment and manifest of a MarketForge dataset, and its guarantees."
 ---
 
 ## Layout
@@ -30,7 +30,9 @@ timestamp,open,high,low,close,volume
 | `volume` | Rounded to 4 decimals. Base asset for crypto (BTC for BTCUSD), shares for stocks, **tick volume** (integer price updates per minute) for forex. |
 | `spread` | With `--with-spread`: the mean quoted bid-ask spread of the candle, in price units. `bid = price - spread / 2`, `ask = price + spread / 2`. |
 | `bid`, `ask` | With `--with-bid-ask`: the quotes around the close, `close - spread / 2` and `close + spread / 2`. |
-| `regime` | With `--with-regime`, last: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. Parquet files and frames in memory hold it as the same categorical, whose codes (`.cat.codes`) are 0 to 4 in that order. |
+| `regime` | With `--with-regime`, last: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`, the regime the market was in at the candle's close. CSV files hold the name; Parquet and Feather files and frames in memory hold the same categorical, whose codes (`.cat.codes`) are 0 to 4 in that order. |
+
+Frames in memory, from `generate()` or `read()`, have the same columns with `float64` values and a UTC `DatetimeIndex` named `time` instead of `timestamp`. See [`GeneratedData`](../python-api/#generateddata).
 
 ## Guarantees
 
@@ -49,7 +51,7 @@ timestamp,open,high,low,close,volume
 
 ## The manifest
 
-Every dataset has a `marketforge.json`. It records the MarketForge version and model revision, the seed, the range, the instruments, timeframes, format, timestamps, anomalies and columns asked for, and the **resolved overrides** (the values, not a path, so the dataset stands on its own), plus the checkpoint [`extend`](../extend/) resumes from.
+Every dataset has a `marketforge.json`. It records the MarketForge version and model revision, the seed, the range, the instruments, timeframes, format, timestamps, anomalies and columns asked for, and the **resolved overrides** (the values, not a path, so the dataset stands on its own), plus the checkpoint [`extend`](../../guides/extend/) resumes from. `marketforge info` prints it in readable form.
 
 ```json
 {
@@ -64,6 +66,7 @@ Every dataset has a `marketforge.json`. It records the MarketForge version and m
   "anomalies": [],
   "include_regime": true,
   "include_spread": true,
+  "include_bid_ask": false,
   "instruments": { "crypto": ["BTCUSD"], "forex": ["EURUSD"] },
   "overrides": {},
   "checkpoint": { "...": "model state at the end of the range" }
