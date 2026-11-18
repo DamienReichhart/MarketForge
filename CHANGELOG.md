@@ -91,6 +91,10 @@ when that makes the data more realistic. Upgrading from 3.x? See
   3.0. `--assets`/`-a` is `--instruments`/`-i`, `list-assets` is
   `list-instruments`, and `generate()` and `generate_to_disk()` take
   `instruments=` instead of `assets=`. The old names are removed.
+- **The forms deprecated in 3.0 are removed.** `marketforge --from ...`
+  without a subcommand is no longer routed to `generate`, and the hidden
+  `--threads`/`--thread-count` and `--batch-size` options are gone. Use
+  `marketforge generate --from ...` and `--jobs`.
 - **`generate` refuses a directory that already holds a dataset.** Generating
   again into one used to leave the old dataset's files beside the new ones,
   so a glob over the directory mixed two datasets and the manifest no longer
@@ -235,6 +239,23 @@ when that makes the data more realistic. Upgrading from 3.x? See
 - A file that receives no candle now comes with a warning instead of silence.
 - `generate` asks for `--output-dir` before it plans anything.
 
+### Fixes
+- **`--dry-run` counted daily and weekly candles wrongly.** It divided a
+  market's open minutes by 1,440 for both, so a stock day (390 open minutes)
+  counted as a quarter of a candle and W1 as many candles as D1. Both now
+  follow each market's sessions.
+- **A wrong override value says where it is.** A string where a number was
+  expected failed with numpy's "could not convert string to float: 'x'", and
+  a `correlations` value that was not a table crashed. Values are checked
+  when the overrides are read, and the message names the file, the
+  instrument and the key.
+- **Requests that were partly ignored now warn.** Overriding a forex cross's
+  start price, volatility, drift or correlations had no effect (a cross is
+  derived from its anchors), and `-i BTCUSD,AAPL -m crypto` dropped AAPL
+  without a word.
+- **A range that starts before 1970 is refused with a clear message**
+  instead of numpy's "expected non-negative integer".
+
 ### Website and documentation
 - **MarketForge has a website**,
   [damienreichhart.github.io/MarketForge](https://damienreichhart.github.io/MarketForge/),
@@ -259,6 +280,16 @@ when that makes the data more realistic. Upgrading from 3.x? See
   package does not have (it is 10 to 100 times slower, capped in size, and not
   bit-identical to an installed MarketForge), which the page states up front.
   Nothing leaves the browser, and the runtime is served by the site itself.
+- **Runnable examples** in [`examples/`](examples/), each running in
+  seconds: a regime classifier trained on seed-disjoint splits, training
+  windows (with a PyTorch `DataLoader` when torch is installed), a backtest
+  that fills at the bid and ask on NYSE sessions, and Monte Carlo drawdowns
+  with `generate_many()`. The stress-testing guide read the bad drawdown tail
+  from the 95th and 99th percentiles; drawdowns are negative, so it is now
+  read from the low ones.
+- **Contributing is documented on GitHub too**: a `CONTRIBUTING.md`, issue
+  forms (including a realism report for statistics measured on real data)
+  and a `CITATION.cff` for citing MarketForge in research.
 
 ## 3.1.1
 

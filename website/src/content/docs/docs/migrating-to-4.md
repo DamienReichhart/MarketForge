@@ -12,6 +12,9 @@ description: "What changes when you upgrade from MarketForge 3.x to 4.0, and wha
 | `--assets`, `-a` | `--instruments`, `-i` |
 | `marketforge list-assets` | `marketforge list-instruments` |
 | `generate(assets=...)`, `generate_to_disk(assets=...)` | `instruments=...` |
+| `marketforge --from ...` (no subcommand, deprecated in 3.0) | `marketforge generate --from ...` |
+| `--threads`, `--thread-count` (deprecated in 3.0) | `--jobs` |
+| `--batch-size` (ignored since 3.0) | remove it |
 
 ## Expect different candles
 
