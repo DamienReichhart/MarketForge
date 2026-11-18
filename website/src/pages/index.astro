@@ -2,8 +2,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import CandleChart from '../components/CandleChart.astro';
+import { Image } from 'astro:assets';
 import Landing from '../layouts/Landing.astro';
-import sample from '../samples/hero-sample.json';
+import playgroundDark from '../assets/landing/playground-dark.png';
+import playgroundLight from '../assets/landing/playground-light.png';
+import type { Candle } from '../lib/candle-chart';
+import { REGIME_LABELS } from '../lib/candle-chart';
+import { fan, miniCandles, REGIMES } from '../lib/landing-charts';
+import hero from '../samples/hero-sample.json';
+import samples from '../samples/landing-samples.json';
 
 // The version on the page is the one in pyproject.toml, which on main is the
 // latest release: the site is deployed from main only.
@@ -12,281 +19,301 @@ const version = /^version\s*=\s*"([^"]+)"/m.exec(pyproject)?.[1] ?? '';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const docs = (path = '') => `${base}/docs/${path}`;
+const playground = `${base}/playground/`;
 
-// A real excerpt of the sample: the hours around the crash.
-const crashAt = sample.candles.findIndex((c) => c[7] === 'crash');
-const excerpt = sample.candles.slice(crashAt - 3, crashAt + 3);
-const iso = (t: number) => new Date(t * 1000).toISOString().replace(':00.000Z', 'Z');
-const validationLines = sample.validation.summary.split('\n');
+// Hero: one real chart per market, each over a stretch that shows its calendar.
+const markets = [
+	{ id: 'crypto', label: 'Crypto', chart: { ...hero, candles: hero.candles as Candle[] } },
+	...samples.markets
+		.filter((m) => m.market !== 'crypto')
+		.map((m) => ({ id: m.market, label: m.market === 'forex' ? 'Forex' : 'Stocks', chart: { ...m, candles: m.candles as Candle[] } })),
+];
+
+// Stage 1: the open minutes of each market in 2024, from `--dry-run`.
+const dryRun = samples.terminal.dry_run;
+const openMinutes = Object.fromEntries(
+	[...dryRun.output.matchAll(/^\s+(crypto|forex|stocks)\s+(\d+) instrument\(s\), ([\d,]+) open minutes/gm)].map((m) => [
+		m[1],
+		{ instruments: Number(m[2]), minutes: m[3] },
+	]),
+);
+const calendars = [
+	{ id: 'crypto', name: 'Crypto', rule: 'Every minute of the year, weekends included.' },
+	{ id: 'forex', name: 'Forex', rule: 'Sunday 17:00 to Friday 17:00, New York time.' },
+	{ id: 'stocks', name: 'US stocks', rule: 'The NYSE session, with its holidays and early closes.' },
+];
+const totalInstruments = calendars.reduce((n, c) => n + openMinutes[c.id].instruments, 0);
+const week = samples.week;
+const openHours = week.open_hours as Record<string, number[]>;
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Contiguous open hours as [start, length] runs, so the bars draw without seams.
+const hourRuns = (hours: number[]) =>
+	hours.reduce<[number, number][]>((runs, h) => {
+		const last = runs[runs.length - 1];
+		if (last && last[0] + last[1] === h) last[1] += 1;
+		else runs.push([h, 1]);
+		return runs;
+	}, []);
+
+// Stage 2: the longest run of each regime in six months of BTCUSD.
+const runs = samples.regimes.runs as unknown as Record<string, Candle[]>;
+
+// Stage 3: the validation report of the hero sample, line by line.
+const CHECKS: Record<string, string> = {
+	excess_kurtosis: 'Heavy tails',
+	vol_clustering: 'Volatility clustering',
+	leverage: 'Leverage effect',
+	long_memory: 'Long memory',
+	range_efficiency: 'Intrabar range',
+	spread_bps: 'Spread',
+	spread_widening: 'Spread widening in stress',
+};
+const checks = [...hero.validation.summary.matchAll(/^\s+(ok|FAIL)\s+(\w+) = (\S+)\s+\(expected (.+)\)$/gm)].map((m) => ({
+	passed: m[1] === 'ok',
+	name: CHECKS[m[2]] ?? m[2],
+	key: m[2],
+	value: m[3],
+	band: m[4],
+}));
+
+// Stage 4: one instrument, one model, one range, 32 seeds.
+const paths = samples.paths;
+const drawdowns = paths.max_drawdown_pct;
+const lowest = Math.min(...drawdowns);
+const highest = Math.max(...drawdowns);
+const fanChart = fan(paths.paths);
+const pct = (v: number) => `${Math.round(v)}%`;
+
+// Stage 5: generate, extend, verify.
+const t = samples.terminal;
 ---
 
 <Landing
-	title="MarketForge: synthetic market data for AI trading models and backtesters"
-	description="Open-source generator of realistic OHLCV data: 208 crypto, forex and stock instruments, real trading calendars, labelled market regimes, bid-ask spreads, reproducible from a seed. Train AI trading models and stress-test backtesters."
+	title="MarketForge: synthetic market data for training trading models"
+	description={`Open-source Python generator of realistic OHLCV data: ${totalInstruments} crypto, forex and stock instruments minute by minute on real trading calendars, every candle labelled with its market regime, reproducible from a seed.`}
 	version={version}
 >
-	<section class="mf-hero">
-		<div class="mf-wrap">
-			<p class="mf-eyebrow">
-				<span class="mf-dot" aria-hidden="true"></span>
-				Open source · Python · Apache-2.0 · v{version}
-			</p>
-			<h1>Training data for trading models.<br /><span>Generated, labelled, reproducible.</span></h1>
-			<p class="mf-lede">
-				MarketForge simulates 208 crypto, forex and US stock instruments minute by minute, on each market's
-				real trading calendar. Every candle can carry the hidden market regime that produced it and a
-				realistic bid-ask spread, and every dataset comes back from its seed and version. Use it to train and
-				pre-train AI trading models, and to find out what breaks your backtester before real money does.
-			</p>
-			<div class="mf-cta">
-				<a class="mf-btn mf-btn-primary" href={docs('quick-start/')}>Get started</a>
-				<a class="mf-btn" href={`${base}/playground/`}>Try it in your browser</a>
-				<a class="mf-btn" href={docs()}>Documentation</a>
-				<div class="mf-install">
-					<code>pip install marketforge</code>
-					<button type="button" data-copy="pip install marketforge" aria-label="Copy the install command">Copy</button>
+	<section class="lp-hero" data-enter aria-labelledby="hero-title">
+		<div class="wrap lp-wrap lp-hero-grid">
+			<div class="lp-hero-text hero-text">
+				<h1 id="hero-title">Synthetic market data for trading models</h1>
+				<p class="lp-lead">
+					{totalInstruments} instruments simulated minute by minute, every candle labelled with its regime.
+				</p>
+				<div class="lp-actions">
+					<a class="lp-btn lp-btn-primary" href={playground}>Try it in your browser</a>
+					<div class="lp-install">
+						<code>pip install marketforge</code>
+						<button type="button" class="lp-copy" data-copy="pip install marketforge" aria-label="Copy the install command">Copy</button>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div class="mf-wrap mf-hero-chart">
-			<CandleChart />
-			<p class="mf-caption">
-				Real output, not a mock-up: ten days of {sample.instrument} from seed {sample.seed}, generated by
-				MarketForge {sample.version} when this site was built. The shading is the regime label MarketForge wrote
-				next to each candle. Hover the chart to read it.
-			</p>
-		</div>
-	</section>
-
-	<section class="mf-stats" aria-label="Key figures">
-		<div class="mf-wrap">
-			<dl>
-				<div><dt>Instruments</dt><dd>208</dd><span>53 crypto · 81 forex · 74 stocks</span></div>
-				<div><dt>Timeframes</dt><dd>m1 → W1</dd><span>17 aligned to each market's clock</span></div>
-				<div><dt>Regime labels</dt><dd>5</dd><span>trend up/down, range, high vol, crash</span></div>
-				<div><dt>Reproducible</dt><dd>per version</dd><span>same seed and version, same candles</span></div>
-				<div><dt>One year of EURUSD</dt><dd>~2 s</dd><span>all timeframes, on a laptop</span></div>
-			</dl>
-		</div>
-	</section>
-
-	<section class="mf-section" id="use-cases">
-		<div class="mf-wrap">
-			<header class="mf-section-head">
-				<p class="mf-kicker">Built for</p>
-				<h2>The parts of quant work where real data runs out</h2>
-				<p>Real history is finite, expensive, unlabelled and leaks into every model you fit on it. Synthetic data doesn't replace it. It covers what real data can't.</p>
-			</header>
-			<div class="mf-grid-3">
-				<a class="mf-card" href={docs('use-cases/machine-learning/')}>
-					<span class="mf-card-index">01</span>
-					<h3>Training AI trading models</h3>
-					<p>Unlimited, labelled sequences for pre-training, data augmentation and architecture search.</p>
-					<ul>
-						<li>Ground-truth regime for every candle: supervised targets real data can't give you</li>
-						<li>A seed per split: train, validation and test never overlap</li>
-						<li>Multi-asset panels with realistic correlation and tail dependence</li>
-					</ul>
-					<span class="mf-card-link">ML guide →</span>
-				</a>
-				<a class="mf-card" href={docs('use-cases/backtesting/')}>
-					<span class="mf-card-index">02</span>
-					<h3>Testing backtesters</h3>
-					<p>Data that behaves like a real feed, so the bugs show up in testing rather than in production.</p>
-					<ul>
-						<li>NYSE sessions, holidays, early closes and DST; forex weeks; 24/7 crypto</li>
-						<li>Overnight and weekend gaps, mid prices plus a bid-ask spread</li>
-						<li>Arbitrage-free forex crosses: EURJPY = EURUSD × USDJPY</li>
-					</ul>
-					<span class="mf-card-link">Backtesting guide →</span>
-				</a>
-				<a class="mf-card" href={docs('use-cases/stress-testing/')}>
-					<span class="mf-card-index">03</span>
-					<h3>Stress testing</h3>
-					<p>Run a strategy through a thousand alternative histories instead of the single one that happened.</p>
-					<ul>
-						<li>Crash and high-volatility regimes with heavy tails and volatility clustering</li>
-						<li>Optional spikes and multi-candle flash crashes</li>
-						<li>Distributions of drawdown and P&amp;L across seeds, not one equity curve</li>
-					</ul>
-					<span class="mf-card-link">Stress-testing guide →</span>
-				</a>
+			<div class="lp-hero-visual">
+				<div class="lp-tabs" role="tablist" aria-label="Market">
+					{markets.map((m, i) => (
+						<button type="button" role="tab" id={`tab-${m.id}`} aria-controls={`panel-${m.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>
+							{m.label}
+						</button>
+					))}
+				</div>
+				{markets.map((m, i) => (
+					<div class="lp-panel" role="tabpanel" id={`panel-${m.id}`} aria-labelledby={`tab-${m.id}`} hidden={i !== 0}>
+						<CandleChart candles={m.chart.candles} instrument={m.chart.instrument} timeframe={m.chart.timeframe} market={m.chart.market} seed={m.chart.seed} legend={false} />
+					</div>
+				))}
+				<ul class="lp-legend" aria-label="Regime colours">
+					{REGIMES.map((r) => <li><i class={`r-${r}`}></i>{REGIME_LABELS[r]}</li>)}
+				</ul>
 			</div>
 		</div>
 	</section>
 
-	<section class="mf-section mf-split">
-		<div class="mf-wrap mf-split-inner">
-			<div>
-				<p class="mf-kicker">Ground truth</p>
-				<h2>Every candle knows why it moved</h2>
+	<section class="lp-stage" aria-labelledby="stage-1">
+		<div class="wrap lp-wrap">
+			<div class="lp-stage-head lp-stage-head-wide">
+				<h2 id="stage-1"><span class="lp-n">1</span>Three markets on their real calendars</h2>
 				<p>
-					Markets have hidden states, but real data never tells you which one you're in. MarketForge does. With
-					<code>--with-regime</code>, each candle carries the market regime the simulator was actually in: a label
-					for supervised learning, an answer key for regime detectors, and a way to score a strategy separately in each
-					regime.
+					Each market keeps its own clock, and no candle is printed while it is shut. Gaps come from the price moving
+					during the closure, as they do on a real feed.
 				</p>
-				<p>
-					The regime is shared by every instrument of a market, as in a real sell-off, and it scales volatility and
-					drift without changing their long-run levels.
-				</p>
-				<a class="mf-textlink" href={docs('use-cases/machine-learning/')}>Train a regime classifier →</a>
 			</div>
-			<div class="mf-table-wrap">
-				<table class="mf-table">
-					<caption>data["{sample.instrument}"]["{sample.timeframe}"], around the crash in the chart above</caption>
+			<figure class="lp-week" data-ui>
+				<div class="lp-week-days" aria-hidden="true">{DAYS.map((d) => <span>{d}</span>)}</div>
+				{calendars.map((c) => (
+					<div class="lp-week-row">
+						<span class="lp-week-name">{week.instruments[c.id as keyof typeof week.instruments]}</span>
+						<svg viewBox="0 0 168 1" preserveAspectRatio="none" role="img" aria-label={`${week.instruments[c.id as keyof typeof week.instruments]} has candles in ${openHours[c.id].length} of the 168 hours from Monday ${week.start} to Sunday, UTC`}>
+							{hourRuns(openHours[c.id]).map(([h, n]) => <rect x={h} y="0" width={n} height="1"></rect>)}
+						</svg>
+					</div>
+				))}
+			</figure>
+			<div class="lp-calendars" data-count>
+				{calendars.map((c) => (
+					<div class="lp-calendar">
+						<h3>{c.name}</h3>
+						<p class="lp-figure" data-roll aria-label={`${openMinutes[c.id].minutes} open minutes in 2024`}>{openMinutes[c.id].minutes}</p>
+						<p class="lp-figure-unit">open minutes in 2024</p>
+						<p>{openMinutes[c.id].instruments} instruments. {c.rule}</p>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<section class="lp-stage lp-regimes" aria-labelledby="stage-2">
+		<div class="wrap lp-wrap">
+			<div class="lp-regimes-grid">
+				<div class="lp-stage-head">
+					<h2 id="stage-2"><span class="lp-n">2</span>Five regimes, one per band of the logo</h2>
+					<p>
+						Real data never says which state the market was in. MarketForge writes it next to every candle: a target for
+						supervised learning and an answer key for regime detectors.
+					</p>
+					<img class="lp-regimes-mark lp-on-dark" src={`${base}/brand/mark-dark.svg`} alt="The MarketForge mark: five bands, one per regime" width="168" height="168" />
+					<img class="lp-regimes-mark lp-on-light" src={`${base}/brand/mark-light.svg`} alt="The MarketForge mark: five bands, one per regime" width="168" height="168" />
+				</div>
+				<ol class="lp-regime-list">
+					{REGIMES.map((r) => (
+						<li class={`lp-regime r-${r}`}>
+							<div class="lp-regime-label">
+								<span class="lp-regime-name">{REGIME_LABELS[r]}</span>
+								<code>{r}</code>
+							</div>
+							<svg class="lp-mini" viewBox="0 0 240 120" preserveAspectRatio="none" role="img" aria-label={`${runs[r].length} hours of BTCUSD in the ${REGIME_LABELS[r].toLowerCase()} regime`} set:html={miniCandles(runs[r], 240, 120)}></svg>
+						</li>
+					))}
+				</ol>
+			</div>
+		</div>
+	</section>
+
+	<section class="lp-stage" aria-labelledby="stage-3">
+		<div class="wrap lp-wrap lp-split">
+			<div class="lp-stage-head">
+				<h2 id="stage-3"><span class="lp-n">3</span>Realism checked against real markets</h2>
+				<p>
+					Every instrument must land inside bands measured on real crypto minute data, across seeds. All 624 instrument
+					checks pass. Forex and stock bands are still provisional.
+				</p>
+				<p>
+					Real statistics, no edge that carries over to real markets: build, debug and stress-test on MarketForge, and
+					decide whether a strategy earns money on real data.
+				</p>
+				<div class="lp-links-row">
+					<a class="lp-link" href={docs('guides/validation/')}>Read how validation works</a>
+					<a class="lp-link" href={docs('limits/')}>Read what it is not</a>
+				</div>
+			</div>
+			<figure class="lp-report" data-ui>
+				<pre class="lp-code lp-code-line"><code><span class="lp-prompt" aria-hidden="true">$ </span>marketforge validate --input data/crypto/{hero.instrument}_m1.csv</code></pre>
+				<table>
 					<thead>
-						<tr><th>timestamp</th><th>close</th><th class="mf-hide-sm">volume</th><th class="mf-hide-sm">spread</th><th>regime</th></tr>
+						<tr><th scope="col">Check</th><th scope="col" class="lp-num">Measured</th><th scope="col">Real-market band</th><th scope="col">Result</th></tr>
 					</thead>
 					<tbody>
-						{excerpt.map((c) => (
+						{checks.map((c) => (
 							<tr>
-								<td>{iso(c[0] as number)}</td>
-								<td>{(c[4] as number).toFixed(2)}</td>
-								<td class="mf-hide-sm">{(c[5] as number).toFixed(2)}</td>
-								<td class="mf-hide-sm">{(c[6] as number).toFixed(4)}</td>
-								<td class={`mf-regime-tag r-${c[7]}`}>{c[7]}</td>
+								<th scope="row">{c.name}</th>
+								<td class="lp-num">{c.value}</td>
+								<td class="lp-band">{c.band}</td>
+								<td class={c.passed ? 'lp-pass' : 'lp-fail'}>{c.passed ? 'Pass' : 'Fail'}</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
-			</div>
+			</figure>
 		</div>
 	</section>
 
-	<section class="mf-section">
-		<div class="mf-wrap mf-split-inner mf-reverse">
-			<div>
-				<p class="mf-kicker">Realism, measured</p>
-				<h2>Validated against real markets, not just eyeballed</h2>
+	<section class="lp-stage" aria-labelledby="stage-4">
+		<div class="wrap lp-wrap">
+			<div class="lp-stage-head lp-stage-head-wide">
+				<h2 id="stage-4"><span class="lp-n">4</span>Thirty-two histories instead of one</h2>
 				<p>
-					A model trained on unrealistic data learns unrealistic habits. MarketForge's realism is a contract: heavy
-					tails, volatility clustering, long memory, the leverage effect, intrabar range and spread behaviour must fall
-					inside bands measured on real minute data. Crypto bands come from Binance klines and best bid/ask of seven
-					coins.
+					Six months of {paths.instrument} under {paths.seeds} seeds, same model, same dates. Buy-and-hold’s worst drawdown
+					runs from {pct(lowest)} to {pct(highest)}. A backtest on one path sees one number from that spread.
 				</p>
+			</div>
+			<div class="lp-compare">
+				<figure class="lp-before">
+					<h3>One path</h3>
+					<div class="lp-fan">
+						<svg viewBox={`0 0 ${fanChart.width} ${fanChart.height}`} preserveAspectRatio="none" role="img" aria-label={`One path of ${paths.instrument}, seed 0, worst drawdown ${pct(drawdowns[0])}`}>
+							{fanChart.levels.map((l) => <line class={l.level === 100 ? 'lp-base' : 'lp-grid'} x1="0" x2={fanChart.width} y1={l.y} y2={l.y}></line>)}
+							<path class="lp-path-one" d={fanChart.lines[0]}></path>
+						</svg>
+						<div class="lp-fan-axis" aria-hidden="true">{fanChart.levels.map((l) => <span style={`top:${(l.y / fanChart.height) * 100}%`}>{l.level}</span>)}</div>
+					</div>
+					<p class="lp-dd"><span>Worst drawdown</span> <strong>{pct(drawdowns[0])}</strong></p>
+				</figure>
+				<figure class="lp-after">
+					<h3>{paths.seeds} seeds</h3>
+					<div class="lp-fan">
+						<svg viewBox={`0 0 ${fanChart.width} ${fanChart.height}`} preserveAspectRatio="none" role="img" aria-label={`${paths.seeds} paths of ${paths.instrument}, one per seed, worst drawdowns from ${pct(lowest)} to ${pct(highest)}`}>
+							{fanChart.levels.map((l) => <line class={l.level === 100 ? 'lp-base' : 'lp-grid'} x1="0" x2={fanChart.width} y1={l.y} y2={l.y}></line>)}
+							{fanChart.lines.slice(1).map((d) => <path class="lp-path" d={d}></path>)}
+							<path class="lp-path-one" d={fanChart.lines[0]}></path>
+						</svg>
+						<div class="lp-fan-axis" aria-hidden="true">{fanChart.levels.map((l) => <span style={`top:${(l.y / fanChart.height) * 100}%`}>{l.level}</span>)}</div>
+					</div>
+					<div class="lp-dots" role="img" aria-label={`Worst drawdown of each seed, from ${pct(lowest)} to ${pct(highest)}`}>
+						<span class="lp-dots-axis" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></span>
+						{drawdowns.map((d, i) => <i class={i === 0 ? 'lp-dot-one' : ''} style={`left:${d}%`}></i>)}
+					</div>
+					<p class="lp-dd"><span>Worst drawdown</span> <strong>{pct(lowest)} to {pct(highest)}</strong></p>
+				</figure>
+			</div>
+			<pre class="lp-code"><code><span class="k">import</span> marketforge <span class="k">as</span> mf
+
+<span class="k">for</span> data <span class="k">in</span> mf.generate_many(<span class="s">"{paths.instrument}"</span>, seeds=<span class="n">range</span>(<span class="n">{paths.seeds}</span>), start=<span class="s">"{paths.start}"</span>, end=<span class="s">"{paths.end}"</span>):
+    your_backtest(data)  <span class="c"># one history per seed, generated in parallel processes</span></code></pre>
+		</div>
+	</section>
+
+	<section class="lp-stage" aria-labelledby="stage-5">
+		<div class="wrap lp-wrap lp-split">
+			<div class="lp-stage-head">
+				<h2 id="stage-5"><span class="lp-n">5</span>Same seed, same candles, bit for bit</h2>
 				<p>
-					Every instrument is checked across seeds: all 624 checks pass on two-week windows. The validator ships with
-					the package, so you can run it on MarketForge output or on your own data.
+					A seed fixes every random shock by market and minute. Extend a dataset by 30 days and it matches generating the
+					whole range at once. CI fingerprints 786 outputs on every commit.
 				</p>
-				<a class="mf-textlink" href={docs('guides/validation/')}>How validation works →</a>
+				<a class="lp-link" href={docs('reference/reproducibility/')}>Read the reproducibility contract</a>
 			</div>
-			<div class="mf-terminal" aria-label="Validation report of the sample above">
-				<div class="mf-terminal-bar"><span></span><span></span><span></span><code>marketforge validate</code></div>
-				<pre><code><span class="mf-prompt">$</span> marketforge validate --input data/crypto/{sample.instrument}_m1.csv
-{validationLines.map((line) => {
-	const ok = line.trimStart().startsWith('ok');
-	const fail = line.trimStart().startsWith('FAIL');
-	return <span class={ok ? 'mf-ok' : fail ? 'mf-fail' : ''}>{line}{'\n'}</span>;
-})}</code></pre>
-			</div>
+			<pre class="lp-code lp-transcript" data-ui><code><span class="lp-prompt" aria-hidden="true">$ </span>{t.generate.command}
+<span class="lp-prompt" aria-hidden="true">$ </span>{t.extend.command}
+<span class="lp-prompt" aria-hidden="true">$ </span>{t.info.command}
+<span class="lp-dim">{t.info.output}</span>
+<span class="lp-prompt" aria-hidden="true">$ </span>{t.verify.command}
+<span class="lp-out">{t.verify.output}</span></code></pre>
 		</div>
 	</section>
 
-	<section class="mf-section">
-		<div class="mf-wrap">
-			<header class="mf-section-head">
-				<p class="mf-kicker">Engineering</p>
-				<h2>Built like infrastructure, not a notebook</h2>
-			</header>
-			<div class="mf-features">
-				<div>
-					<h3>Reproducible</h3>
-					<p>The seed, market and minute fix every random shock. The same EURUSD comes out whether you generate it alone or with 207 other instruments, at any timeframe or in either format, and CI checks 786 outputs on every commit.</p>
-				</div>
-				<div>
-					<h3>Extendable datasets</h3>
-					<p>Every dataset records how it was made. <code>marketforge extend ./data --days 30</code> continues it, and the result is byte-identical to generating the whole range at once.</p>
-				</div>
-				<div>
-					<h3>Real calendars</h3>
-					<p>No candles while a market is closed. Gaps come from the price moving during the closure, as they do in reality, and partial candles are never published.</p>
-				</div>
-				<div>
-					<h3>One market, one story</h3>
-					<p>Instruments of a market are simulated together: a full correlation matrix, Student-t shocks with shared tail risk, and one regime path.</p>
-				</div>
-				<div>
-					<h3>Fast, bounded memory</h3>
-					<p>Compiled Numba kernels stream through the simulation one day at a time. A month of all 208 instruments takes about 6 s, and memory stays flat however long the range.</p>
-				</div>
-				<div>
-					<h3>Your instruments</h3>
-					<p>A TOML file changes the start price, volatility, drift, volume, spread or correlations of any instrument, or adds new ones. No fork needed.</p>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<section class="mf-section">
-		<div class="mf-wrap mf-split-inner">
-			<div>
-				<p class="mf-kicker">Python API</p>
-				<h2>From seed to tensor in a few lines</h2>
-				<p>
-					Generate in memory as pandas DataFrames, or stream years to CSV or Parquet. Panels line up every instrument on
-					one UTC index, with NaN where a market was closed: no hidden forward-fill.
+	<section class="lp-close" aria-labelledby="close">
+		<div class="wrap lp-wrap lp-split">
+			<div class="lp-close-text">
+				<h2 id="close" class="lp-close-type" data-liquid><code>pip install marketforge</code></h2>
+				<p class="lp-lead">
+					Python 3.12 or newer, on Linux, macOS and Windows. Apache-2.0, free for any use. Or run the same package in a
+					browser tab first, with nothing to install.
 				</p>
-				<a class="mf-textlink" href={docs('guides/python-api/')}>Python API reference →</a>
-			</div>
-			<div class="mf-code">
-				<div class="mf-terminal-bar"><span></span><span></span><span></span><code>train.py</code></div>
-				<pre><code><span class="k">import</span> marketforge <span class="k">as</span> mf
-
-<span class="c"># Disjoint seeds: train, validation and test never share a path</span>
-splits = {"{"}<span class="s">"train"</span>: <span class="n">range</span>(<span class="n">0</span>, <span class="n">64</span>), <span class="s">"val"</span>: <span class="n">range</span>(<span class="n">64</span>, <span class="n">72</span>), <span class="s">"test"</span>: <span class="n">range</span>(<span class="n">72</span>, <span class="n">80</span>){"}"}
-
-<span class="k">for</span> seed <span class="k">in</span> splits[<span class="s">"train"</span>]:
-    data = mf.generate(
-        <span class="s">"BTCUSD,ETHUSD,SOLUSD"</span>,
-        start=<span class="s">"2024-01-01"</span>, end=<span class="s">"2024-04-01"</span>,
-        seed=seed, timeframes=[<span class="s">"m5"</span>],
-        include_regime=<span class="n">True</span>, include_spread=<span class="n">True</span>,
-    )
-    closes = data.panel(<span class="s">"close"</span>, <span class="s">"m5"</span>)      <span class="c"># time × instrument</span>
-    labels = data[<span class="s">"BTCUSD"</span>][<span class="s">"m5"</span>][<span class="s">"regime"</span>]  <span class="c"># ground truth</span>
-    ...</code></pre>
-			</div>
-		</div>
-	</section>
-
-	<section class="mf-section">
-		<div class="mf-wrap">
-			<div class="mf-honest">
-				<div>
-					<p class="mf-kicker">What it is not</p>
-					<h2>No alpha in here, by design</h2>
-				</div>
-				<div>
-					<p>
-						A model trained only on MarketForge learns MarketForge. The data has realistic statistics, but no
-						exploitable edge that carries over to real markets, and instrument symbols are just labels for parameter
-						sets. A strategy that makes money on synthetic data has proved that it runs, not that it works.
-					</p>
-					<p>
-						Use MarketForge to build, debug, pre-train, augment and stress-test. Use real data to decide whether
-						anything earns money.
-					</p>
-					<a class="mf-textlink" href={docs('limits/')}>Known limits and simplifications →</a>
+				<div class="lp-actions">
+					<a class="lp-btn lp-btn-primary" href={playground}>Try it in your browser</a>
+					<a class="lp-btn" href={docs('quick-start/')}>Read the quick start</a>
 				</div>
 			</div>
-		</div>
-	</section>
-
-	<section class="mf-section mf-final">
-		<div class="mf-wrap">
-			<h2>Generate your first dataset</h2>
-			<pre class="mf-final-cmd"><code><span class="mf-prompt">$</span> pip install marketforge
-<span class="mf-prompt">$</span> marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --with-regime --seed 42</code></pre>
-			<div class="mf-cta mf-cta-center">
-				<a class="mf-btn mf-btn-primary" href={docs('quick-start/')}>Quick start</a>
-				<a class="mf-btn" href="https://github.com/DamienReichhart/MarketForge">Star on GitHub</a>
-			</div>
+			<a class="lp-shot" href={playground} aria-label="Open the playground">
+				<Image class="lp-on-dark" src={playgroundDark} alt="The MarketForge playground after a run: the form for market, dates, seed, instruments and timeframes, and the line “Simulated in 10.9 s: 14,640 candles for 1 instrument”" widths={[720, 1440]} sizes="(min-width: 60rem) 700px, 100vw" />
+				<Image class="lp-on-light" src={playgroundLight} alt="The MarketForge playground after a run: the form for market, dates, seed, instruments and timeframes, and the line “Simulated in 10.9 s: 14,640 candles for 1 instrument”" widths={[720, 1440]} sizes="(min-width: 60rem) 700px, 100vw" />
+			</a>
 		</div>
 	</section>
 </Landing>
 
 <script>
+	import { mountCounters, mountLiquid, mountTabs } from '../lib/landing-motion';
+
 	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
 		button.addEventListener('click', async () => {
 			try {
@@ -298,4 +325,9 @@ splits = {"{"}<span class="s">"train"</span>: <span class="n">range</span>(<span
 			}
 		});
 	}
+
+	const tablist = document.querySelector<HTMLElement>('.lp-tabs');
+	if (tablist) mountTabs(tablist);
+	for (const row of document.querySelectorAll<HTMLElement>('[data-count]')) mountCounters(row);
+	for (const head of document.querySelectorAll<HTMLElement>('[data-liquid]')) mountLiquid(head);
 </script>
