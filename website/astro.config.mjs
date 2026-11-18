@@ -3,6 +3,7 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 
 import servedPackages from './scripts/served-packages.mjs';
+import { codeStyle, codeThemes, languageLabels } from './src/lib/code-theme.mjs';
 
 const repo = 'https://github.com/DamienReichhart/MarketForge';
 
@@ -43,15 +44,16 @@ export default defineConfig({
 			components: {
 				Footer: './src/components/DocsFooter.astro',
 			},
+			// Code blocks in the brand's ink and amber (src/lib/code-theme.mjs). The build
+			// runs with --force: Astro caches rendered Markdown, and a page rendered before
+			// a change here would link a code stylesheet that no longer exists.
 			expressiveCode: {
-				themes: ['github-dark-default', 'github-light-default'],
-				styleOverrides: {
-					borderRadius: '4px',
-					borderColor: 'var(--mf-line)',
-					codeFontFamily: 'var(--sl-font-mono)',
-					uiFontFamily: 'var(--sl-font)',
-					frames: { shadowColor: 'transparent', terminalTitlebarDotsOpacity: '0' },
-				},
+				themes: codeThemes,
+				useStarlightDarkModeSwitch: true,
+				useStarlightUiThemeColors: false,
+				plugins: [languageLabels()],
+				defaultProps: { wrap: true, preserveIndent: true },
+				styleOverrides: codeStyle,
 			},
 			sidebar: [
 				{

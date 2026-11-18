@@ -321,3 +321,97 @@ h1#_top {
 :root:not([data-theme='light']) .mf-on-light {
 	display: none;
 }
+
+/* ---------- Code blocks (themes and chrome in src/lib/code-theme.mjs) ---------- */
+
+/* Every block has a header: its language or title, left-aligned, in the UI face. */
+.expressive-code .frame .header {
+	justify-content: flex-start;
+	padding-inline: var(--ec-uiPadInl);
+	font-weight: 500;
+	letter-spacing: 0;
+}
+
+.expressive-code .frame.has-title:not(.is-terminal) .header {
+	padding-inline: 0;
+}
+
+.expressive-code .frame.has-title:not(.is-terminal) .title {
+	padding-inline: var(--ec-uiPadInl);
+	font-weight: 500;
+}
+
+/* A shell block's header starts with the prompt, in the one accent. */
+.expressive-code .frame.is-terminal .header .title::before {
+	content: '$';
+	margin-inline-end: 0.5rem;
+	font-family: var(--sl-font-mono);
+	color: var(--sl-color-accent);
+}
+
+/* Shell commands, file trees and other plain text never wrap: a flag broken after its
+   hyphens reads as two arguments, and a tree loses its shape. They scroll instead. */
+.expressive-code .frame.is-terminal pre.wrap .ec-line .code,
+.expressive-code pre.wrap[data-language='text'] .ec-line .code,
+.expressive-code pre.wrap[data-language='plaintext'] .ec-line .code {
+	white-space: pre;
+}
+
+/* A line that runs past the edge fades out there, until it is scrolled to its end. */
+@supports (animation-timeline: scroll()) {
+	@keyframes mf-code-overflow {
+		from {
+			mask-image: linear-gradient(to left, transparent, var(--mf-bg) 3rem);
+		}
+		to {
+			mask-image: none;
+		}
+	}
+
+	.expressive-code pre {
+		animation: mf-code-overflow linear both;
+		animation-timeline: scroll(self inline);
+	}
+}
+
+/* The copy button sits in the header, always visible. */
+.expressive-code .copy {
+	inset-block-start: calc(var(--ec-brdWd) + 0.3rem);
+}
+
+.expressive-code .copy button {
+	width: 1.9rem;
+	height: 1.9rem;
+	opacity: 0.8;
+	background: transparent;
+}
+
+.expressive-code .copy button::after {
+	margin: 0.4rem;
+}
+
+.expressive-code .copy button:hover,
+.expressive-code .copy button:focus-visible {
+	opacity: 1;
+}
+
+.expressive-code .copy button:focus-visible {
+	outline: 2px solid var(--sl-color-accent-high);
+	outline-offset: 1px;
+}
+
+@media (hover: hover) {
+	.expressive-code .frame .copy button:not(:hover):not(:focus-visible) {
+		opacity: 0.8;
+	}
+}
+
+/* Inline code: a quiet chip in the mono face. */
+.sl-markdown-content :not(pre) > code {
+	color: var(--sl-color-white);
+	background: var(--mf-panel);
+	border: 1px solid var(--mf-line);
+	border-radius: 4px;
+	padding: 0.1em 0.4em;
+	font-size: 0.85em;
+}

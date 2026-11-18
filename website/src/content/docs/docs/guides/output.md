@@ -5,7 +5,7 @@ description: "Files, columns, rounding, timestamps and the manifest that MarketF
 
 ## Layout
 
-```
+```text title="The dataset"
 data/
 ├── marketforge.json
 ├── crypto/BTCUSD_m1.csv, BTCUSD_H1.csv, ...

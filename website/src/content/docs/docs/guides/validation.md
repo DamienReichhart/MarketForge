@@ -16,7 +16,7 @@ print(report.passed)
 print(report.summary())
 ```
 
-```
+```text title="Output"
 Validation report (crypto): PASS
   ok   excess_kurtosis = 41.2343  (expected 0 to 1996.5)
   ok   vol_clustering = 0.3463  (expected at least 0.064)

@@ -3,7 +3,7 @@ title: Command line
 description: "Every marketforge command and option: generate, extend, validate and list-instruments."
 ---
 
-```text
+```text title="Usage"
 marketforge [--debug] COMMAND [OPTIONS]
 ```
 

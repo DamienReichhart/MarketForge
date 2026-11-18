@@ -23,7 +23,7 @@ The first candle after a closure opens away from the previous close, because the
 
 Candle prices are **mid prices**. With `--with-spread`, each candle carries the mean quoted bid-ask spread, so:
 
-```
+```text title="Bid and ask from the mid price"
 bid = price - spread / 2
 ask = price + spread / 2
 ```
