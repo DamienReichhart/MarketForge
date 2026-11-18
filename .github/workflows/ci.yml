@@ -543,6 +543,11 @@ jobs:
       - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: moderate
+          # picomatch ReDoS: every release through 4.0.7 is affected and none
+          # is fixed. It runs only while the website builds, on globs the
+          # repository writes, and the site is static, so it cannot be
+          # triggered. Remove once picomatch 2.x and 4.x are both fixed (#26).
+          allow-ghsas: GHSA-fc5q-39xc-vjpf
 
   release-readiness:
     # A merge into main releases (cd.yml). Run the release guard before the
