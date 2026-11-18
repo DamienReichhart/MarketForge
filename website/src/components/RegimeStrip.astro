@@ -1,0 +1,43 @@
+---
+/**
+ * The brand's regime strip (docs/brand/README.md): the hidden regime path of
+ * the hero sample, one coloured run per regime, used once per page as the
+ * footer's rule, on the landing page and in the docs.
+ */
+import type { Candle } from '../lib/candle-chart';
+import { regimeRuns } from '../lib/landing-charts';
+import sample from '../samples/hero-sample.json';
+
+const runs = regimeRuns(sample.candles as Candle[]);
+---
+
+<div class="lp-strip" role="img" aria-label={`The regime path of ${sample.instrument} over ${sample.candles.length} hours, seed ${sample.seed}`}>
+	{runs.map((run) => <span class={`r-${run.regime}`} style={`flex-grow:${run.share.toFixed(4)}`}></span>)}
+</div>
+
+<style>
+	.lp-strip {
+		display: flex;
+		height: 10px;
+		border-radius: 2px;
+		overflow: hidden;
+	}
+	span {
+		flex-basis: 0;
+	}
+	.r-trend_up {
+		background: var(--mf-regime-trend-up);
+	}
+	.r-trend_down {
+		background: var(--mf-regime-trend-down);
+	}
+	.r-range {
+		background: var(--mf-regime-range);
+	}
+	.r-high_volatility {
+		background: var(--mf-regime-high-vol);
+	}
+	.r-crash {
+		background: var(--mf-regime-crash);
+	}
+</style>
