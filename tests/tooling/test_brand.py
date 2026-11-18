@@ -113,3 +113,38 @@ def test_every_asset_is_documented():
     guidelines = (BRAND / "README.md").read_text()
     for path in (BRAND / "assets").iterdir():
         assert path.name in guidelines, f"{path.name} is not described in docs/brand/README.md"
+
+
+def _token_colours() -> set[str]:
+    colours: set[str] = set()
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", node):
+            colours.add(node.upper())
+
+    walk(TOKENS)
+    return colours
+
+
+README_IMAGES = ROOT / "docs" / "readme"
+
+
+def test_readme_images_use_only_brand_colours():
+    colours = _token_colours()
+    images = sorted(README_IMAGES.glob("*.svg"))
+    assert images, "docs/readme/ holds no images"
+    for path in images:
+        used = {c.upper() for c in re.findall(r"#[0-9A-Fa-f]{6}\b", path.read_text())}
+        stray = used - colours
+        assert not stray, f"{path.name} uses colours that are not brand tokens: {sorted(stray)}"
+
+
+def test_every_readme_image_is_shown_in_both_themes():
+    readme = (ROOT / "README.md").read_text()
+    for path in README_IMAGES.glob("*.svg"):
+        assert f"docs/readme/{path.name}" in readme, (
+            f"README.md does not show docs/readme/{path.name}"
+        )
