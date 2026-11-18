@@ -19,6 +19,7 @@ The data controller is **Damien REICHHART**, the publisher of this site (see the
 - No cookies (see the [cookie policy](../cookies/)).
 - No external requests: fonts, scripts, styles and images are all served by this site itself. Your browser does not contact Google Fonts, a CDN or any other third party while you read it.
 - Search runs entirely in your browser. The search index is a set of files downloaded from this site; what you type is never sent anywhere.
+- The [playground](../../playground/) runs entirely in your browser. Python, its packages and MarketForge are files downloaded from this site, only when you ask it to generate data; what you choose and the data it generates are never sent anywhere.
 
 ## What is processed, and why
 

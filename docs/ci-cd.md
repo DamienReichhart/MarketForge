@@ -38,7 +38,7 @@ explicitly.
 | Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
-| Website | Tests the site's build scripts (`npm test`), type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
+| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), tests the site's build scripts (`npm test`), runs the built [playground](https://damienreichhart.github.io/MarketForge/playground/) in Pyodide under Node (`npm run test-playground`: it loads the site's own Pyodide, wheels and MarketForge wheel, generates, exports CSV and Parquet, and refuses an over-budget request), and uploads the built site as the `github-pages` artifact that CD deploys. It needs the build job: the playground serves the wheel CI built, and the Pyodide wheels it downloads at build time must match the hashes in Pyodide's lock file (ADR 0015) |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
@@ -67,7 +67,7 @@ cannot be missing or out of date:
 | --- | --- | --- |
 | Wheel and sdist (PyPI) | None: dependencies are installed by pip from their own packages, with their own licence files | `LICENSE` and `NOTICE` (MarketForge's own) |
 | GitHub release | The same files, plus the SBOM | `marketforge-<version>.third-party-licenses.txt`: the texts of every runtime dependency, written by the **build** job (`.github/scripts/licenses.py`) |
-| Website | Astro, Starlight, Expressive Code, Pagefind, the DM Sans and DM Mono fonts | `/third-party-licenses.txt`, written by `website/scripts/third-party-licenses.mjs` before every dev, check and build, from the installed lockfile tree; linked from every page's footer, so the link check fails if it is missing |
+| Website | Astro, Starlight, Expressive Code, Pagefind, the DM Sans and DM Mono fonts; the playground's Pyodide (with CPython and Emscripten) and the Python wheels it serves | `/third-party-licenses.txt`, written by `website/scripts/third-party-licenses.mjs` before every dev, check and build (after `sync-playground.mjs`), from every installed package of the lockfile (dev ones too: Pyodide is one) and every wheel under `public/`; linked from every page's footer, so the link check fails if it is missing |
 
 Both generators enforce a licence policy and fail the build when a package
 (direct or transitive) is under a licence the policy does not allow, states a
@@ -75,11 +75,22 @@ licence that is not an SPDX expression, ships no licence text, or states a
 different licence from the one its policy entry was reviewed for. Only
 permissive licences are allowed for every package; a copyleft one (tqdm's
 MPL-2.0, libvips' LGPL in the site's build) is a decision about one package,
-recorded with its reason in `.github/python-license-policy.toml` (Python) or
-`website/license-policy.json` (website). When a check fails, the error says
-which entry to add or update. A package that ships no licence text gets its
-upstream licence saved in `website/licenses/` (Pagefind's npm packages have
-none), or, if nothing of it reaches the site, a `notServed` reason.
+recorded with its reason in `.github/python-license-policy.toml` (the
+release's dependencies) or `website/license-policy.json` (the website's npm
+packages, and under `python` the wheels the playground serves). When a check
+fails, the error says which entry to add or update.
+
+Some of what the site serves ships without the texts its licence requires:
+Pagefind's and Pyodide's npm packages have no licence file (and Pyodide embeds
+CPython and Emscripten), and Pyodide's builds of pyarrow and pandas lack the
+NOTICE and bundled licences their PyPI releases carry. Their upstream texts are
+saved in `website/licenses/`, each with the URL it came from (`texts` in the
+policy), for the exact version served. When such a package changes version (a
+Dependabot bump of Pyodide or Pagefind), the website build fails until
+`npm run vendor-licenses` (in `website/`) refetches the texts for the new
+version and records it; review the diff, which is where a licence change shows,
+and commit it. A package that ships no licence text and of which nothing
+reaches the site (a native build tool) gets a `notServed` reason instead.
 
 The weekly scheduled run resolves the newest dependency releases, so a
 dependency that changes its licence fails it before the next release does.

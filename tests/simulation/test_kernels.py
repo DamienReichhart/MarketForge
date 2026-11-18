@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -234,3 +237,44 @@ def test_compiled_kernels_equal_their_interpreted_python_bit_for_bit():
     b = finish_bars.py_func(*finish_args, memory[1])
     for x, y in zip((*a, memory[0]), (*b, memory[1]), strict=True):
         np.testing.assert_array_equal(x, y)
+
+
+def test_without_numba_on_emscripten_the_output_is_unchanged():
+    # Pyodide (sys.platform "emscripten") has no Numba: the kernels run as
+    # plain Python there and must give the same bits as the compiled ones.
+    # Elsewhere a missing Numba must fail loudly, not fall back.
+    code = """
+import hashlib, sys
+import numpy as np
+import pandas, pyarrow, threadpoolctl  # import before faking the platform
+
+def fingerprint():
+    import marketforge as mf
+    data = mf.generate(["BTCUSD", "AAPL"], start="2024-01-02", days=1, seed=5,
+                       timeframes=["m1"], include_regime=True, include_spread=True)
+    frame = data.to_long()
+    values = frame.select_dtypes("number").to_numpy(dtype="float64")
+    return hashlib.sha256(np.ascontiguousarray(values).tobytes()).hexdigest()
+
+if sys.argv[1] == "emscripten":
+    sys.modules["numba"] = None  # any `import numba` now raises ImportError
+    sys.platform = "emscripten"
+    from marketforge.simulation import kernels
+    assert not hasattr(kernels.regime_chain, "signatures"), "kernels were compiled"
+elif sys.argv[1] == "missing":
+    sys.modules["numba"] = None
+    try:
+        import marketforge  # noqa: F401
+    except ImportError:
+        print("refused")
+    sys.exit()
+print(fingerprint())
+"""
+
+    def run(mode: str) -> str:
+        return subprocess.run(
+            [sys.executable, "-c", code, mode], check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    assert run("emscripten") == run("native")
+    assert run("missing") == "refused"

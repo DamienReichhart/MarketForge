@@ -10,3 +10,7 @@ src/content/docs/docs/brand.md
 public/brand/
 # Written by scripts/third-party-licenses.mjs on every build.
 public/third-party-licenses.txt
+
+# The playground's runtime and wheels, put there by scripts/sync-playground.mjs
+public/playground/
+.cache/

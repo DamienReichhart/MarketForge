@@ -1,0 +1,14 @@
+{
+	"$comment": "The playground's caps, enforced by runner.py and printed on the page. browserFactor converts mf.estimate()'s one-core native seconds into browser seconds: measured in Pyodide at 7x (one instrument) to 25x (whole markets) the estimate, so 25 keeps the cap honest. maxSeconds is the longest a request may take in the browser, by that conversion. calibrationSeconds is the one-off cost of the first request for each market in a visit: MarketForge calibrates the market's regimes with a multi-million-step chain (0.15 s compiled, measured at these values in Pyodide).",
+	"browserFactor": 25,
+	"maxSeconds": 30,
+	"maxRows": 1500000,
+	"maxMemoryMB": 400,
+	"maxDays": 366,
+	"chartCandles": 500,
+	"calibrationSeconds": {
+		"crypto": 10,
+		"forex": 16,
+		"stocks": 7
+	}
+}

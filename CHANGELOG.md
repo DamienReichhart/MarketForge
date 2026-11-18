@@ -76,7 +76,9 @@ when that makes the data more realistic. Upgrading from 3.x? See
 - **Third-party licences ship with everything that contains third-party
   code.** Each GitHub release has a `third-party-licenses.txt` with the licence
   and NOTICE texts of every runtime dependency, and the website serves those
-  of its own code and fonts at `/third-party-licenses.txt`. Both are written by
+  of its own code, fonts and playground runtime (Pyodide, CPython, Emscripten,
+  and the Python wheels it serves) at `/third-party-licenses.txt`, with the
+  texts upstream packages leave out, such as pyarrow's NOTICE. Both are written by
   the build that produces what they describe, and CI blocks a release if a
   dependency's licence is not allowed or its licence text is missing. The
   wheel and sdist still contain only MarketForge's own code.
@@ -142,6 +144,10 @@ when that makes the data more realistic. Upgrading from 3.x? See
 - **scipy is no longer a dependency** (about 100 MB less to install, and one
   fewer version to reconcile with an ML stack). Validation computes the
   excess kurtosis with NumPy, to the same value.
+- **MarketForge runs in Pyodide** (Python in WebAssembly). Numba is not
+  installed there, and the kernels run as plain Python to the same bits, only
+  slower. Everywhere else Numba is still required, and a missing Numba is
+  still an import error, not a silent fallback.
 
 ### New commands
 - **`marketforge info DATASET`** summarises a dataset from its manifest
@@ -242,6 +248,14 @@ when that makes the data more realistic. Upgrading from 3.x? See
   and type tokens, and every logo, favicon and social image are in
   [`docs/brand`](docs/brand/README.md) and on the site's Brand page. The site
   now sets type in DM Sans and DM Mono, and link previews carry an image.
+- **Try MarketForge in your browser.** The site's
+  [Playground](https://damienreichhart.github.io/MarketForge/playground/)
+  runs the released package in the page itself: pick instruments, a range and
+  a seed, see the candles with their regimes, download them as CSV or Parquet,
+  and copy the equivalent command. It is a preview with limits the installed
+  package does not have (it is 10 to 100 times slower, capped in size, and not
+  bit-identical to an installed MarketForge), which the page states up front.
+  Nothing leaves the browser, and the runtime is served by the site itself.
 
 ## 3.1.1
 

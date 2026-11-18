@@ -21,7 +21,7 @@ Yes. The documentation's code examples are part of the repository and under the 
 
 Its dependencies keep their own licences: permissive ones (BSD, MIT, Apache-2.0 and the like), and the MPL-2.0 for part of tqdm, which binds only changes to tqdm's own files. A release is blocked if a dependency comes under any other licence. The wheel and the source package on PyPI contain only MarketForge's code: pip installs NumPy, pandas, Numba and the others from their own packages, with their own licence files. If you ship an environment with MarketForge in it, such as a container image or a frozen application, each [GitHub release](https://github.com/DamienReichhart/MarketForge/releases) has a `third-party-licenses.txt` with the licence and notice texts of every runtime dependency.
 
-This website's code and fonts come from third parties too. Their licences are in the [third-party licences](../../third-party-licenses.txt) of the site.
+This website's code and fonts come from third parties too, and so does the [playground](../../playground/): Pyodide, CPython compiled to WebAssembly, and the NumPy, pandas and pyarrow it runs, served by this site. Their licences and notices are in the site's [third-party licences](../../third-party-licenses.txt).
 
 ## Is there a warranty?
 

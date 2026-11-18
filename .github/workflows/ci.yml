@@ -599,6 +599,9 @@ jobs:
 
   website:
     name: Website
+    # The playground serves the wheel CI built and tested (website/scripts/
+    # sync-playground.mjs picks it up from dist/).
+    needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -607,6 +610,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Download the distributions CI built
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: website/.nvmrc
@@ -615,12 +623,11 @@ jobs:
       - name: Install (lockfile only)
         working-directory: website
         run: npm ci --no-audit --no-fund
-      - name: Test the build scripts
-        working-directory: website
-        run: npm test
       # Every build (check and build alike) first writes
-      # public/third-party-licenses.txt, and fails on a package licence
-      # license-policy.json does not allow or a package without licence text.
+      # public/third-party-licenses.txt, the licences of every npm package
+      # and of the wheels the playground serves, and fails on a licence
+      # license-policy.json does not allow, a package without licence text,
+      # or licence texts saved for another version of a package.
       - name: Type-check (astro check)
         working-directory: website
         run: npm run check
@@ -630,6 +637,15 @@ jobs:
       - name: Check internal links
         working-directory: website
         run: npm run check-links
+      # After the build: they also check the wheels it put in public/.
+      - name: Test the build scripts
+        working-directory: website
+        run: npm test
+      # Pyodide's wheels are downloaded by the build and checked against the
+      # hashes of its lock file; this runs the built playground under Node.
+      - name: Run the playground in Pyodide
+        working-directory: website
+        run: npm run test-playground
       # On main, CD deploys exactly this artifact to GitHub Pages.
       - name: Upload the site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

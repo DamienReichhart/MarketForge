@@ -12,7 +12,7 @@ These terms govern your use of this website. By using it you accept them. The we
 
 MarketForge is free, open-source software, distributed under the **Apache License, version 2.0** (Apache-2.0). The [licence](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE), not these terms, governs your rights to use, modify and redistribute the software. Where these terms and the licence differ about the software, the licence prevails.
 
-The website’s text, examples and images are part of the same repository and are published under the same licence, unless stated otherwise. The site also serves third-party software and fonts (Astro, Starlight, Pagefind, DM Sans and DM Mono) under their own licences; every one is listed, with its licence and notice texts, in the [third-party licences](../../third-party-licenses.txt). Third-party names and trademarks mentioned on the site (exchanges, instruments, companies, software) belong to their owners and are used only to describe what MarketForge simulates or works with.
+The website’s text, examples and images are part of the same repository and are published under the same licence, unless stated otherwise. The site also serves third-party software and fonts (Astro, Starlight, Pagefind, DM Sans and DM Mono, and the playground's Pyodide, CPython and Python packages) under their own licences; every one is listed, with its licence and notice texts, in the [third-party licences](../../third-party-licenses.txt). Third-party names and trademarks mentioned on the site (exchanges, instruments, companies, software) belong to their owners and are used only to describe what MarketForge simulates or works with.
 
 ## Synthetic data, not market data
 

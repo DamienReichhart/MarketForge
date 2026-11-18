@@ -47,7 +47,9 @@ dependencies = [
     # oldest releases that are binary-compatible with numpy 2. CI enforces
     # these floors with a lowest-direct resolution job.
     "numpy>=2.2",
-    "numba>=0.61.2",
+    # Numba has no WebAssembly build: in Pyodide the kernels run as plain
+    # Python (docs/adr/0015).
+    "numba>=0.61.2; sys_platform != 'emscripten'",
     "pandas>=2.2.2",
     "click>=8.1",
     "tqdm>=4.66",

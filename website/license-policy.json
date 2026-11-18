@@ -1,14 +1,18 @@
 {
 	"$comment": [
-		"Licences the website's npm packages may have, checked on every build by scripts/third-party-licenses.mjs,",
-		"which also writes public/third-party-licenses.txt from them. Only permissive licences (and the OFL, for the",
-		"fonts) are allowed for every package; anything else is a decision about one package, recorded below.",
+		"Licences of what the website is built from and serves, checked on every build by scripts/third-party-licenses.mjs,",
+		"which also writes public/third-party-licenses.txt from them. The top level is for npm packages, \"python\" for the",
+		"Python wheels the playground serves. Only permissive licences (and the OFL, for the fonts) are allowed for every",
+		"package; anything else is a decision about one package, recorded with its reason.",
 		"An entry applies to the package named by its key, or to every package starting with it if it ends in *.",
-		"'declared' is the licence exactly as the package states it: if a new release states anything else, the",
-		"entry no longer applies and the build fails until someone reads the new licence. 'license' replaces a",
-		"declared licence that is not SPDX; 'allow' allows more licences for this package only; 'text' is the",
-		"upstream licence (in licenses/) of a package that ships none; 'notServed' says why a package that ships",
-		"no licence text needs none here: nothing of it reaches the site."
+		"'declared' is the licence exactly as the package states it: if a release states anything else, the entry no",
+		"longer applies and the build fails until someone reads the new licence. 'license' replaces a declared licence",
+		"that is not SPDX; 'allow' allows more licences for this package only; 'source' is where the source code of the",
+		"served version is, for licences that ask the site to say so (MPL-2.0).",
+		"'texts' are upstream licence and NOTICE texts the package does not ship, saved in licenses/ from 'from' (where",
+		"{version} is the package's version, {python} and {emscripten} Pyodide's). They were saved for 'version': when",
+		"the package changes version, the build fails until `npm run vendor-licenses` refetches them, for review.",
+		"'notServed' says why a package that ships no licence text needs none here: nothing of it reaches the site."
 	],
 	"allowed": [
 		"0BSD",
@@ -25,33 +29,84 @@
 	"packages": {
 		"pagefind": {
 			"declared": "MIT",
-			"text": "licenses/pagefind-LICENSE",
-			"reason": "The site's search: pagefind/ (its UI, scripts and WebAssembly) is served. The npm package has no licence file; licenses/pagefind-LICENSE is the LICENSE of github.com/Pagefind/pagefind."
+			"reason": "The site's search: pagefind/ (its UI, scripts and WebAssembly) is served. Its npm packages have no licence file.",
+			"version": "1.6.0",
+			"texts": [
+				{
+					"file": "licenses/pagefind/LICENSE",
+					"from": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/LICENSE"
+				}
+			]
 		},
 		"@pagefind/*": {
 			"declared": "MIT",
-			"text": "licenses/pagefind-LICENSE",
-			"reason": "Pagefind's UI (@pagefind/default-ui) and its per-platform indexer, which writes the served pagefind/ files. Same repository and licence as pagefind."
+			"reason": "Pagefind's UI (@pagefind/default-ui) and its per-platform indexer, which writes the served pagefind/ files. Same repository and licence as pagefind.",
+			"version": "1.6.0",
+			"texts": [
+				{
+					"file": "licenses/pagefind/LICENSE",
+					"from": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/LICENSE"
+				}
+			]
+		},
+		"pyodide": {
+			"declared": "MPL-2.0",
+			"allow": [
+				"MPL-2.0"
+			],
+			"reason": "The playground's Python runtime, served unmodified from playground/pyodide/: Pyodide (MPL-2.0), CPython compiled to WebAssembly with its standard library (PSF licence and the licences of the software CPython incorporates), and Emscripten's runtime and C library (MIT, and musl's MIT licence). The npm package ships none of these texts. MPL-2.0 asks a distributor of the executable form to say where its source is: \"source\".",
+			"source": "https://github.com/pyodide/pyodide/tree/{version}",
+			"version": "314.0.8",
+			"texts": [
+				{
+					"file": "licenses/pyodide/LICENSE",
+					"from": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/LICENSE"
+				},
+				{
+					"file": "licenses/pyodide/cpython-LICENSE",
+					"from": "https://raw.githubusercontent.com/python/cpython/v{python}/LICENSE"
+				},
+				{
+					"file": "licenses/pyodide/cpython-license.rst",
+					"from": "https://raw.githubusercontent.com/python/cpython/v{python}/Doc/license.rst"
+				},
+				{
+					"file": "licenses/pyodide/emscripten-LICENSE",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/LICENSE"
+				},
+				{
+					"file": "licenses/pyodide/musl-COPYRIGHT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libc/musl/COPYRIGHT"
+				}
+			]
 		},
 		"@img/sharp-libvips-*": {
 			"declared": "LGPL-3.0-or-later",
-			"allow": ["LGPL-3.0-or-later"],
+			"allow": [
+				"LGPL-3.0-or-later"
+			],
 			"notServed": "libvips, the native image library sharp uses to resize images while the site is built; it runs on the build machine and none of it is served.",
 			"reason": "Build tool only, dynamically linked by sharp, unmodified: the LGPL puts no obligation on the site."
 		},
 		"@img/sharp-wasm32": {
 			"declared": "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
-			"allow": ["LGPL-3.0-or-later"],
+			"allow": [
+				"LGPL-3.0-or-later"
+			],
 			"reason": "sharp compiled to WebAssembly with libvips, a fallback for platforms without a native build. Build tool only; none of it is served."
 		},
 		"lightningcss": {
 			"declared": "MPL-2.0",
-			"allow": ["MPL-2.0"],
+			"allow": [
+				"MPL-2.0"
+			],
 			"reason": "The CSS minifier of the build. Its output is the site's own CSS, not its code, and MPL-2.0 binds only changes to its own files."
 		},
 		"lightningcss-*": {
 			"declared": "MPL-2.0",
-			"allow": ["MPL-2.0"],
+			"allow": [
+				"MPL-2.0"
+			],
 			"reason": "lightningcss's per-platform native binary. Build tool only."
 		},
 		"@astrojs/compiler-binding-*": {
@@ -70,6 +125,10 @@
 			"declared": "MIT",
 			"notServed": "Loads the build tools' WebAssembly fallbacks on the build machine."
 		},
+		"@vscode/l10n": {
+			"declared": "MIT",
+			"notServed": "Used by the type checker (astro check) on the build machine."
+		},
 		"am-i-vibing": {
 			"declared": "MIT",
 			"notServed": "Used by Astro's command line to detect the terminal it runs in."
@@ -85,6 +144,118 @@
 		"boolbase": {
 			"declared": "ISC",
 			"notServed": "Used by CSS selector matching while pages are built (svgo, Starlight)."
+		}
+	},
+	"python": {
+		"$comment": "The wheels the playground serves (public/playground/), as Pyodide builds them. Names are matched as PyPI normalizes them.",
+		"allowed": [
+			"0BSD",
+			"Apache-2.0",
+			"BSD-2-Clause",
+			"BSD-3-Clause",
+			"BSL-1.0",
+			"CC0-1.0",
+			"ISC",
+			"MIT",
+			"PSF-2.0",
+			"Unlicense",
+			"Zlib"
+		],
+		"exceptions": [],
+		"packages": {
+			"pandas": {
+				"declared": "BSD License",
+				"license": "BSD-3-Clause",
+				"reason": "Pyodide's pandas wheel ships only pandas' own LICENSE, not the licences of the code pandas bundles and compiles in (LICENSES/ in its repository and in its PyPI wheels).",
+				"version": "3.0.2",
+				"texts": [
+					{
+						"file": "licenses/pandas/BOTTLENECK_LICENCE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/BOTTLENECK_LICENCE"
+					},
+					{
+						"file": "licenses/pandas/DATEUTIL_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/DATEUTIL_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/HAVEN_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/HAVEN_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/HAVEN_MIT",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/HAVEN_MIT"
+					},
+					{
+						"file": "licenses/pandas/KLIB_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/KLIB_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/MUSL_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/MUSL_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/NUMPY_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/NUMPY_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/PACKAGING_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PACKAGING_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/PSF_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PSF_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/PYPERCLIP_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PYPERCLIP_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/PYUPGRADE_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PYUPGRADE_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/SAS7BDAT_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/SAS7BDAT_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/ULTRAJSON_LICENSE",
+						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/ULTRAJSON_LICENSE"
+					}
+				]
+			},
+			"pyarrow": {
+				"declared": "Apache Software License",
+				"license": "Apache-2.0",
+				"reason": "Pyodide's pyarrow wheel ships no licence and no NOTICE; Apache-2.0 requires both to go with every copy. They are Apache Arrow's, at the same version.",
+				"version": "22.0.0",
+				"texts": [
+					{
+						"file": "licenses/pyarrow/LICENSE.txt",
+						"from": "https://raw.githubusercontent.com/apache/arrow/apache-arrow-{version}/LICENSE.txt"
+					},
+					{
+						"file": "licenses/pyarrow/NOTICE.txt",
+						"from": "https://raw.githubusercontent.com/apache/arrow/apache-arrow-{version}/NOTICE.txt"
+					}
+				]
+			},
+			"pyodide-unix-timezones": {
+				"declared": "MIT License",
+				"license": "MIT",
+				"reason": "Ships no licence file. Its repository has no tags, so the text is from its main branch.",
+				"version": "1.0.0",
+				"texts": [
+					{
+						"file": "licenses/pyodide-unix-timezones/LICENSE",
+						"from": "https://raw.githubusercontent.com/joemarshall/pyodide-unix-timezones/main/LICENSE"
+					}
+				]
+			},
+			"python-dateutil": {
+				"declared": "Dual License",
+				"license": "Apache-2.0 AND BSD-3-Clause",
+				"reason": "Its LICENSE puts contributions since 2017-12-01 under Apache-2.0 and the earlier code under BSD-3-Clause, so both apply."
+			}
 		}
 	}
 }
