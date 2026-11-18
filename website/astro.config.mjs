@@ -18,7 +18,7 @@ export default defineConfig({
 		starlight({
 			title: 'MarketForge',
 			description:
-				'Open-source synthetic market data for training AI trading models and stress-testing backtesters: labelled regimes, real trading calendars, reproducible from a seed.',
+				'Open-source synthetic market data for training AI trading models and stress-testing backtesters: 208 instruments on real trading calendars, every candle labelled with its regime, reproducible from a seed.',
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',
 			head: [
@@ -50,7 +50,7 @@ export default defineConfig({
 					borderColor: 'var(--mf-line)',
 					codeFontFamily: 'var(--sl-font-mono)',
 					uiFontFamily: 'var(--sl-font)',
-					frames: { shadowColor: 'transparent' },
+					frames: { shadowColor: 'transparent', terminalTitlebarDotsOpacity: '0' },
 				},
 			},
 			sidebar: [
@@ -58,11 +58,9 @@ export default defineConfig({
 					label: 'Start here',
 					items: [
 						{ label: 'Overview', slug: 'docs' },
+						{ label: 'Playground', slug: 'playground', badge: { text: 'No install', variant: 'note' } },
 						{ label: 'Installation', slug: 'docs/installation' },
 						{ label: 'Quick start', slug: 'docs/quick-start' },
-						{ label: 'Playground', slug: 'playground' },
-						{ label: 'What it is not', slug: 'docs/limits' },
-						{ label: 'Migrating to 4.0', slug: 'docs/migrating-to-4' },
 					],
 				},
 				{
@@ -71,6 +69,7 @@ export default defineConfig({
 						{ label: 'Training ML models', slug: 'docs/use-cases/machine-learning' },
 						{ label: 'Backtesting', slug: 'docs/use-cases/backtesting' },
 						{ label: 'Stress testing', slug: 'docs/use-cases/stress-testing' },
+						{ label: 'What it is not', slug: 'docs/limits' },
 					],
 				},
 				{
@@ -98,6 +97,7 @@ export default defineConfig({
 					label: 'Project',
 					items: [
 						{ label: 'Changelog', slug: 'changelog' },
+						{ label: 'Migrating to 4.0', slug: 'docs/migrating-to-4' },
 						{
 							label: 'Design decisions',
 							collapsed: true,

@@ -1,0 +1,88 @@
+---
+/**
+ * The five regimes with their brand colours, for the docs: the legend of the
+ * `regime` column, in the order of the logo's bands. Facts from the model
+ * reference (docs/reference/model.md).
+ */
+const regimes = [
+	['trend_up', 'Trend up', 'The market’s main factor rises: all coins or all stocks together; in forex, the dollar falls.'],
+	['trend_down', 'Trend down', 'The main factor falls. A trend ends in its direction about 70 to 90% of the time.'],
+	['range', 'Range', 'No trend along the main factor.'],
+	['high_volatility', 'High volatility', 'Volatility scales up and a common shock reaches every instrument, so correlations rise.'],
+	['crash', 'Crash', 'A fall of about 1.5 of its own standard deviations; crypto crashes last about 13 hours.'],
+];
+---
+
+<ol class="mf-regimes not-content" aria-label="The five regimes">
+	{regimes.map(([key, label, text]) => (
+		<li class={`r-${key}`}>
+			<span class="mf-regimes-name">{label}</span>
+			<code>{key}</code>
+			<p>{text}</p>
+		</li>
+	))}
+</ol>
+
+<style>
+	.mf-regimes {
+		display: grid;
+		gap: 0.5rem;
+		margin: 1.5rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	li {
+		display: grid;
+		grid-template-columns: 9rem 9.5rem minmax(0, 1fr);
+		align-items: baseline;
+		gap: 0.25rem 1rem;
+		padding: 0.75rem 1rem;
+		border-radius: 4px;
+		border-top: 4px solid var(--regime);
+		background: color-mix(in srgb, var(--regime) 12%, var(--mf-panel));
+	}
+	.mf-regimes-name {
+		font-weight: 600;
+		color: var(--regime-text);
+	}
+	code {
+		font-size: var(--sl-text-xs);
+		color: var(--mf-muted);
+		background: none;
+		border: 0;
+		padding: 0;
+	}
+	p {
+		margin: 0;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-2);
+	}
+	.r-trend_up {
+		--regime: var(--mf-regime-trend-up);
+		--regime-text: var(--mf-regime-trend-up-text);
+	}
+	.r-trend_down {
+		--regime: var(--mf-regime-trend-down);
+		--regime-text: var(--mf-regime-trend-down-text);
+	}
+	.r-range {
+		--regime: var(--mf-regime-range);
+		--regime-text: var(--mf-regime-range-text);
+	}
+	.r-high_volatility {
+		--regime: var(--mf-regime-high-vol);
+		--regime-text: var(--mf-regime-high-vol-text);
+	}
+	.r-crash {
+		--regime: var(--mf-regime-crash);
+		--regime-text: var(--mf-regime-crash-text);
+	}
+	@media (max-width: 50rem) {
+		li {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+		p {
+			grid-column: 1 / -1;
+		}
+	}
+</style>
