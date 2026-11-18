@@ -99,6 +99,21 @@
 
 /* ---------- Docs chrome ---------- */
 
+html,
+body {
+	overflow-x: clip;
+}
+
+/* Prose at a readable measure, about 75 characters a line. */
+:root {
+	--sl-content-width: 42rem;
+}
+
+starlight-theme-select select {
+	border: 1px solid var(--mf-line-strong);
+	border-radius: 4px;
+}
+
 body {
 	background: var(--mf-bg);
 	font-feature-settings: 'cv11', 'ss01';
@@ -155,9 +170,7 @@ h1#_top {
 .sl-markdown-content th {
 	font-weight: 600;
 	color: var(--sl-color-gray-2);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	font-size: 0.75rem;
+	font-size: var(--sl-text-sm);
 }
 
 .sl-markdown-content th,
@@ -185,8 +198,19 @@ h1#_top {
 	background: var(--mf-panel);
 }
 
+.sl-link-card {
+	transition: transform 120ms ease-out, border-color 220ms ease-out;
+}
+
 .sl-link-card:hover {
 	border-color: var(--sl-color-accent) !important;
+	transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sl-link-card:hover {
+		transform: none;
+	}
 }
 
 /* Tabular numbers everywhere a number is a value. */
@@ -243,13 +267,20 @@ h1#_top {
 	width: auto;
 }
 
-/* Sidebar: small uppercase group labels, current page marked by a rule. */
+/* Sidebar: group labels in the body face, sentence case; the current page marked by an amber rule. */
 .sidebar-content .large {
-	font-size: 0.75rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+	font-weight: 650;
+	color: var(--sl-color-white);
+}
+
+.sidebar-content .sl-badge {
+	font-family: var(--sl-font);
+	text-transform: none;
+	letter-spacing: 0;
+	background: transparent;
+	border-color: var(--mf-line-strong);
+	color: var(--mf-muted);
 }
 
 .sidebar-content a {
