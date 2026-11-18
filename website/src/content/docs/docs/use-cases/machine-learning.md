@@ -69,7 +69,7 @@ model = HistGradientBoostingClassifier(max_iter=200).fit(X, y)
 print(classification_report(test["regime"].astype(str), model.predict(test.drop(columns="regime"))))
 ```
 
-Do not expect a high score from a baseline like this. Trained on two seeds, it recognises crashes and ranges well but barely tells the direction of a trend, and its overall accuracy is around 40%. That is the point: the label lets you *measure* how much of a hidden state your features recover, which real data never lets you do. Regimes last hours to days and changes ramp in, so the first candles after a switch are hard to classify, as they would be on real data.
+Do not expect a high score from a baseline like this. Trained on eight seeds and tested on two others, its accuracy is around 55%: it is precise on crashes but misses half of them, and labels too many candles high volatility. That is the point: the label lets you *measure* how much of a hidden state your features recover, which real data never lets you do. Regimes last hours to days and changes ramp in, so the first candles after a switch are hard to classify, as they would be on real data.
 
 ## Recipe: windows for a sequence model
 
@@ -93,7 +93,7 @@ x, y = windows(seed=0)
 print(x.shape, y.shape)
 ```
 
-Crypto trades 24/7, so its panel has no gaps. A panel that mixes markets has NaN where a market was closed; MarketForge never forward-fills it for you, so decide explicitly how your model should see closures.
+Crypto trades 24/7, so its panel has no gaps. A panel that mixes markets has NaN where a market was closed, and markets start their candles on different clocks (a stock's `H1` candles at half past the hour), so their times may never coincide. MarketForge never forward-fills for you: see [Working with the data](../../guides/working-with-data/#several-instruments-side-by-side) for lining them up without look-ahead.
 
 ## Pre-training and augmentation
 

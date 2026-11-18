@@ -5,7 +5,21 @@ description: "How MarketForge simulates prices, volatility, regimes, gaps, highs
 
 MarketForge simulates each market minute by minute, one UTC day at a time, carrying the model's state (prices, GARCH variance, regime, volume memory) from day to day. Every instrument of a market is simulated jointly, so correlation, tail dependence and the regime are shared. See [ADR 0001](../../adr/0001-simulate-whole-market-day-by-day/).
 
-Per open minute *t* and simulated series *f*:
+Each open minute *t*, every simulated series *f* (an instrument, or a forex anchor pair from which the crosses are derived) moves from open to close by the log return
+
+<p style="text-align:center;font-size:1.2em">r<sub>f,t</sub> = μ<sub>f</sub> + λ<sub>f</sub> · d<sub>t</sub> + σ<sub>f</sub> · √h<sub>t</sub> · g<sub>t</sub> · s<sub>t</sub> · z<sub>f,t</sub></p>
+
+the instrument's own drift, plus the regime's trend along the market's main factor, plus a shock scaled by four volatility terms. The sections below define each term, then how gaps, highs and lows, volume and the spread are built around it.
+
+| Term | What it is | Section |
+| --- | --- | --- |
+| *z* | Correlated Student-t shock, shared tail risk | [Shocks](#shocks) |
+| σ<sub>f</sub> | The instrument's volatility per minute | [Volatility](#volatility) |
+| h<sub>t</sub> | GJR-GARCH clustering and leverage | [Volatility](#volatility) |
+| s<sub>t</sub> | Intraday and weekly seasonality | [Volatility](#volatility) |
+| g<sub>t</sub> | The regime's volatility multiplier | [Regimes](#regimes) |
+| d<sub>t</sub>, λ<sub>f</sub> | The regime's trend, and the series' exposure to it | [Regimes](#regimes) |
+| μ<sub>f</sub> | The instrument's drift per minute | [Returns](#returns) |
 
 ## Shocks
 
@@ -35,7 +49,7 @@ A regime trends along the market's main factor: all coins together, all stocks t
 
 ## Returns
 
-Open to close: μ<sub>f</sub> · d<sub>t</sub> + volatility · *z*, where d<sub>t</sub> is the regime drift multiplier.
+The open-to-close log return adds three parts: μ<sub>f</sub>, the per-minute drift implied by the instrument's annual drift; the regime's trend λ<sub>f</sub> · d<sub>t</sub>, where d<sub>t</sub> is the regime's trend strength (smoothed, so it ramps in) and λ<sub>f</sub> is the series' volatility times its loading on the market's main factor; and the volatility times the shock *z*. The trend is additive and averages to zero over the long run, so the catalog's annual drift is what you get. Each candle opens at the previous close, except after a closure.
 
 ## Gaps
 

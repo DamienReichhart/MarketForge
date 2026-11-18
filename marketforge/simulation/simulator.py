@@ -17,10 +17,11 @@ Per open minute t and simulated factor f:
 
     z_t        correlated, unit-variance Student-t shocks (shared mixing => tail dependence)
     h_t        GJR-GARCH(1,1) variance multiplier (unconditional mean 1)
-    g_t, d_t   market-wide regime volatility / drift multipliers
+    g_t, d_t   market-wide regime volatility multiplier / trend strength (docs/adr/0013)
     s_t        intraday seasonality (mean square 1 over a year)
+    lambda_f   sigma_f * the factor's loading on the market's main factor
     sigma_t  = sigma_f * sqrt(h_t) * g_t * s_t
-    r_t      = mu_f * d_t + sigma_t * z_t                 (open -> close log return)
+    r_t      = mu_f + lambda_f * d_t + sigma_t * z_t      (open -> close log return)
 
 After a closure of C minutes the next open gaps from the last close by a
 shock with variance sigma_f^2 * h * g^2 * k * C^p (k, p per market).
