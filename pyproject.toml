@@ -108,6 +108,8 @@ audit = [
 # them (.github/scripts/doc_examples.py).
 docs = [
     "scikit-learn>=1.5",
+    "polars>=1.10",
+    "duckdb>=1.1",
 ]
 workflow-lint = [
     "actionlint-py>=1.7.7",

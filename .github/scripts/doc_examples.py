@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import ast
 import contextlib
+import enum
 import inspect
 import io
 import os
@@ -323,9 +324,15 @@ def _param(name: str, default: ast.expr | None) -> str:
 
 
 def _strip_annotations(signature: inspect.Signature) -> str:
+    # An enum default is shown as its value (`fmt="csv"`), which is what a
+    # reader passes; its repr (`<OutputFormat.CSV: 'csv'>`) is not Python.
     plain = signature.replace(
         parameters=[
-            p.replace(annotation=inspect.Parameter.empty) for p in signature.parameters.values()
+            p.replace(
+                annotation=inspect.Parameter.empty,
+                default=p.default.value if isinstance(p.default, enum.Enum) else p.default,
+            )
+            for p in signature.parameters.values()
         ],
         return_annotation=inspect.Signature.empty,
     )
