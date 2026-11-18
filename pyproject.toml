@@ -37,6 +37,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Office/Business :: Financial :: Investment",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
@@ -72,16 +73,16 @@ Changelog = "https://damienreichhart.github.io/MarketForge/changelog/"
 # `uv pip install -e . --group dev`.
 [dependency-groups]
 test = [
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
+    "pytest>=9.2",
+    "pytest-cov>=7.1",
 ]
 typecheck = [
-    "mypy>=1.10",
+    "mypy>=2.4",
 ]
 # Pinned to a minor series: ruff's formatter output changes between minors.
 lint = [
-    "ruff>=0.16,<0.17",
-    "import-linter>=2.3",
+    "ruff>=0.17,<0.18",
+    "import-linter>=2.17",
 ]
 dev = [
     {include-group = "fit"},
@@ -91,29 +92,29 @@ dev = [
 ]
 # Refitting the catalogs' correlations (scripts/fit_correlations.py).
 fit = [
-    "scipy>=1.13",
+    "scipy>=1.18",
 ]
 # Used by CI/CD only (.github/workflows).
 release = [
-    "packaging>=24.2",
-    "twine>=6.1",
-    "check-wheel-contents>=0.6",
-    "validate-pyproject[all]>=0.23",
-    "cyclonedx-bom>=7.0",
+    "packaging>=26.3",
+    "twine>=7.0",
+    "check-wheel-contents>=0.6.3",
+    "validate-pyproject[all]>=0.27",
+    "cyclonedx-bom>=8.0",
 ]
 audit = [
-    "pip-audit>=2.9",
+    "pip-audit>=2.10",
 ]
 # What the documentation's examples import besides marketforge, so CI can run
 # them (.github/scripts/doc_examples.py).
 docs = [
-    "scikit-learn>=1.5",
-    "polars>=1.10",
-    "duckdb>=1.1",
+    "scikit-learn>=1.9",
+    "polars>=2.1",
+    "duckdb>=2.0",
 ]
 workflow-lint = [
-    "actionlint-py>=1.7.7",
-    "zizmor>=1.20",
+    "actionlint-py>=1.7.12",
+    "zizmor>=1.32",
 ]
 
 [tool.setuptools.packages.find]
@@ -123,11 +124,14 @@ include = ["marketforge*"]
 [tool.setuptools.package-data]
 marketforge = ["py.typed", "config/catalog/*/fitted_correlation.json"]
 
-[tool.pytest.ini_options]
-minversion = "8.0"
+# Native TOML configuration (pytest 9). `strict` turns on every strictness
+# option: strict_config, strict_markers, strict_xfail and
+# strict_parametrization_ids.
+[tool.pytest]
+minversion = "9.2"
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers", "--strict-config"]
-xfail_strict = true
+addopts = ["-ra"]
+strict = true
 
 [tool.coverage.run]
 source = ["marketforge"]
