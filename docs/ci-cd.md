@@ -80,17 +80,62 @@ release's dependencies) or `website/license-policy.json` (the website's npm
 packages, and under `python` the wheels the playground serves). When a check
 fails, the error says which entry to add or update.
 
-Some of what the site serves ships without the texts its licence requires:
-Pagefind's and Pyodide's npm packages have no licence file (and Pyodide embeds
-CPython and Emscripten), and Pyodide's builds of pyarrow and pandas lack the
-NOTICE and bundled licences their PyPI releases carry. Their upstream texts are
-saved in `website/licenses/`, each with the URL it came from (`texts` in the
-policy), for the exact version served. When such a package changes version (a
-Dependabot bump of Pyodide or Pagefind), the website build fails until
-`npm run vendor-licenses` (in `website/`) refetches the texts for the new
-version and records it; review the diff, which is where a licence change shows,
-and commit it. A package that ships no licence text and of which nothing
-reaches the site (a native build tool) gets a `notServed` reason instead.
+Some of what the site serves ships without the texts its licence requires, so
+the site adds them, for the exact version it serves, from immutable upstream
+sources: release tags, commits, and PyPI releases. All of them are saved in
+`website/licenses/`, each with the URL it came from:
+
+- **Packages without licence files** (Pagefind's and Pyodide's npm packages):
+  `texts` in the policy.
+- **Python wheels that lack texts their release has** (Pyodide's builds of
+  pyarrow, without its NOTICE, and pandas, without the licences of what it
+  bundles): `textsFrom: "pypi"` takes every licence file of the PyPI release
+  at the served version, those its wheel declares and those of its sdist
+  (top level and `LICENSES/`), so a new bundled licence is picked up.
+- **What upstream compiles into a served binary** (`components`): recipes
+  that read upstream's own build files and lockfiles at the served version.
+  For Pyodide's WebAssembly: CPython, libffi, hiwire, xz, Zstandard, SQLite
+  (versions read from Pyodide's `cpython/Makefile`), zlib and bzip2
+  (Emscripten's ports), libc++, compiler-rt, musl and Emscripten. For
+  Pagefind's: the crates of `pagefind_web`'s `Cargo.lock` (licences from
+  crates.io), Rust's standard library, and the npm packages its scripts bundle
+  (Svelte, mark.js, bcp-47, from its UIs' lockfiles). Every download a
+  lockfile or PyPI gives a hash for is checked against it.
+- **A component whose release ships no licence file**: `componentTexts`, by
+  `name@version`. Either the file from an immutable commit (hifijson 0.5.0,
+  whose author added its licence in the commit after the release, changing
+  nothing else), or, when no text exists upstream at all (is-reference and
+  locate-character, which Svelte uses), `spdx:MIT`: the SPDX standard text,
+  with the holder the package's `package.json` names, marked as reconstructed.
+
+Two checks make these lists complete rather than hopeful:
+
+- **Every symbol Pyodide's WebAssembly exports** (about 8,500; it is a main
+  module that exports everything) must belong to a component's `symbols`
+  pattern, to Pyodide's own code, or to the reviewed list of C runtime symbols
+  (`website/licenses/pyodide/runtime-symbols.txt`: musl, compiler-rt,
+  Emscripten). A library linked in without its licence therefore fails the
+  build, naming its symbols, and so does a component no longer linked in.
+  Libraries whose symbols are hidden inside CPython (expat, libmpdec, HACL*,
+  mimalloc) are covered by CPython's `Doc/license.rst`, which is one of its
+  texts.
+- **`notServed` is verified**: `website/scripts/served-packages.mjs`, an Astro
+  integration, fails the build if a module of a `notServed` package is
+  bundled for the browser, or if a style, font, image or WebAssembly file of
+  one is emitted, or if any file of the built site is a byte-for-byte copy of
+  one of its files. The build log lists the npm packages that do reach the
+  site.
+
+When a package with saved texts or components changes version (a Dependabot
+bump of Pyodide or Pagefind), the website build fails until
+`npm run vendor-licenses` (in `website/`) fetches them for the new version and
+records it. Review the diff, which is where a licence change, a new component
+or a new bundled licence shows, then commit it. That command is the only part
+that uses the network; the build only reads what it saved. If it reports a
+component without a licence file, find the text at the commit of that version
+and add it to `componentTexts`. If the build reports unclaimed symbols, find
+the library in upstream's build files and add a recipe for it; add symbols to
+the runtime list only when they are C runtime.
 
 The weekly scheduled run resolves the newest dependency releases, so a
 dependency that changes its licence fails it before the next release does.

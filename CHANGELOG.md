@@ -78,7 +78,10 @@ when that makes the data more realistic. Upgrading from 3.x? See
   and NOTICE texts of every runtime dependency, and the website serves those
   of its own code, fonts and playground runtime (Pyodide, CPython, Emscripten,
   and the Python wheels it serves) at `/third-party-licenses.txt`, with the
-  texts upstream packages leave out, such as pyarrow's NOTICE. Both are written by
+  texts upstream packages leave out, such as pyarrow's NOTICE, and of the
+  libraries compiled into the playground's WebAssembly (libffi, zlib, bzip2,
+  xz, Zstandard, SQLite, libc++, musl) and into the site's search (Rust crates,
+  Svelte). Both are written by
   the build that produces what they describe, and CI blocks a release if a
   dependency's licence is not allowed or its licence text is missing. The
   wheel and sdist still contain only MarketForge's own code.

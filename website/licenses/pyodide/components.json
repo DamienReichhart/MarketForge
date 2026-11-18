@@ -1,0 +1,163 @@
+{
+	"$comment": "Written by `npm run vendor-licenses` from the \"components\" of pyodide in license-policy.json; do not edit.",
+	"package": "pyodide",
+	"version": "314.0.8",
+	"components": [
+		{
+			"name": "bzip2",
+			"version": "1.0.6",
+			"license": "bzip2-1.0.6",
+			"url": "https://github.com/emscripten-ports/bzip2/tree/1.0.6",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/bzip2/LICENSE",
+					"from": "https://raw.githubusercontent.com/emscripten-ports/bzip2/1.0.6/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "compiler-rt (LLVM)",
+			"version": "5.0.3",
+			"license": "Apache-2.0 WITH LLVM-exception",
+			"url": "https://github.com/emscripten-core/emscripten/tree/5.0.3/system/lib/compiler-rt",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/compiler-rt-llvm/LICENSE.TXT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/compiler-rt/LICENSE.TXT"
+				}
+			]
+		},
+		{
+			"name": "CPython",
+			"version": "3.14.2",
+			"license": "PSF-2.0",
+			"url": "https://github.com/python/cpython/tree/v3.14.2",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/cpython/LICENSE",
+					"from": "https://raw.githubusercontent.com/python/cpython/v3.14.2/LICENSE"
+				},
+				{
+					"file": "licenses/pyodide/components/cpython/license.rst",
+					"from": "https://raw.githubusercontent.com/python/cpython/v3.14.2/Doc/license.rst"
+				}
+			]
+		},
+		{
+			"name": "Emscripten",
+			"version": "5.0.3",
+			"license": "MIT OR NCSA",
+			"url": "https://github.com/emscripten-core/emscripten/tree/5.0.3",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/emscripten/LICENSE",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "hiwire",
+			"version": "6a1e67280a15d929ebeceee54a6358c9c8d5f697",
+			"license": "MPL-2.0",
+			"url": "https://github.com/pyodide/hiwire/tree/6a1e67280a15d929ebeceee54a6358c9c8d5f697",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/hiwire/LICENSE",
+					"from": "https://raw.githubusercontent.com/pyodide/hiwire/6a1e67280a15d929ebeceee54a6358c9c8d5f697/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "libc++, libc++abi and libunwind (LLVM)",
+			"version": "5.0.3",
+			"license": "Apache-2.0 WITH LLVM-exception",
+			"url": "https://github.com/emscripten-core/emscripten/tree/5.0.3/system/lib",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/libc++-libc++abi-and-libunwind-llvm/LICENSE.TXT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/libcxx/LICENSE.TXT"
+				},
+				{
+					"file": "licenses/pyodide/components/libc++-libc++abi-and-libunwind-llvm/LICENSE.TXT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/libcxxabi/LICENSE.TXT"
+				},
+				{
+					"file": "licenses/pyodide/components/libc++-libc++abi-and-libunwind-llvm/LICENSE.TXT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/libunwind/LICENSE.TXT"
+				}
+			]
+		},
+		{
+			"name": "libffi",
+			"version": "f08493d249d2067c8b3207ba46693dd858f95db3",
+			"license": "MIT",
+			"url": "https://github.com/libffi/libffi/tree/f08493d249d2067c8b3207ba46693dd858f95db3",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/libffi/LICENSE",
+					"from": "https://raw.githubusercontent.com/libffi/libffi/f08493d249d2067c8b3207ba46693dd858f95db3/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "musl libc",
+			"version": "5.0.3",
+			"license": "MIT",
+			"url": "https://github.com/emscripten-core/emscripten/tree/5.0.3/system/lib/libc/musl",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/musl-libc/COPYRIGHT",
+					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/5.0.3/system/lib/libc/musl/COPYRIGHT"
+				}
+			]
+		},
+		{
+			"name": "SQLite",
+			"version": "3.39.0",
+			"license": "blessing",
+			"url": "https://www.sqlite.org/copyright.html",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/sqlite/LICENSE.md",
+					"from": "https://raw.githubusercontent.com/sqlite/sqlite/version-3.39.0/LICENSE.md"
+				}
+			]
+		},
+		{
+			"name": "xz (liblzma)",
+			"version": "5.2.2",
+			"license": "LicenseRef-Public-Domain",
+			"url": "https://github.com/tukaani-project/xz/tree/v5.2.2",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/xz-liblzma/COPYING",
+					"from": "https://raw.githubusercontent.com/tukaani-project/xz/v5.2.2/COPYING"
+				}
+			]
+		},
+		{
+			"name": "zlib",
+			"version": "1.3.1",
+			"license": "Zlib",
+			"url": "https://github.com/madler/zlib/tree/v1.3.1",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/zlib/LICENSE",
+					"from": "https://raw.githubusercontent.com/madler/zlib/v1.3.1/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "Zstandard",
+			"version": "1.5.7",
+			"license": "BSD-3-Clause OR GPL-2.0-only",
+			"url": "https://github.com/facebook/zstd/tree/v1.5.7",
+			"texts": [
+				{
+					"file": "licenses/pyodide/components/zstandard/LICENSE",
+					"from": "https://raw.githubusercontent.com/facebook/zstd/v1.5.7/LICENSE"
+				}
+			]
+		}
+	]
+}

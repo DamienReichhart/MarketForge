@@ -12,7 +12,16 @@
 		"'texts' are upstream licence and NOTICE texts the package does not ship, saved in licenses/ from 'from' (where",
 		"{version} is the package's version, {python} and {emscripten} Pyodide's). They were saved for 'version': when",
 		"the package changes version, the build fails until `npm run vendor-licenses` refetches them, for review.",
-		"'notServed' says why a package that ships no licence text needs none here: nothing of it reaches the site."
+		"'notServed' says why a package that ships no licence text needs none here: nothing of it reaches the site. The build checks it",
+		"(scripts/served-packages.mjs): it fails if a module of such a package is bundled for the browser, or a file of the built site is a copy of one of its files.",
+		"'components' lists what upstream compiled into the package's served files, as recipes vendor-licenses.mjs resolves",
+		"(from upstream's build files and lockfiles, at the served version) into 'manifest'. With 'binary', every symbol the",
+		"package's WebAssembly exports must belong to a component ('symbols'), to the package ('ownSymbols'), or to the",
+		"reviewed C runtime list ('runtimeSymbols'), so a library linked in without its licence fails the build.",
+		"'textsFrom': 'pypi' takes a Python package's licence files from its PyPI release at the served version.",
+		"'componentTexts' gives the text of a component whose release ships none, by 'name@version' (so a new version is reviewed again): a URL at",
+		"an immutable commit or tag, or 'spdx:<ID>' when no text exists upstream at all: the SPDX standard text of the declared licence, with the",
+		"author its package.json names as the holder, marked as reconstructed in the report."
 	],
 	"allowed": [
 		"0BSD",
@@ -25,18 +34,93 @@
 		"MIT",
 		"OFL-1.1"
 	],
-	"exceptions": [],
+	"exceptions": [
+		"LLVM-exception"
+	],
 	"packages": {
 		"pagefind": {
 			"declared": "MIT",
-			"reason": "The site's search: pagefind/ (its UI, scripts and WebAssembly) is served. Its npm packages have no licence file.",
+			"reason": "The site's search: pagefind/ (its UI, scripts and WebAssembly) is served. Its npm packages have no licence file. Its WebAssembly is built from the crates of pagefind_web and Rust's standard library, its scripts bundle the packages of their lockfiles listed as components.",
 			"version": "1.6.0",
 			"texts": [
 				{
 					"file": "licenses/pagefind/LICENSE",
 					"from": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/LICENSE"
 				}
-			]
+			],
+			"allow": [
+				"Unicode-3.0"
+			],
+			"components": {
+				"manifest": "licenses/pagefind/components.json",
+				"sources": [
+					{
+						"cargo": {
+							"lock": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_web/Cargo.lock",
+							"package": "pagefind_web"
+						}
+					},
+					{
+						"name": "Rust standard library",
+						"version": "1.91.0",
+						"license": "MIT OR Apache-2.0",
+						"url": "https://github.com/rust-lang/rust/tree/{component}/library",
+						"texts": [
+							"https://raw.githubusercontent.com/rust-lang/rust/{component}/LICENSE-MIT",
+							"https://raw.githubusercontent.com/rust-lang/rust/{component}/LICENSE-APACHE",
+							"https://raw.githubusercontent.com/rust-lang/rust/{component}/COPYRIGHT"
+						]
+					},
+					{
+						"npm": {
+							"lock": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_web_js/package-lock.json",
+							"manifest": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_web_js/package.json"
+						}
+					},
+					{
+						"npm": {
+							"lock": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/default/package-lock.json",
+							"manifest": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/default/package.json",
+							"include": [
+								"svelte",
+								"bcp-47"
+							]
+						}
+					},
+					{
+						"npm": {
+							"lock": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/modular/package-lock.json",
+							"manifest": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/modular/package.json",
+							"include": [
+								"bcp-47"
+							]
+						}
+					},
+					{
+						"npm": {
+							"lock": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/component/package-lock.json",
+							"manifest": "https://raw.githubusercontent.com/Pagefind/pagefind/v{version}/pagefind_ui/component/package.json"
+						}
+					}
+				],
+				"componentTexts": {
+					"hifijson@0.5.0": [
+						"https://raw.githubusercontent.com/01mf02/hifijson/91e6e0639e321f7d2d1e28c0eefb4a9fe6dbad33/LICENSE-MIT"
+					],
+					"pagefind_stem@1.0.0": [
+						"https://raw.githubusercontent.com/Pagefind/pagefind/eb1a6711c45c78d9b536fad167650a79f9a97a5c/LICENSE",
+						"https://raw.githubusercontent.com/CurrySoftware/rust-stemmers/1fde09dfa08fb0fb07fbd6570aba8ecc98174edb/LICENSE",
+						"https://raw.githubusercontent.com/snowballstem/snowball/v3.0.0/COPYING"
+					],
+					"is-reference@3.0.3": [
+						"spdx:MIT"
+					],
+					"locate-character@3.0.0": [
+						"spdx:MIT"
+					]
+				},
+				"$comment": "componentTexts, for components whose release ships no licence file: hifijson 0.5.0 (MIT): LICENSE-MIT from the commit its author added it in, right after the 0.5.0 bump, changing nothing else. pagefind_stem 1.0.0 (MIT): published from Pagefind commit eb1a6711 (its .cargo_vcs_info.json), so Pagefind's LICENSE there; its API derives from rust-stemmers (MIT, notice in its lib.rs) and its algorithms are generated by Snowball 3.0.0 (BSD-3-Clause), so their licences too. is-reference 3.0.3 and locate-character 3.0.0 (Svelte's dependencies): no licence file in any release or ever in their repositories, only \"license\": \"MIT\" and the author in package.json, so the SPDX MIT text with that author ('spdx:MIT')."
+			}
 		},
 		"@pagefind/*": {
 			"declared": "MIT",
@@ -52,33 +136,176 @@
 		"pyodide": {
 			"declared": "MPL-2.0",
 			"allow": [
-				"MPL-2.0"
+				"MPL-2.0",
+				"PSF-2.0",
+				"Zlib",
+				"bzip2-1.0.6",
+				"NCSA",
+				"blessing",
+				"LicenseRef-Public-Domain"
 			],
-			"reason": "The playground's Python runtime, served unmodified from playground/pyodide/: Pyodide (MPL-2.0), CPython compiled to WebAssembly with its standard library (PSF licence and the licences of the software CPython incorporates), and Emscripten's runtime and C library (MIT, and musl's MIT licence). The npm package ships none of these texts. MPL-2.0 asks a distributor of the executable form to say where its source is: \"source\".",
+			"reason": "The playground's Python runtime, served unmodified from playground/pyodide/. Its npm package ships no licence text. Its WebAssembly links CPython and the libraries listed in its components, all permissive except Pyodide and hiwire (MPL-2.0: served unmodified, with where the source is, as MPL-2.0 asks) and SQLite and xz (public domain).",
 			"source": "https://github.com/pyodide/pyodide/tree/{version}",
 			"version": "314.0.8",
 			"texts": [
 				{
 					"file": "licenses/pyodide/LICENSE",
 					"from": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/LICENSE"
-				},
-				{
-					"file": "licenses/pyodide/cpython-LICENSE",
-					"from": "https://raw.githubusercontent.com/python/cpython/v{python}/LICENSE"
-				},
-				{
-					"file": "licenses/pyodide/cpython-license.rst",
-					"from": "https://raw.githubusercontent.com/python/cpython/v{python}/Doc/license.rst"
-				},
-				{
-					"file": "licenses/pyodide/emscripten-LICENSE",
-					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/LICENSE"
-				},
-				{
-					"file": "licenses/pyodide/musl-COPYRIGHT",
-					"from": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libc/musl/COPYRIGHT"
 				}
-			]
+			],
+			"components": {
+				"manifest": "licenses/pyodide/components.json",
+				"binary": {
+					"file": "pyodide.asm.wasm",
+					"ownSymbols": "^_*(Js|js2python|python2js|pythonexc2js|jsproxy|jsbind|jslib|pyproxy|py_|pyodide_|pystate_|FutureDoneCallback_|init_pyodide_proxy|run_main|run_sync|can_run_sync|captureTaskState|restoreTaskState|enter_promising_task|exit_promising_task|syscall_syncify|check_gil|compat_|conversion_error|create_promise_handles_result_helper|default_signature|docstring_init|error_handling_init|handle_next_result|internal_error|no_default|print_stderr|print_stdout|process_throw_args|raw_call|restore_sys_last_exception|set_error|set_method_docstring|add_methods_and_set_docstrings|clear_method_call_singleton|trigger_fatal_error|wrap_exception|wrap_promise|agen_handle_result|deduplicate_map$|iscoroutinefunction$|wrap___syscall_)",
+					"runtimeSymbols": "licenses/pyodide/runtime-symbols.txt"
+				},
+				"sources": [
+					{
+						"name": "CPython",
+						"version": "{python}",
+						"license": "PSF-2.0",
+						"url": "https://github.com/python/cpython/tree/v{component}",
+						"symbols": "^_*(Py|_Py)",
+						"texts": [
+							"https://raw.githubusercontent.com/python/cpython/v{component}/LICENSE",
+							"https://raw.githubusercontent.com/python/cpython/v{component}/Doc/license.rst"
+						]
+					},
+					{
+						"name": "hiwire",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/cpython/Makefile",
+							"pattern": "^HIWIRE_COMMIT=(\\S+)"
+						},
+						"license": "MPL-2.0",
+						"url": "https://github.com/pyodide/hiwire/tree/{component}",
+						"symbols": "^_*hiwire_",
+						"texts": [
+							"https://raw.githubusercontent.com/pyodide/hiwire/{component}/LICENSE"
+						]
+					},
+					{
+						"name": "libffi",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/cpython/Makefile",
+							"pattern": "^LIBFFI_COMMIT=(\\S+)"
+						},
+						"license": "MIT",
+						"url": "https://github.com/libffi/libffi/tree/{component}",
+						"symbols": "^_*ffi_",
+						"texts": [
+							"https://raw.githubusercontent.com/libffi/libffi/{component}/LICENSE"
+						]
+					},
+					{
+						"name": "xz (liblzma)",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/cpython/Makefile",
+							"pattern": "^LZMATARBALL=.*/v([0-9.]+)/"
+						},
+						"license": "LicenseRef-Public-Domain",
+						"url": "https://github.com/tukaani-project/xz/tree/v{component}",
+						"symbols": "^_*lzma_",
+						"texts": [
+							"https://raw.githubusercontent.com/tukaani-project/xz/v{component}/COPYING"
+						]
+					},
+					{
+						"name": "Zstandard",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/cpython/Makefile",
+							"pattern": "^ZSTDTARBALL=.*zstd-([0-9.]+)\\.tar"
+						},
+						"license": "BSD-3-Clause OR GPL-2.0-only",
+						"url": "https://github.com/facebook/zstd/tree/v{component}",
+						"symbols": "^_*(ZSTD|HUF_|FSE_|ZDICT|COVER|POOL_|HIST_|FASTCOVER|divsufsort|divbwt|ERR_|g_ZSTD|g_debuglevel)",
+						"texts": [
+							"https://raw.githubusercontent.com/facebook/zstd/v{component}/LICENSE"
+						]
+					},
+					{
+						"name": "SQLite",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/pyodide/pyodide/{version}/cpython/Makefile",
+							"pattern": "^SQLITE3TARBALL=.*sqlite-autoconf-(\\d)(\\d\\d)(\\d\\d)\\d\\d\\.tar",
+							"format": "{1}.{2}.{3}"
+						},
+						"license": "blessing",
+						"url": "https://www.sqlite.org/copyright.html",
+						"symbols": "^_*sqlite3",
+						"texts": [
+							"https://raw.githubusercontent.com/sqlite/sqlite/version-{component}/LICENSE.md"
+						]
+					},
+					{
+						"name": "zlib",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/tools/ports/zlib.py",
+							"pattern": "^VERSION = '([^']+)'"
+						},
+						"license": "Zlib",
+						"url": "https://github.com/madler/zlib/tree/v{component}",
+						"symbols": "^_*(deflate|inflate|crc32|adler32|compress|uncompress|gz|zlib|zError|get_crc_table|z_errmsg|zcalloc|zcfree|tr_(align|flush_bits|flush_block|init|stored_block|tally)$|dist_code$|length_code$)",
+						"texts": [
+							"https://raw.githubusercontent.com/madler/zlib/v{component}/LICENSE"
+						]
+					},
+					{
+						"name": "bzip2",
+						"versionFrom": {
+							"url": "https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/tools/ports/bzip2.py",
+							"pattern": "^VERSION = '([^']+)'"
+						},
+						"license": "bzip2-1.0.6",
+						"url": "https://github.com/emscripten-ports/bzip2/tree/{component}",
+						"symbols": "^_*BZ2_",
+						"texts": [
+							"https://raw.githubusercontent.com/emscripten-ports/bzip2/{component}/LICENSE"
+						]
+					},
+					{
+						"name": "libc++, libc++abi and libunwind (LLVM)",
+						"version": "{emscripten}",
+						"license": "Apache-2.0 WITH LLVM-exception",
+						"url": "https://github.com/emscripten-core/emscripten/tree/{component}/system/lib",
+						"symbols": "^_*(_Z|__cxa_|__cxx|_Unwind_|__gxx_|__dynamic_cast|__cpp_exception|__thrown_object|__get_exception)",
+						"texts": [
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libcxx/LICENSE.TXT",
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libcxxabi/LICENSE.TXT",
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libunwind/LICENSE.TXT"
+						]
+					},
+					{
+						"name": "compiler-rt (LLVM)",
+						"version": "{emscripten}",
+						"license": "Apache-2.0 WITH LLVM-exception",
+						"url": "https://github.com/emscripten-core/emscripten/tree/{component}/system/lib/compiler-rt",
+						"texts": [
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/compiler-rt/LICENSE.TXT"
+						]
+					},
+					{
+						"name": "musl libc",
+						"version": "{emscripten}",
+						"license": "MIT",
+						"url": "https://github.com/emscripten-core/emscripten/tree/{component}/system/lib/libc/musl",
+						"texts": [
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/system/lib/libc/musl/COPYRIGHT"
+						]
+					},
+					{
+						"name": "Emscripten",
+						"version": "{emscripten}",
+						"license": "MIT OR NCSA",
+						"url": "https://github.com/emscripten-core/emscripten/tree/{component}",
+						"symbols": "^_*(emscripten_|_emscripten)",
+						"texts": [
+							"https://raw.githubusercontent.com/emscripten-core/emscripten/{emscripten}/LICENSE"
+						]
+					}
+				]
+			}
 		},
 		"@img/sharp-libvips-*": {
 			"declared": "LGPL-3.0-or-later",
@@ -166,88 +393,94 @@
 			"pandas": {
 				"declared": "BSD License",
 				"license": "BSD-3-Clause",
-				"reason": "Pyodide's pandas wheel ships only pandas' own LICENSE, not the licences of the code pandas bundles and compiles in (LICENSES/ in its repository and in its PyPI wheels).",
+				"reason": "Pyodide's pandas wheel ships only pandas' own LICENSE, not the licences of the code pandas bundles and compiles in, which its PyPI release carries.",
 				"version": "3.0.2",
+				"textsFrom": "pypi",
 				"texts": [
 					{
-						"file": "licenses/pandas/BOTTLENECK_LICENCE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/BOTTLENECK_LICENCE"
+						"file": "licenses/pandas/LICENSE",
+						"from": "https://files.pythonhosted.org/packages/88/39/21304ae06a25e8bf9fc820d69b29b2c495b2ae580d1e143146c309941760/pandas-3.0.2-cp313-cp313-win_arm64.whl#pandas-3.0.2.dist-info/LICENSE"
 					},
 					{
-						"file": "licenses/pandas/DATEUTIL_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/DATEUTIL_LICENSE"
+						"file": "licenses/pandas/LICENSES/BOTTLENECK_LICENCE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/BOTTLENECK_LICENCE"
 					},
 					{
-						"file": "licenses/pandas/HAVEN_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/HAVEN_LICENSE"
+						"file": "licenses/pandas/LICENSES/DATEUTIL_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/DATEUTIL_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/HAVEN_MIT",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/HAVEN_MIT"
+						"file": "licenses/pandas/LICENSES/HAVEN_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/HAVEN_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/KLIB_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/KLIB_LICENSE"
+						"file": "licenses/pandas/LICENSES/HAVEN_MIT",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/HAVEN_MIT"
 					},
 					{
-						"file": "licenses/pandas/MUSL_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/MUSL_LICENSE"
+						"file": "licenses/pandas/LICENSES/KLIB_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/KLIB_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/NUMPY_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/NUMPY_LICENSE"
+						"file": "licenses/pandas/LICENSES/MUSL_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/MUSL_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/PACKAGING_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PACKAGING_LICENSE"
+						"file": "licenses/pandas/LICENSES/NUMPY_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/NUMPY_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/PSF_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PSF_LICENSE"
+						"file": "licenses/pandas/LICENSES/PACKAGING_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/PACKAGING_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/PYPERCLIP_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PYPERCLIP_LICENSE"
+						"file": "licenses/pandas/LICENSES/PSF_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/PSF_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/PYUPGRADE_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/PYUPGRADE_LICENSE"
+						"file": "licenses/pandas/LICENSES/PYPERCLIP_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/PYPERCLIP_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/SAS7BDAT_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/SAS7BDAT_LICENSE"
+						"file": "licenses/pandas/LICENSES/PYUPGRADE_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/PYUPGRADE_LICENSE"
 					},
 					{
-						"file": "licenses/pandas/ULTRAJSON_LICENSE",
-						"from": "https://raw.githubusercontent.com/pandas-dev/pandas/v{version}/LICENSES/ULTRAJSON_LICENSE"
+						"file": "licenses/pandas/LICENSES/SAS7BDAT_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/SAS7BDAT_LICENSE"
+					},
+					{
+						"file": "licenses/pandas/LICENSES/ULTRAJSON_LICENSE",
+						"from": "https://files.pythonhosted.org/packages/da/99/b342345300f13440fe9fe385c3c481e2d9a595ee3bab4d3219247ac94e9a/pandas-3.0.2.tar.gz#pandas-3.0.2/LICENSES/ULTRAJSON_LICENSE"
 					}
 				]
 			},
 			"pyarrow": {
 				"declared": "Apache Software License",
 				"license": "Apache-2.0",
-				"reason": "Pyodide's pyarrow wheel ships no licence and no NOTICE; Apache-2.0 requires both to go with every copy. They are Apache Arrow's, at the same version.",
+				"reason": "Pyodide's pyarrow wheel ships no licence and no NOTICE; Apache-2.0 requires both with every copy. They are taken from its PyPI release, at the same version.",
 				"version": "22.0.0",
+				"textsFrom": "pypi",
 				"texts": [
 					{
 						"file": "licenses/pyarrow/LICENSE.txt",
-						"from": "https://raw.githubusercontent.com/apache/arrow/apache-arrow-{version}/LICENSE.txt"
+						"from": "https://files.pythonhosted.org/packages/68/ed/b202abd5a5b78f519722f3d29063dda03c114711093c1995a33b8e2e0f4b/pyarrow-22.0.0-cp312-cp312-win_amd64.whl#pyarrow-22.0.0.dist-info/licenses/LICENSE.txt"
 					},
 					{
 						"file": "licenses/pyarrow/NOTICE.txt",
-						"from": "https://raw.githubusercontent.com/apache/arrow/apache-arrow-{version}/NOTICE.txt"
+						"from": "https://files.pythonhosted.org/packages/68/ed/b202abd5a5b78f519722f3d29063dda03c114711093c1995a33b8e2e0f4b/pyarrow-22.0.0-cp312-cp312-win_amd64.whl#pyarrow-22.0.0.dist-info/licenses/NOTICE.txt"
 					}
 				]
 			},
 			"pyodide-unix-timezones": {
 				"declared": "MIT License",
 				"license": "MIT",
-				"reason": "Ships no licence file. Its repository has no tags, so the text is from its main branch.",
+				"reason": "No release of it ships a licence file: not its Pyodide wheel, not its PyPI wheel or sdist. Its repository added the MIT LICENSE three minutes after uploading 1.0.0, in a commit that changes nothing else, so the text is from that commit (immutable), not from a branch.",
 				"version": "1.0.0",
 				"texts": [
 					{
 						"file": "licenses/pyodide-unix-timezones/LICENSE",
-						"from": "https://raw.githubusercontent.com/joemarshall/pyodide-unix-timezones/main/LICENSE"
+						"from": "https://raw.githubusercontent.com/joemarshall/pyodide-unix-timezones/fe8fbb75b5398a3eb8275671e1ab6ad475172642/LICENSE"
 					}
 				]
 			},

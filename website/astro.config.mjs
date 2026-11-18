@@ -2,6 +2,8 @@
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 
+import servedPackages from './scripts/served-packages.mjs';
+
 const repo = 'https://github.com/DamienReichhart/MarketForge';
 
 // Served from GitHub Pages as a project site. To move to a custom domain,
@@ -11,6 +13,8 @@ export default defineConfig({
 	base: '/MarketForge',
 	trailingSlash: 'always',
 	integrations: [
+		// Fails the build if a package license-policy.json exempts as not served reaches the site.
+		servedPackages(),
 		starlight({
 			title: 'MarketForge',
 			description:

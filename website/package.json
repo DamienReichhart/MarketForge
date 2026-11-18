@@ -10,9 +10,9 @@
     "check": "npm run sync && astro check",
     "check-links": "node scripts/check-links.mjs",
     "check-external-links": "node scripts/check-external-links.mjs",
-    "test": "node --test scripts/third-party-licenses.test.mjs",
+    "test": "node --test scripts/*.test.mjs",
     "test-playground": "node scripts/test-playground.mjs",
-    "vendor-licenses": "node scripts/third-party-licenses.mjs --vendor"
+    "vendor-licenses": "node scripts/vendor-licenses.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "0.43.1",

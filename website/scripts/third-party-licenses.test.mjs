@@ -14,15 +14,15 @@ import {
 	main,
 	parseMetadata,
 	policyEntry,
-	readZip,
 	render,
 	resolve,
 	servedWheels,
 	spdxAllowed,
 	templateValues,
-	vendor,
 	wheelLicense,
 } from './third-party-licenses.mjs';
+import { readZip } from './archives.mjs';
+import { vendor } from './vendor-licenses.mjs';
 
 const WEBSITE = fileURLToPath(new URL('..', import.meta.url));
 const POLICY = JSON.parse(readFileSync(join(WEBSITE, 'license-policy.json'), 'utf8'));
@@ -221,9 +221,11 @@ describe('a fixture site', () => {
 		process.exitCode = undefined;
 
 		const fetched = [];
-		await vendor(dir, async (url) => {
-			fetched.push(url);
-			return 'Copyright Bare\n';
+		await vendor(dir, {
+			fetch: async (url) => {
+				fetched.push(url);
+				return new Response('Copyright Bare\n');
+			},
 		});
 		assert.deepEqual(fetched, ['https://x/bare/1.0/LICENSE']);
 		assert.equal(JSON.parse(readFileSync(join(dir, 'license-policy.json'), 'utf8')).python.packages.bare.version, '1.0');
@@ -242,7 +244,7 @@ describe('a fixture site', () => {
 		const dir = tempDir();
 		const path = join(dir, 'a.whl');
 		makeWheel(path, { 'a/b.txt': 'x'.repeat(5000), 'c.txt': 'hello' });
-		const files = readZip(path);
+		const files = readZip(readFileSync(path), path);
 		assert.equal(files.get('a/b.txt')().toString(), 'x'.repeat(5000));
 		assert.equal(files.get('c.txt')().toString(), 'hello');
 	});
@@ -272,17 +274,32 @@ describe('the repository', () => {
 	test('Pyodide carries its own, CPython\'s and Emscripten\'s licences, and says where its source is', () => {
 		const pyodide = installedPackages(WEBSITE).find((p) => p.name === 'pyodide');
 		assert.ok(pyodide, 'pyodide is not installed');
-		const resolved = resolve(pyodide, POLICY, { dir: WEBSITE, values: { python: '3', emscripten: '5' } });
-		const texts = resolved.texts.map(([, t]) => t).join('\n');
-		for (const needle of ['Mozilla Public License Version 2.0', 'PYTHON SOFTWARE FOUNDATION LICENSE', 'Emscripten authors', 'musl']) {
+		const resolved = resolve(pyodide, POLICY, { dir: WEBSITE, values: templateValues(WEBSITE) });
+		const texts = [...resolved.texts, ...resolved.components.flatMap((c) => c.texts)].map(([, t]) => t).join('\n');
+		for (const needle of ['Mozilla Public License Version 2.0', 'PYTHON SOFTWARE FOUNDATION LICENSE', 'Emscripten authors', 'musl', 'Jean-loup Gailly', 'LLVM Exceptions']) {
 			assert.ok(texts.includes(needle), needle);
+		}
+		// Every library its WebAssembly exports symbols of is a component (checked by resolve, above).
+		for (const name of ['CPython', 'libffi', 'zlib', 'bzip2', 'xz (liblzma)', 'SQLite', 'Zstandard', 'hiwire']) {
+			assert.ok(resolved.components.some((c) => c.name === name), name);
 		}
 		assert.equal(resolved.url, `https://github.com/pyodide/pyodide/tree/${pyodide.version}`);
 	});
 
 	test('a served wheel without its NOTICE gets it (pyarrow)', () => {
 		const entry = POLICY.python.packages.pyarrow;
-		assert.ok(entry.texts.some((t) => t.file.endsWith('NOTICE.txt')));
-		assert.match(readFileSync(join(WEBSITE, 'licenses', 'pyarrow', 'NOTICE.txt'), 'utf8'), /^Apache Arrow\nCopyright/);
+		const notice = entry.texts.find((t) => /NOTICE/.test(t.file));
+		assert.ok(notice, 'no NOTICE among the texts of pyarrow');
+		assert.match(notice.from, /^https:\/\/files\.pythonhosted\.org\/.*pyarrow-22\.0\.0/);
+		assert.match(readFileSync(join(WEBSITE, notice.file), 'utf8'), /^Apache Arrow\nCopyright/);
+	});
+
+	test("Pagefind's WebAssembly crates and bundled scripts are components, each with its licence", () => {
+		const pagefind = installedPackages(WEBSITE).find((p) => p.name === 'pagefind');
+		const { components } = resolve(pagefind, POLICY, { dir: WEBSITE });
+		for (const name of ['wasm-bindgen', 'minicbor', 'hifijson', 'pagefind_stem', 'svelte', 'mark.js', 'bcp-47', 'Rust standard library']) {
+			assert.ok(components.some((c) => c.name === name), name);
+		}
+		assert.ok(components.every((c) => c.texts.length > 0));
 	});
 });

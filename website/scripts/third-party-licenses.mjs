@@ -17,20 +17,24 @@
 // policy gives none, and when the texts the policy saved for a package
 // (licenses/) were saved for another version of it.
 //
-//   node scripts/third-party-licenses.mjs            check and write the file
-//   node scripts/third-party-licenses.mjs --vendor   refetch the saved texts for
-//                                                    the installed versions
-//                                                    (`npm run vendor-licenses`)
+// Packages that compile third-party code into what the site serves (Pyodide,
+// Pagefind) list it as components, resolved from upstream's own build files
+// and lockfiles by vendor-licenses.mjs into a manifest under licenses/. For
+// a WebAssembly binary, every symbol it exports must belong to a component or
+// to the reviewed list of C runtime symbols, so a library linked in without
+// its licence fails the build. Network access is only needed by
+// vendor-licenses.mjs; this script runs offline.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inflateRawSync } from 'node:zlib';
 
-const websiteDir = join(dirname(fileURLToPath(import.meta.url)), '..');
-const POLICY_FILE = 'license-policy.json';
+import { readZip, wasmExports } from './archives.mjs';
+
+export const websiteDir = join(dirname(fileURLToPath(import.meta.url)), '..');
+export const POLICY_FILE = 'license-policy.json';
 const OUTPUT = join('public', 'third-party-licenses.txt');
-const LICENSE_FILE = /^(licen[cs]e|copying|notice|copyright|ofl)([-._ ].*)?$/i;
+export const LICENSE_FILE = /^(licen[cs]e|copying|notice|copyright|ofl)([-._ ].*)?$/i;
 const PROJECT_WHEEL = /^marketforge-/;
 const RULE = '='.repeat(79);
 
@@ -151,42 +155,12 @@ export function installedPackages(dir) {
 			.sort()
 			.map((name) => [name, cleanText(readFileSync(join(path, name), 'utf8'))])
 			.filter(([, text]) => text);
-		seen.set(key, { name: pkg.name, version: pkg.version, declared: declaredLicense(pkg), url: sourceUrl(pkg), texts });
+		seen.set(key, { name: pkg.name, version: pkg.version, declared: declaredLicense(pkg), url: sourceUrl(pkg), texts, dir: path });
 	}
 	return [...seen.values()].sort(byName);
 }
 
 // ---------------------------------------------------------------- Python wheels
-
-/** The files of a zip archive (a wheel), as a map of name to a function that reads it. */
-export function readZip(path) {
-	const zip = readFileSync(path);
-	let end = zip.length - 22;
-	while (end >= 0 && zip.readUInt32LE(end) !== 0x06054b50) end--;
-	if (end < 0) throw new Error(`${path} is not a zip archive`);
-	const count = zip.readUInt16LE(end + 10);
-	let pos = zip.readUInt32LE(end + 16);
-	const files = new Map();
-	for (let i = 0; i < count; i++) {
-		if (zip.readUInt32LE(pos) !== 0x02014b50) throw new Error(`${path}: bad zip central directory`);
-		const method = zip.readUInt16LE(pos + 10);
-		const size = zip.readUInt32LE(pos + 20);
-		const nameLength = zip.readUInt16LE(pos + 28);
-		const extraLength = zip.readUInt16LE(pos + 30);
-		const commentLength = zip.readUInt16LE(pos + 32);
-		const offset = zip.readUInt32LE(pos + 42);
-		const name = zip.toString('utf8', pos + 46, pos + 46 + nameLength);
-		files.set(name, () => {
-			const start = offset + 30 + zip.readUInt16LE(offset + 26) + zip.readUInt16LE(offset + 28);
-			const data = zip.subarray(start, start + size);
-			if (method === 0) return data;
-			if (method === 8) return inflateRawSync(data);
-			throw new Error(`${path}: ${name} uses zip compression method ${method}`);
-		});
-		pos += 46 + nameLength + extraLength + commentLength;
-	}
-	return files;
-}
 
 /** The header fields of a core-metadata file (METADATA), as name -> values. */
 export function parseMetadata(text) {
@@ -226,7 +200,7 @@ export function wheelLicense(fields) {
 
 /** A wheel's name, version, licence and the licence and NOTICE files it carries. */
 export function wheelPackage(path) {
-	const files = readZip(path);
+	const files = readZip(readFileSync(path), path);
 	const metadata = [...files.keys()].find((name) => /^[^/]+\.dist-info\/METADATA$/.test(name));
 	if (!metadata) throw new Error(`${path} has no .dist-info/METADATA`);
 	const info = metadata.slice(0, -'METADATA'.length);
@@ -359,8 +333,93 @@ export function resolve(pkg, rules, { dir = websiteDir, python = false, section 
 				'and run `npm run vendor-licenses`. Or, if nothing of it reaches the site, say why with "notServed"',
 		);
 	}
+	const components = entry?.components ? loadComponents(pkg, entry, rules, { dir, id, where }) : [];
 	const url = entry?.source ? fillTemplate(entry.source, { ...values, version: pkg.version }) : pkg.url;
-	return { ...pkg, license, texts, url, notServed: texts.length === 0 ? entry.notServed : undefined };
+	return { ...pkg, license, texts, url, components, notServed: texts.length === 0 ? entry.notServed : undefined };
+}
+
+/**
+ * The third-party components compiled into a package's served files, from the
+ * manifest vendor-licenses.mjs wrote; each is checked like a package. With a
+ * `binary`, every symbol the WebAssembly exports must be claimed.
+ */
+function loadComponents(pkg, entry, rules, { dir, id, where }) {
+	const spec = entry.components;
+	const vendorHint = '`npm run vendor-licenses`';
+	const manifestPath = join(dir, spec.manifest);
+	if (!existsSync(manifestPath)) throw new Error(`${id}: ${spec.manifest} is missing; run ${vendorHint}`);
+	const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+	if (manifest.version !== pkg.version) {
+		throw new Error(
+			`${id}: the components in ${spec.manifest} were resolved for version ${manifest.version}. Run ` +
+				`${vendorHint} to resolve them for this version, then review and commit the change`,
+		);
+	}
+	const allowed = [...rules.allowed, ...(entry.allow ?? [])];
+	// Symbol patterns are policy, not resolved data: read them from the recipes.
+	const symbols = new Map(spec.sources.filter((r) => r.name && r.symbols).map((r) => [r.name, r.symbols]));
+	const components = manifest.components.map((manifestEntry) => {
+		const c = { ...manifestEntry, symbols: symbols.get(manifestEntry.name) };
+		const cid = `${id}: its component ${c.name} ${c.version}`;
+		let ok;
+		try {
+			ok = spdxAllowed(c.license, allowed, rules.exceptions ?? []);
+		} catch {
+			throw new Error(`${cid} declares the licence '${c.license}', which is not an SPDX expression. Give it in its recipe in ${where}`);
+		}
+		if (!ok) {
+			throw new Error(
+				`${cid} is under '${c.license}', which the policy does not allow for ${pkg.name}. Replace the ` +
+					`package, or allow it for this package with "allow" in ${where}, with the reason`,
+			);
+		}
+		if (!c.texts?.length) throw new Error(`${cid} has no licence text; run \`npm run vendor-licenses\`, which says what to do`);
+		const texts = c.texts.map(({ file, from }) => {
+			if (!existsSync(join(dir, file))) throw new Error(`${cid}: ${file} is missing; run ${vendorHint}`);
+			return [`${posix.basename(file)} (from ${from})`, cleanText(readFileSync(join(dir, file), 'utf8'))];
+		});
+		return { ...c, texts };
+	});
+	if (spec.binary) checkBinary(pkg, spec.binary, components, { dir, id, where });
+	return components;
+}
+
+/**
+ * Every symbol a WebAssembly binary of the package exports must belong to one
+ * of its components (their `symbols` pattern), to the package's own code
+ * (`ownSymbols`), or to the reviewed C runtime list (`runtimeSymbols`: musl,
+ * compiler-rt, Emscripten, whose licences are components). A component no
+ * export belongs to is not in the binary any more, and fails too.
+ */
+export function checkBinary(pkg, binary, components, { dir, id, where }) {
+	const exports = wasmExports(readFileSync(join(pkg.dir, binary.file)));
+	const runtime = new Set(
+		readFileSync(join(dir, binary.runtimeSymbols), 'utf8')
+			.split('\n')
+			.map((line) => line.trim())
+			.filter((line) => line && !line.startsWith('#')),
+	);
+	const own = new RegExp(binary.ownSymbols);
+	const claimers = components.filter((c) => c.symbols).map((c) => [c, new RegExp(c.symbols)]);
+	const unclaimed = exports.filter((name) => !own.test(name) && !runtime.has(name) && !claimers.some(([, re]) => re.test(name)));
+	const errors = [];
+	if (unclaimed.length) {
+		const sample = [...new Set(unclaimed)].sort().slice(0, 40).join(' ');
+		errors.push(
+			`${id}: ${binary.file} exports ${unclaimed.length} symbol(s) no component claims: ${sample}. Find the ` +
+				`library they come from (the upstream build files), add a recipe for it with its licence to ` +
+				`"components.sources" in ${where} and run \`npm run vendor-licenses\`. Only if they are C runtime ` +
+				`(musl, compiler-rt, Emscripten) add them to ${binary.runtimeSymbols}`,
+		);
+	}
+	for (const [c, re] of claimers) {
+		if (!exports.some((name) => re.test(name))) {
+			errors.push(`${id}: no symbol of ${binary.file} matches the component ${c.name} (${c.symbols}); is it still linked in?`);
+		}
+	}
+	const stale = [...runtime].filter((name) => !exports.includes(name));
+	if (stale.length) console.warn(`warning: ${binary.runtimeSymbols}: ${stale.length} symbol(s) are not exported any more (${stale.slice(0, 10).join(' ')}); remove them`);
+	if (errors.length) throw new Error(errors.join('\n'));
 }
 
 // ---------------------------------------------------------------- report
@@ -385,6 +444,16 @@ function sections(packages) {
 		out.push(RULE);
 		if (p.notServed) out.push('', `No licence text is published with this package. ${p.notServed}`);
 		for (const [name, text] of p.texts) out.push('', `----- ${name} -----`, '', text);
+		if (p.components?.length) {
+			out.push('', `Compiled into ${p.name}'s served files: ${p.components.length} components.`);
+			for (const c of p.components) {
+				out.push('', '-'.repeat(79), `${p.name} component: ${c.name} ${c.version}`, `Licence: ${c.license}`);
+				if (c.url) out.push(`Source: ${c.url}`);
+				if (c.via) out.push(`Through: ${c.via}`);
+				out.push('-'.repeat(79));
+				for (const [name, text] of c.texts) out.push('', `----- ${name} -----`, '', text);
+			}
+		}
 	}
 	return out;
 }
@@ -429,9 +498,9 @@ export function render(npm, python = []) {
 
 // ---------------------------------------------------------------- commands
 
-const loadPolicy = (dir) => JSON.parse(readFileSync(join(dir, POLICY_FILE), 'utf8'));
+export const loadPolicy = (dir) => JSON.parse(readFileSync(join(dir, POLICY_FILE), 'utf8'));
 
-function* checked(dir, policy) {
+export function* checked(dir, policy) {
 	const values = templateValues(dir);
 	const python = policy.python ?? { allowed: [], packages: {} };
 	for (const pkg of installedPackages(dir)) yield [pkg, policy, { dir, values }];
@@ -469,49 +538,4 @@ export function main(dir = websiteDir) {
 	console.log(`Wrote ${OUTPUT} (${npm.length} npm packages, ${python.length} Python wheels)`);
 }
 
-/**
- * Fetches every text the policy saves (`texts`) for the version installed or
- * served now, writes it to its file and records that version. Review the diff.
- */
-export async function vendor(dir = websiteDir, fetchText = defaultFetch) {
-	const policy = loadPolicy(dir);
-	const versions = new Map();
-	for (const [pkg, rules, options] of checked(dir, policy)) {
-		const [, entry] = policyEntry(rules, pkg.name, options.python);
-		if (!entry?.texts?.length) continue;
-		if (!versions.has(entry)) versions.set(entry, new Set());
-		versions.get(entry).add(pkg.version);
-	}
-	const values = templateValues(dir);
-	for (const [entry, found] of versions) {
-		if (found.size > 1) throw new Error(`one entry covers several versions (${[...found].join(', ')}); split it`);
-		const [version] = found;
-		for (const { file, from } of entry.texts) {
-			const url = fillTemplate(from, { ...values, version });
-			const text = cleanText(await fetchText(url));
-			if (!text) throw new Error(`${url} is empty`);
-			mkdirSync(dirname(join(dir, file)), { recursive: true });
-			writeFileSync(join(dir, file), `${text}\n`);
-			console.log(`saved ${file} from ${url}`);
-		}
-		entry.version = version;
-	}
-	writeFileSync(join(dir, POLICY_FILE), `${JSON.stringify(policy, null, '\t')}\n`);
-}
-
-async function defaultFetch(url) {
-	const response = await fetch(url);
-	if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-	return response.text();
-}
-
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-	if (process.argv.includes('--vendor')) {
-		vendor().catch((error) => {
-			console.error(`error: ${error.message}`);
-			process.exitCode = 1;
-		});
-	} else {
-		main();
-	}
-}
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main();
