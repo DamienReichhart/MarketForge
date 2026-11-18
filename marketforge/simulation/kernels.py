@@ -27,8 +27,29 @@ bit for bit, which constrains how they are written (see docs/adr/0007):
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
-from numba import njit
+
+if sys.platform == "emscripten":
+    # Numba has no WebAssembly build. In the browser (Pyodide) the kernels run
+    # as plain Python, which gives the same bits as the compiled kernels
+    # (tests/simulation/test_kernels.py) at a fraction of the speed. Anywhere
+    # else a missing Numba must fail, not fall back silently (docs/adr/0015).
+
+    from typing import Any
+
+    def njit(*args: Any, **kwargs: Any) -> Any:
+        """Stand-in for ``numba.njit`` that returns the function unchanged."""
+
+        def decorate(function: Any) -> Any:
+            function.py_func = function
+            return function
+
+        return decorate(args[0]) if args and callable(args[0]) else decorate
+
+else:
+    from numba import njit
 
 
 @njit(cache=True, nogil=True)

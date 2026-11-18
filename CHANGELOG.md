@@ -135,6 +135,10 @@ when that makes the data more realistic. Upgrading from 3.x? See
 - **scipy is no longer a dependency** (about 100 MB less to install, and one
   fewer version to reconcile with an ML stack). Validation computes the
   excess kurtosis with NumPy, to the same value.
+- **MarketForge runs in Pyodide** (Python in WebAssembly). Numba is not
+  installed there, and the kernels run as plain Python to the same bits, only
+  slower. Everywhere else Numba is still required, and a missing Numba is
+  still an import error, not a silent fallback.
 
 ### New commands
 - **`marketforge info DATASET`** summarises a dataset from its manifest
