@@ -1,0 +1,54 @@
+# Licences marketforge's runtime dependencies may have. Checked by
+# .github/scripts/licenses.py in CI's build job, on the dependency tree the
+# built wheel resolves to on Linux, macOS and Windows, so a dependency (direct
+# or transitive) under any other licence blocks the release.
+#
+# MarketForge is Apache-2.0 and imported into closed-source code (see the
+# website's Licence page), so only permissive licences are allowed for every
+# package. Anything else is a decision about one package, recorded below with
+# the reason.
+
+# SPDX licence identifiers.
+allowed = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "PSF-2.0",
+    "Unlicense",
+    "Zlib",
+]
+
+# SPDX licence exceptions, for `<licence> WITH <exception>`.
+exceptions = [
+    "LLVM-exception", # llvmlite bundles LLVM: Apache-2.0 WITH LLVM-exception
+]
+
+# One entry per package whose declared licence is not an allowed SPDX
+# expression. `declared` is the licence exactly as the package states it: if
+# a new release states anything else, the entry no longer applies and CI
+# fails until someone reads the new licence. `license` is the SPDX
+# expression that replaces it; `allow` allows more licences for this package
+# only.
+
+[packages.numba]
+declared = "BSD"
+license = "BSD-2-Clause"
+reason = "numba states only 'BSD'; its LICENSE file is the 2-clause BSD licence."
+
+[packages.colorama]
+# Windows only (a dependency of click and tqdm there).
+declared = "BSD License"
+license = "BSD-3-Clause"
+reason = "colorama states only the 'BSD License' classifier; its LICENSE.txt is the 3-clause BSD licence."
+
+[packages.tqdm]
+declared = "MPL-2.0 AND MIT"
+allow = ["MPL-2.0"]
+reason = """MPL-2.0 is copyleft per file: it binds changes to tqdm's own files, \
+which MarketForge neither modifies nor bundles. Using tqdm as a dependency puts \
+no obligation on MarketForge or on the code that imports it."""

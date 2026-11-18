@@ -1,0 +1,90 @@
+{
+	"$comment": [
+		"Licences the website's npm packages may have, checked on every build by scripts/third-party-licenses.mjs,",
+		"which also writes public/third-party-licenses.txt from them. Only permissive licences (and the OFL, for the",
+		"fonts) are allowed for every package; anything else is a decision about one package, recorded below.",
+		"An entry applies to the package named by its key, or to every package starting with it if it ends in *.",
+		"'declared' is the licence exactly as the package states it: if a new release states anything else, the",
+		"entry no longer applies and the build fails until someone reads the new licence. 'license' replaces a",
+		"declared licence that is not SPDX; 'allow' allows more licences for this package only; 'text' is the",
+		"upstream licence (in licenses/) of a package that ships none; 'notServed' says why a package that ships",
+		"no licence text needs none here: nothing of it reaches the site."
+	],
+	"allowed": [
+		"0BSD",
+		"Apache-2.0",
+		"BlueOak-1.0.0",
+		"BSD-2-Clause",
+		"BSD-3-Clause",
+		"CC0-1.0",
+		"ISC",
+		"MIT",
+		"OFL-1.1"
+	],
+	"exceptions": [],
+	"packages": {
+		"pagefind": {
+			"declared": "MIT",
+			"text": "licenses/pagefind-LICENSE",
+			"reason": "The site's search: pagefind/ (its UI, scripts and WebAssembly) is served. The npm package has no licence file; licenses/pagefind-LICENSE is the LICENSE of github.com/Pagefind/pagefind."
+		},
+		"@pagefind/*": {
+			"declared": "MIT",
+			"text": "licenses/pagefind-LICENSE",
+			"reason": "Pagefind's UI (@pagefind/default-ui) and its per-platform indexer, which writes the served pagefind/ files. Same repository and licence as pagefind."
+		},
+		"@img/sharp-libvips-*": {
+			"declared": "LGPL-3.0-or-later",
+			"allow": ["LGPL-3.0-or-later"],
+			"notServed": "libvips, the native image library sharp uses to resize images while the site is built; it runs on the build machine and none of it is served.",
+			"reason": "Build tool only, dynamically linked by sharp, unmodified: the LGPL puts no obligation on the site."
+		},
+		"@img/sharp-wasm32": {
+			"declared": "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
+			"allow": ["LGPL-3.0-or-later"],
+			"reason": "sharp compiled to WebAssembly with libvips, a fallback for platforms without a native build. Build tool only; none of it is served."
+		},
+		"lightningcss": {
+			"declared": "MPL-2.0",
+			"allow": ["MPL-2.0"],
+			"reason": "The CSS minifier of the build. Its output is the site's own CSS, not its code, and MPL-2.0 binds only changes to its own files."
+		},
+		"lightningcss-*": {
+			"declared": "MPL-2.0",
+			"allow": ["MPL-2.0"],
+			"reason": "lightningcss's per-platform native binary. Build tool only."
+		},
+		"@astrojs/compiler-binding-*": {
+			"declared": "MIT",
+			"notServed": "The native Astro compiler, which turns the site's .astro files into HTML while it is built."
+		},
+		"@bruits/satteri-*": {
+			"declared": "MIT",
+			"notServed": "A native Markdown processor used while the site is built."
+		},
+		"@rolldown/binding-*": {
+			"declared": "MIT",
+			"notServed": "The native bundler (Rolldown) of the build."
+		},
+		"@napi-rs/wasm-runtime": {
+			"declared": "MIT",
+			"notServed": "Loads the build tools' WebAssembly fallbacks on the build machine."
+		},
+		"am-i-vibing": {
+			"declared": "MIT",
+			"notServed": "Used by Astro's command line to detect the terminal it runs in."
+		},
+		"process-ancestry": {
+			"declared": "MIT",
+			"notServed": "Used by am-i-vibing in Astro's command line."
+		},
+		"piccolore": {
+			"declared": "ISC",
+			"notServed": "Colours the output of Astro's command line."
+		},
+		"boolbase": {
+			"declared": "ISC",
+			"notServed": "Used by CSS selector matching while pages are built (svgo, Starlight)."
+		}
+	}
+}

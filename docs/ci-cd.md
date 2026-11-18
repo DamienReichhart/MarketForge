@@ -33,12 +33,12 @@ explicitly.
 | Seed reproducibility | On Linux (x86-64 and arm64), macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test (the wheel CI built) and with the latest PyPI release, **in the same environment**, and fails on any difference unless the code under test increments `MODEL_REVISION` (`marketforge/_version.py`) and `CHANGELOG.md` has an `### Output changes` section for its version (ADR 0011). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
 | Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
 | Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
-| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Uploads the `dist` and `sbom` artifacts |
+| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Then checks the licence of every runtime dependency, as the wheel resolves on Linux, macOS and Windows, against `.github/python-license-policy.toml` and writes their licence and NOTICE texts (`licenses.py`; see [Third-party licences](#third-party-licences)). Uploads the `dist`, `sbom` and `third-party-licenses` artifacts |
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
 | Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
-| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
+| Website | Tests the site's build scripts (`npm test`), type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), and uploads the built site as the `github-pages` artifact that CD deploys |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
@@ -56,6 +56,33 @@ pytest --cov
 uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
 pip install . --group docs && python -I .github/scripts/doc_examples.py   # in a fresh venv
 ```
+
+### Third-party licences
+
+Wherever MarketForge ships someone else's code, it ships their licence and
+NOTICE texts too, generated in the run that builds what is shipped, so they
+cannot be missing or out of date:
+
+| What ships | Third-party code in it | Where its licences are |
+| --- | --- | --- |
+| Wheel and sdist (PyPI) | None: dependencies are installed by pip from their own packages, with their own licence files | `LICENSE` and `NOTICE` (MarketForge's own) |
+| GitHub release | The same files, plus the SBOM | `marketforge-<version>.third-party-licenses.txt`: the texts of every runtime dependency, written by the **build** job (`.github/scripts/licenses.py`) |
+| Website | Astro, Starlight, Expressive Code, Pagefind, the DM Sans and DM Mono fonts | `/third-party-licenses.txt`, written by `website/scripts/third-party-licenses.mjs` before every dev, check and build, from the installed lockfile tree; linked from every page's footer, so the link check fails if it is missing |
+
+Both generators enforce a licence policy and fail the build when a package
+(direct or transitive) is under a licence the policy does not allow, states a
+licence that is not an SPDX expression, ships no licence text, or states a
+different licence from the one its policy entry was reviewed for. Only
+permissive licences are allowed for every package; a copyleft one (tqdm's
+MPL-2.0, libvips' LGPL in the site's build) is a decision about one package,
+recorded with its reason in `.github/python-license-policy.toml` (Python) or
+`website/license-policy.json` (website). When a check fails, the error says
+which entry to add or update. A package that ships no licence text gets its
+upstream licence saved in `website/licenses/` (Pagefind's npm packages have
+none), or, if nothing of it reaches the site, a `notServed` reason.
+
+The weekly scheduled run resolves the newest dependency releases, so a
+dependency that changes its licence fails it before the next release does.
 
 ### Performance gate
 
@@ -146,7 +173,8 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
 4. **github-release** creates the tag `v<version>` on the released commit and a
    GitHub release with the CHANGELOG section as notes and the distributions
-   and the SBOM (`marketforge-<version>.cdx.json`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
+   the SBOM (`marketforge-<version>.cdx.json`) and the third-party licences
+   (`marketforge-<version>.third-party-licenses.txt`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
 5. **verify** installs the version from PyPI in clean environments on Linux
    (Python 3.12 and 3.14), Linux arm64, macOS and Windows (3.14), retrying while the CDN

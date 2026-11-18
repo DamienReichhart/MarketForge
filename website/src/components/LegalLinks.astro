@@ -5,6 +5,8 @@ const links = [
 	['Privacy', 'legal/privacy'],
 	['Terms', 'legal/terms'],
 	['Cookies', 'legal/cookies'],
+	// Written on every build by scripts/third-party-licenses.mjs.
+	['Third-party licences', 'third-party-licenses.txt'],
 ];
 const year = new Date().getUTCFullYear();
 ---
@@ -12,7 +14,7 @@ const year = new Date().getUTCFullYear();
 <nav class="mf-legal" aria-label="Legal">
 	<span>© {year} Damien REICHHART · Apache-2.0</span>
 	<ul>
-		{links.map(([label, path]) => <li><a href={`${base}/${path}/`}>{label}</a></li>)}
+		{links.map(([label, path]) => <li><a href={`${base}/${path}${path.includes('.') ? '' : '/'}`}>{label}</a></li>)}
 	</ul>
 </nav>
 

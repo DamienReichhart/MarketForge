@@ -243,7 +243,16 @@ releases.
 
 ## License
 
-Apache-2.0. See [LICENSE](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE).
+Apache-2.0. See [LICENSE](https://github.com/DamienReichhart/MarketForge/blob/main/LICENSE)
+and [NOTICE](https://github.com/DamienReichhart/MarketForge/blob/main/NOTICE).
+
+The wheel and the sdist contain only MarketForge's own code; pip installs its
+dependencies from their own packages, with their own licences. Each
+[GitHub release](https://github.com/DamienReichhart/MarketForge/releases) has
+a `third-party-licenses.txt` with the licence and NOTICE texts of every
+runtime dependency, for whoever ships an environment with MarketForge in it.
+The website's are at
+[third-party-licenses.txt](https://damienreichhart.github.io/MarketForge/third-party-licenses.txt).
 
 All data MarketForge produces is synthetic. It is not the price history of any
 real instrument, and nothing in this project is financial advice.

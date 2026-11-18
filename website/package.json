@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "sync": "node scripts/sync-content.mjs",
+    "sync": "node scripts/sync-content.mjs && node scripts/third-party-licenses.mjs",
     "dev": "npm run sync && astro dev",
     "build": "npm run sync && astro build",
     "preview": "astro preview",
     "check": "npm run sync && astro check",
     "check-links": "node scripts/check-links.mjs",
-    "check-external-links": "node scripts/check-external-links.mjs"
+    "check-external-links": "node scripts/check-external-links.mjs",
+    "test": "node --test scripts/third-party-licenses.test.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "0.43.1",

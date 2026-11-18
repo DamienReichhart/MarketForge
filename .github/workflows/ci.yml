@@ -437,6 +437,26 @@ jobs:
             "$RUNNER_TEMP/smoke/bin/python"
           # The same checks actions/attest makes in CD, plus completeness.
           python .github/scripts/release.py check-sbom "sbom/marketforge-${version}.cdx.json"
+      - name: Third-party licences of the runtime dependencies (policy and texts)
+        # The dependency tree of the wheel on Linux (the smoke environment)
+        # and as it resolves for macOS and Windows (colorama is Windows only).
+        # Fails on a licence the policy (.github/python-license-policy.toml)
+        # does not allow, or a dependency without licence text; CD attaches
+        # the file to the GitHub release.
+        run: |
+          version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          wheel="$(realpath dist/*.whl)"
+          linux="$("$RUNNER_TEMP/smoke/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
+          for platform in aarch64-apple-darwin x86_64-pc-windows-msvc; do
+            uv pip install --quiet --python-version "$DEFAULT_PYTHON" --python-platform "$platform" \
+              --target "$RUNNER_TEMP/licenses-$platform" "$wheel"
+          done
+          python .github/scripts/licenses.py \
+            --path "$linux" \
+            --path "$RUNNER_TEMP/licenses-aarch64-apple-darwin" \
+            --path "$RUNNER_TEMP/licenses-x86_64-pc-windows-msvc" \
+            --platforms "Python ${DEFAULT_PYTHON} on Linux, macOS and Windows" \
+            --out "third-party-licenses/marketforge-${version}.third-party-licenses.txt"
       - name: Upload distributions
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -449,6 +469,13 @@ jobs:
         with:
           name: sbom
           path: sbom/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload third-party licences
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: third-party-licenses
+          path: third-party-licenses/
           retention-days: 14
           if-no-files-found: error
 
@@ -588,6 +615,12 @@ jobs:
       - name: Install (lockfile only)
         working-directory: website
         run: npm ci --no-audit --no-fund
+      - name: Test the build scripts
+        working-directory: website
+        run: npm test
+      # Every build (check and build alike) first writes
+      # public/third-party-licenses.txt, and fails on a package licence
+      # license-policy.json does not allow or a package without licence text.
       - name: Type-check (astro check)
         working-directory: website
         run: npm run check

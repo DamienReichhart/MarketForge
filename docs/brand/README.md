@@ -133,8 +133,11 @@ candles together without confusion.
   the wordmark at 500 and 700.
 - **DM Mono** for code, commands, symbols and column names, at 400 and 500.
 
-Both are open source (SIL OFL) and served from the site's own files through
-Fontsource; nothing is loaded from a third-party font host. Use tabular
+Both are open source (SIL Open Font License 1.1, © The DM Sans Project
+Authors and The DM Mono Project Authors) and served from the site's own files
+through Fontsource, with their licence in the site's third-party licences;
+nothing is loaded from a third-party font host. The outlined wordmark is
+artwork made with DM Sans, which the OFL leaves free of its terms. Use tabular
 numerals wherever digits line up. Headings use a tight tracking of
 `-0.02em`; uppercase labels use `+0.04em` to `+0.08em`.
 

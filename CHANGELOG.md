@@ -73,6 +73,13 @@ when that makes the data more realistic. Upgrading from 3.x? See
   imported into closed-source pipelines and services without copyleft
   obligations. Versions released before 4.0 stay under the AGPL they shipped
   with. The data MarketForge generates was never covered by either licence.
+- **Third-party licences ship with everything that contains third-party
+  code.** Each GitHub release has a `third-party-licenses.txt` with the licence
+  and NOTICE texts of every runtime dependency, and the website serves those
+  of its own code and fonts at `/third-party-licenses.txt`. Both are written by
+  the build that produces what they describe, and CI blocks a release if a
+  dependency's licence is not allowed or its licence text is missing. The
+  wheel and sdist still contain only MarketForge's own code.
 
 ### Breaking changes
 - **"Asset" is now "instrument" everywhere**, as the glossary has said since
