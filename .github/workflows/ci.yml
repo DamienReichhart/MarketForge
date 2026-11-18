@@ -35,7 +35,7 @@ env:
   PYTHONUNBUFFERED: "1"
   UV_NO_PROGRESS: "1"
   # Newest supported Python, for the jobs that need only one interpreter.
-  DEFAULT_PYTHON: "3.13"
+  DEFAULT_PYTHON: "3.15"
 
 defaults:
   run:
@@ -75,7 +75,7 @@ jobs:
         # floor (2.2) on the oldest Python and the newest numpy on the newest.
         include:
           - { python-version: "3.12", numpy: "2.2.*" }
-          - { python-version: "3.14", numpy: "latest" }
+          - { python-version: "3.15", numpy: "latest" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -112,17 +112,17 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
         include:
           # Numba compiles natively and BLAS rounds differently per platform:
           # cover Linux arm64, macOS (arm64) and Windows at both ends of the
           # supported Python range.
           - { os: ubuntu-24.04-arm, python-version: "3.12" }
-          - { os: ubuntu-24.04-arm, python-version: "3.14" }
+          - { os: ubuntu-24.04-arm, python-version: "3.15" }
           - { os: macos-15, python-version: "3.12" }
-          - { os: macos-15, python-version: "3.14" }
+          - { os: macos-15, python-version: "3.15" }
           - { os: windows-2025, python-version: "3.12" }
-          - { os: windows-2025, python-version: "3.14" }
+          - { os: windows-2025, python-version: "3.15" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -192,33 +192,6 @@ jobs:
           path: coverage.xml
           retention-days: 14
           if-no-files-found: error
-
-  next-python:
-    # Early warning for the next CPython (in beta). Deliberately NOT part of
-    # "CI OK": a red mark here never blocks a merge. When it is final, move it
-    # into the test matrix and add its classifier to pyproject.toml.
-    name: Test (py3.15 preview, non-blocking)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          python-version: "3.15"
-          activate-environment: "true"
-          enable-cache: "true"
-          cache-dependency-glob: pyproject.toml
-          cache-suffix: next-python
-      - name: Install (binary wheels only, so a missing wheel fails fast)
-        run: uv pip install -e . --group test --only-binary ":all:"
-      - name: Show environment
-        run: |
-          python --version
-          uv pip list
-      - name: pytest
-        run: pytest
 
   min-deps:
     name: Test (lowest supported dependencies)
@@ -497,7 +470,7 @@ jobs:
       - name: Audit the runtime dependency tree (oldest and newest Python)
         run: |
           status=0
-          for py in 3.12 3.14; do
+          for py in 3.12 3.15; do
             uv pip compile pyproject.toml --python-version "$py" --generate-hashes --quiet \
               -o "requirements-$py.txt"
             echo "::group::pip-audit (Python $py resolution)"
@@ -546,9 +519,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
-          go-version: "1.24"
+          go-version: "1.27"
           cache: false
       - name: Install gitleaks
         run: |
@@ -567,7 +540,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: moderate
 

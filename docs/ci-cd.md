@@ -25,16 +25,15 @@ explicitly.
 | Job | What it checks |
 | --- | --- |
 | Lint & format | `ruff check`, `ruff format --check`, and `lint-imports`, which fails when a package imports from a layer above it (the contract is in `pyproject.toml`) |
-| Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.14 with the newest numpy (numpy's type stubs differ between releases) |
-| Test | `pytest` against **the wheel the build job made** (the file CD publishes), not an editable install: the source package is deleted from the checkout first, so nothing can import it instead. On Linux (x86-64) for Python 3.12 to 3.14, and on Linux arm64, macOS (arm64) and Windows for 3.12 and 3.14. A file missing from the wheel or a platform where it does not work fails here, before PyPI, not in CD's **verify** after the upload |
-| Test coverage | `pytest --cov` on an editable install (coverage maps lines to the source tree), Linux, Python 3.13: 90% branch coverage minimum; uploads `coverage.xml` |
-| Test (py3.15 preview, non-blocking) | `pytest` on the next CPython (3.15, in beta) with binary wheels only. **Not** part of CI OK: an early warning, never a merge blocker. Promote it into the test matrix once 3.15 is final |
+| Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.15 with the newest numpy (numpy's type stubs differ between releases) |
+| Test | `pytest` against **the wheel the build job made** (the file CD publishes), not an editable install: the source package is deleted from the checkout first, so nothing can import it instead. On Linux (x86-64) for Python 3.12 to 3.15, and on Linux arm64, macOS (arm64) and Windows for 3.12 and 3.15. A file missing from the wheel or a platform where it does not work fails here, before PyPI, not in CD's **verify** after the upload |
+| Test coverage | `pytest --cov` on an editable install (coverage maps lines to the source tree), Linux, Python 3.15: 90% branch coverage minimum; uploads `coverage.xml` |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Seed reproducibility | On Linux (x86-64 and arm64), macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test (the wheel CI built) and with the latest PyPI release, **in the same environment**, and fails on any difference unless the code under test increments `MODEL_REVISION` (`marketforge/_version.py`) and `CHANGELOG.md` has an `### Output changes` section for its version (ADR 0011). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
 | Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
 | Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Then checks the licence of every runtime dependency, as the wheel resolves on Linux, macOS and Windows, against `.github/python-license-policy.toml` and writes their licence and NOTICE texts (`licenses.py`; see [Third-party licences](#third-party-licences)). Uploads the `dist`, `sbom` and `third-party-licenses` artifacts |
-| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
+| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.15 |
 | Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
 | Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
@@ -45,6 +44,14 @@ explicitly.
 The weekly scheduled run tests against the newest releases of every
 dependency, so an upstream break or a new advisory shows up without waiting
 for a commit.
+
+When a new CPython reaches beta (3.16 in May 2027), add a non-blocking job
+for it, left out of **CI OK**, that runs `pytest` with binary wheels only
+(`uv pip install -e . --group test --only-binary ":all:"`): a missing wheel
+or a break then shows up months before users hit it. Once it is final, move
+it into the test matrix (and the newest-Python entries of the type-check,
+audit and CD verify jobs), point `DEFAULT_PYTHON` at it, add its classifier
+to `pyproject.toml`, and remove the preview job.
 
 ### Running the checks locally
 
@@ -233,7 +240,7 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    (`marketforge-<version>.third-party-licenses.txt`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
 5. **verify** installs the version from PyPI in clean environments on Linux
-   (Python 3.12 and 3.14), Linux arm64, macOS and Windows (3.14), retrying while the CDN
+   (Python 3.12 and 3.15), Linux arm64, macOS and Windows (3.15), retrying while the CDN
    catches up, and runs the CLI and a generation across all three markets.
 6. **pages** deploys the website CI built and link-checked in this run (the
    `github-pages` artifact) to GitHub Pages, at

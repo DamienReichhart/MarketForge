@@ -148,6 +148,8 @@ when that makes the data more realistic. Upgrading from 3.x? See
   command line.
 
 ### Installation
+- **Python 3.15 is supported** and tested on Linux (x86-64 and arm64),
+  macOS and Windows, with the newest numpy, pandas, Numba and pyarrow.
 - **scipy is no longer a dependency** (about 100 MB less to install, and one
   fewer version to reconcile with an ML stack). Validation computes the
   excess kurtosis with NumPy, to the same value.
