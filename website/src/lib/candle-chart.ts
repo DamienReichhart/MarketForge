@@ -11,7 +11,7 @@ export type Candle = [number, number, number, number, number, number, number | n
 
 export interface ChartOptions {
 	instrument: string;
-	/** Shown after the symbol, e.g. "H1 · crypto · seed 4". */
+	/** Shown after the symbol, e.g. "crypto, H1, seed 4". */
 	meta: string;
 	/** Accessible description of the plot. */
 	label: string;
@@ -19,6 +19,8 @@ export interface ChartOptions {
 	command?: string;
 	/** Price decimals; by default from the price's magnitude ({@link priceDecimals}). */
 	decimals?: number;
+	/** Whether to list the regimes under the chart (default true; off where the page shows one legend). */
+	legend?: boolean;
 }
 
 export const REGIME_LABELS: Record<string, string> = {
@@ -78,6 +80,9 @@ function timeTicks(candles: Candle[]): { index: number; label: string }[] {
 			.map((c, i) => ({ i, t: c[0] }))
 			.filter(({ i, t }) => key(t) !== key(i > 0 ? candles[i - 1][0] : t - 1))
 			.map(({ i, t }) => ({ index: i, label: label(t) }));
+		// A label on the very first candle sits on the plot's edge, half cut and
+		// crowding the next one: drop it when others follow.
+		if (ticks.length > 1 && ticks[0].index === 0) ticks.shift();
 		if (ticks.length <= MAX_TICKS) return ticks;
 	}
 	return [];
@@ -140,11 +145,11 @@ export function chartMarkup(candles: Candle[], options: ChartOptions): string {
 			);
 		})
 		.join('');
-	const legend = hasRegime
+	const legend = hasRegime && options.legend !== false
 		? `<ul class="mf-legend" aria-label="Regimes">${Object.entries(REGIME_LABELS)
 				.map(([key, label]) => `<li><i class="r-${key}"></i>${label}</li>`)
 				.join('')}</ul>`
-		: '<span></span>';
+		: '';
 
 	return (
 		`<figure class="mf-chart" data-candles="${escape(JSON.stringify(candles))}" data-decimals="${decimals}">` +
@@ -172,9 +177,12 @@ export function chartMarkup(candles: Candle[], options: ChartOptions): string {
 		`<div class="mf-axis-x" aria-hidden="true">${ticks
 			.map((t, n) => `<span${n % 2 ? ' class="mf-hide-sm"' : ''} style="left:${(x(t.index) / W) * 100}%">${t.label}</span>`)
 			.join('')}</div></div>` +
-		`<div class="mf-chart-foot">${legend}` +
-		(options.command ? `<code class="mf-chart-cmd">$ ${escape(options.command)}</code>` : '') +
-		`</div></figure>`
+		(legend || options.command
+			? `<div class="mf-chart-foot">${legend || '<span></span>'}` +
+				(options.command ? `<code class="mf-chart-cmd">$ ${escape(options.command)}</code>` : '') +
+				`</div>`
+			: '') +
+		`</figure>`
 	);
 }
 
