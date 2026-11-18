@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-content.mjs && node scripts/sync-playground.mjs && node scripts/third-party-licenses.mjs",
-    "dev": "npm run sync && astro dev",
-    "build": "npm run sync && astro build",
+    "dev": "npm run sync && astro dev --force",
+    "build": "npm run sync && astro build --force",
     "preview": "astro preview",
     "check": "npm run sync && astro check",
     "check-links": "node scripts/check-links.mjs",
