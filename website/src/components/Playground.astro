@@ -1,0 +1,732 @@
+---
+/**
+ * The playground: a form for a MarketForge request, run in the browser by a
+ * Web Worker (src/playground/worker.ts) that loads Python and MarketForge
+ * only when the visitor first asks for data. Shows the candles with the
+ * shared chart, offers the data as CSV or Parquet, and always shows the
+ * command and the Python call that make the same request with the installed
+ * package. Its caps are in src/playground/limits.json.
+ */
+import catalog from '../samples/playground-catalog.json';
+import '../styles/candle-chart.css';
+
+const DEFAULTS = { market: 'crypto', instruments: ['BTCUSD'], start: '2024-03-01', days: 10, seed: 4, timeframes: ['m1', 'H1'] };
+const markets = Object.keys(catalog.markets) as (keyof typeof catalog.markets)[];
+const timeframes: string[] = catalog.timeframes;
+const anomalies: string[] = catalog.anomalies;
+const columns = [
+	{ key: 'include_regime', label: 'Regime', checked: true },
+	{ key: 'include_spread', label: 'Spread', checked: true },
+	{ key: 'include_bid_ask', label: 'Bid and ask', checked: false },
+];
+const anomalyLabels: Record<string, string> = { spikes: 'Spikes', flash_crash: 'Flash crashes' };
+---
+
+<div class="mf-playground not-content" data-catalog={JSON.stringify(catalog.markets)} data-defaults={JSON.stringify(DEFAULTS)}>
+	<form class="mf-pg-form" novalidate>
+		<div class="mf-pg-row">
+			<label>
+				<span>Market</span>
+				<select name="market">
+					{markets.map((m) => <option value={m} selected={m === DEFAULTS.market}>{m}</option>)}
+				</select>
+			</label>
+			<label>
+				<span>From (UTC)</span>
+				<input type="date" name="start" value={DEFAULTS.start} min="1971-01-01" max="2099-12-31" required />
+			</label>
+			<label>
+				<span>Days</span>
+				<input type="number" name="days" value={DEFAULTS.days} min="1" max="366" step="1" required />
+			</label>
+			<label>
+				<span>Seed</span>
+				<span class="mf-pg-seed">
+					<input type="number" name="seed" value={DEFAULTS.seed} min="0" step="1" required />
+					<button type="button" class="mf-pg-small" data-action="seed" title="Pick a random seed">Random</button>
+				</span>
+			</label>
+		</div>
+
+		<fieldset class="mf-pg-instruments">
+			<legend>Instruments</legend>
+			<div class="mf-pg-choice">
+				<label><input type="radio" name="scope" value="all" /> <span data-all-label>All</span></label>
+				<label><input type="radio" name="scope" value="some" checked /> Only these:</label>
+				<span class="mf-pg-count" aria-live="polite"></span>
+			</div>
+			<div class="mf-pg-pick">
+				<input type="search" class="mf-pg-filter" placeholder="Filter symbols" aria-label="Filter symbols" />
+				<div class="mf-pg-symbols" role="group" aria-label="Symbols"></div>
+			</div>
+		</fieldset>
+
+		<fieldset>
+			<legend>Timeframes</legend>
+			<div class="mf-pg-pills">
+				{
+					timeframes.map((tf) => (
+						<label class="mf-pg-pill">
+							<input type="checkbox" name="timeframes" value={tf} checked={DEFAULTS.timeframes.includes(tf)} />
+							<span>{tf}</span>
+						</label>
+					))
+				}
+			</div>
+		</fieldset>
+
+		<div class="mf-pg-row">
+			<fieldset>
+				<legend>Columns</legend>
+				<div class="mf-pg-pills">
+					{
+						columns.map((c) => (
+							<label class="mf-pg-pill">
+								<input type="checkbox" name={c.key} checked={c.checked} />
+								<span>{c.label}</span>
+							</label>
+						))
+					}
+				</div>
+			</fieldset>
+			<fieldset>
+				<legend>Anomalies</legend>
+				<div class="mf-pg-pills">
+					{
+						anomalies.map((a) => (
+							<label class="mf-pg-pill">
+								<input type="checkbox" name="anomalies" value={a} />
+								<span>{anomalyLabels[a] ?? a}</span>
+							</label>
+						))
+					}
+				</div>
+			</fieldset>
+		</div>
+
+		<div class="mf-pg-actions">
+			<button type="submit" class="mf-pg-button mf-pg-primary" data-action="generate">Generate in my browser</button>
+			<button type="button" class="mf-pg-button" data-action="cancel" hidden>Cancel</button>
+			<p class="mf-pg-status" role="status" aria-live="polite">
+				Python and MarketForge load when you first generate. Nothing is downloaded before.
+			</p>
+		</div>
+	</form>
+
+	<section class="mf-pg-result" hidden aria-label="Result">
+		<div class="mf-pg-row mf-pg-view">
+			<label>
+				<span>Instrument</span>
+				<select name="view-symbol"></select>
+			</label>
+			<label>
+				<span>Timeframe</span>
+				<select name="view-timeframe"></select>
+			</label>
+			<div class="mf-pg-downloads">
+				<span>Download this timeframe, every instrument:</span>
+				<button type="button" class="mf-pg-small" data-action="csv">CSV</button>
+				<button type="button" class="mf-pg-small" data-action="parquet">Parquet</button>
+			</div>
+		</div>
+		<div class="mf-pg-chart"></div>
+		<p class="mf-pg-note"></p>
+	</section>
+
+	<section class="mf-pg-equivalent" aria-label="The same request with the installed package">
+		<p>
+			The same request with the installed package (<code>pip install marketforge</code>), at full speed and with
+			no size cap:
+		</p>
+		<div class="mf-pg-code">
+			<pre><code data-code="cli"></code></pre>
+			<button type="button" class="mf-pg-small" data-copy="cli">Copy</button>
+		</div>
+		<div class="mf-pg-code">
+			<pre><code data-code="python"></code></pre>
+			<button type="button" class="mf-pg-small" data-copy="python">Copy</button>
+		</div>
+	</section>
+</div>
+
+<script>
+	import { attachReadout, chartMarkup, type Candle } from '../lib/candle-chart';
+
+	interface Request {
+		market: string;
+		instruments: string[];
+		start: string;
+		days: number;
+		seed: number;
+		timeframes: string[];
+		include_regime: boolean;
+		include_spread: boolean;
+		include_bid_ask: boolean;
+		anomalies: string[];
+	}
+	interface Verdict {
+		ok: boolean;
+		reason: string | null;
+		rows: number;
+		seconds: number;
+		calibration_seconds: number;
+		markets: string[];
+	}
+	interface Summary {
+		instruments: string[];
+		timeframes: string[];
+		rows: number;
+		seconds: number;
+	}
+
+	const root = document.querySelector<HTMLElement>('.mf-playground')!;
+	const catalog = JSON.parse(root.dataset.catalog!) as Record<string, string[]>;
+	const defaults = JSON.parse(root.dataset.defaults!) as { market: string; instruments: string[] };
+	const form = root.querySelector<HTMLFormElement>('.mf-pg-form')!;
+	const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
+	const status = $<HTMLParagraphElement>('.mf-pg-status');
+	const generateButton = $<HTMLButtonElement>('[data-action="generate"]');
+	const cancelButton = $<HTMLButtonElement>('[data-action="cancel"]');
+	const symbolsBox = $<HTMLDivElement>('.mf-pg-symbols');
+	const filter = $<HTMLInputElement>('.mf-pg-filter');
+	const count = $<HTMLSpanElement>('.mf-pg-count');
+	const result = $<HTMLElement>('.mf-pg-result');
+	const viewSymbol = $<HTMLSelectElement>('[name="view-symbol"]');
+	const viewTimeframe = $<HTMLSelectElement>('[name="view-timeframe"]');
+	const chart = $<HTMLDivElement>('.mf-pg-chart');
+	const note = $<HTMLParagraphElement>('.mf-pg-note');
+
+	// --- The worker -----------------------------------------------------------
+	let worker: Worker | undefined;
+	let ready = false;
+	let nextId = 0;
+	const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+
+	function startWorker(): Worker {
+		const w = new Worker(new URL('../playground/worker.ts', import.meta.url), { type: 'module' });
+		w.onmessage = (event: MessageEvent) => {
+			const message = event.data;
+			if (message.type === 'status') {
+				status.textContent = message.text;
+				return;
+			}
+			const call = pending.get(message.id);
+			if (!call) return;
+			pending.delete(message.id);
+			ready = true;
+			if (message.ok) call.resolve(message.value);
+			else call.reject(new Error(message.error));
+		};
+		w.onerror = (event) => {
+			event.preventDefault();
+			stopWorker(new Error('The Python runtime stopped (the page may be out of memory). Try a smaller request.'));
+		};
+		return w;
+	}
+
+	function stopWorker(error: Error) {
+		worker?.terminate();
+		worker = undefined;
+		ready = false;
+		for (const call of pending.values()) call.reject(error);
+		pending.clear();
+	}
+
+	function call<T>(type: string, args: Record<string, unknown> = {}): Promise<T> {
+		worker ??= startWorker();
+		const id = nextId++;
+		return new Promise<T>((resolve, reject) => {
+			pending.set(id, { resolve, reject });
+			worker!.postMessage({ id, type, ...args });
+		});
+	}
+
+	// --- The form -------------------------------------------------------------
+	const selected = new Map<string, Set<string>>(Object.keys(catalog).map((m) => [m, new Set<string>()]));
+	for (const s of defaults.instruments) selected.get(defaults.market)!.add(s);
+
+	const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+	const market = () => (form.elements.namedItem('market') as HTMLSelectElement).value;
+	const scope = () => (form.querySelector<HTMLInputElement>('[name="scope"]:checked')?.value ?? 'some') as 'all' | 'some';
+	const checkedValues = (name: string) =>
+		[...form.querySelectorAll<HTMLInputElement>(`[name="${name}"]:checked`)].map((input) => input.value);
+
+	function renderSymbols() {
+		const m = market();
+		const chosen = selected.get(m)!;
+		const words = filter.value.trim().toUpperCase();
+		symbolsBox.replaceChildren(
+			...catalog[m]
+				.filter((s) => !words || s.includes(words))
+				.map((s) => {
+					const label = document.createElement('label');
+					label.className = 'mf-pg-pill';
+					const input = document.createElement('input');
+					input.type = 'checkbox';
+					input.value = s;
+					input.checked = chosen.has(s);
+					input.addEventListener('change', () => {
+						if (input.checked) chosen.add(s);
+						else chosen.delete(s);
+						changed();
+					});
+					const span = document.createElement('span');
+					span.textContent = s;
+					label.append(input, span);
+					return label;
+				}),
+		);
+		$<HTMLSpanElement>('[data-all-label]').textContent = `All ${catalog[m].length} ${m} instruments`;
+	}
+
+	function request(): Request {
+		const m = market();
+		return {
+			market: m,
+			instruments: scope() === 'all' ? [] : catalog[m].filter((s) => selected.get(m)!.has(s)),
+			start: field('start').value,
+			days: Number(field('days').value),
+			seed: Number(field('seed').value),
+			timeframes: checkedValues('timeframes'),
+			include_regime: field('include_regime').checked,
+			include_spread: field('include_spread').checked,
+			include_bid_ask: field('include_bid_ask').checked,
+			anomalies: checkedValues('anomalies'),
+		};
+	}
+
+	/** A problem the form can see without Python, or null. */
+	function problem(r: Request): string | null {
+		if (scope() === 'some' && r.instruments.length === 0) return 'Choose at least one instrument.';
+		if (r.timeframes.length === 0) return 'Choose at least one timeframe.';
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(r.start)) return 'Choose a start date.';
+		if (!Number.isInteger(r.days) || r.days < 1 || r.days > 366) return 'Choose 1 to 366 days.';
+		if (!Number.isInteger(r.seed) || r.seed < 0) return 'The seed is a whole number, 0 or more.';
+		return null;
+	}
+
+	// --- The equivalent command and Python call --------------------------------
+	function commands(r: Request): { cli: string; python: string } {
+		const all = r.instruments.length === 0;
+		const cli = [
+			'marketforge generate -o ./data',
+			`--from ${r.start} --days ${r.days}`,
+			all ? `-m ${r.market}` : `-i ${r.instruments.join(',')}`,
+			`-t ${r.timeframes.join(',')}`,
+			`--seed ${r.seed}`,
+			r.include_regime && '--with-regime',
+			r.include_spread && '--with-spread',
+			r.include_bid_ask && '--with-bid-ask',
+			r.anomalies.length > 0 && `--anomalies ${r.anomalies.join(',')}`,
+		].filter(Boolean);
+		const list = (items: string[]) => `[${items.map((s) => JSON.stringify(s)).join(', ')}]`;
+		const args = [
+			all ? `markets=${list([r.market])}` : list(r.instruments),
+			`start="${r.start}"`,
+			`days=${r.days}`,
+			`seed=${r.seed}`,
+			`timeframes=${list(r.timeframes)}`,
+			r.include_regime && 'include_regime=True',
+			r.include_spread && 'include_spread=True',
+			r.include_bid_ask && 'include_bid_ask=True',
+			r.anomalies.length > 0 && `anomalies=${list(r.anomalies)}`,
+		].filter(Boolean);
+		return {
+			cli: cli.join(' '),
+			python: `import marketforge as mf\n\ndata = mf.generate(\n    ${args.join(',\n    ')},\n)`,
+		};
+	}
+
+	// --- Reacting to the form ---------------------------------------------------
+	let running = false;
+	let checkTimer: number | undefined;
+	let checked = 0;
+	function changed() {
+		const r = request();
+		const code = commands(r);
+		$('[data-code="cli"]').textContent = code.cli;
+		$('[data-code="python"]').textContent = code.python;
+		count.textContent = scope() === 'some' ? `${r.instruments.length} chosen` : '';
+		root.classList.toggle('mf-pg-all', scope() === 'all');
+		if (running) return;
+		const issue = problem(r);
+		generateButton.disabled = issue !== null;
+		if (issue) {
+			status.textContent = issue;
+			return;
+		}
+		// Once Python is loaded, say what the request costs before it runs.
+		if (!ready) return;
+		window.clearTimeout(checkTimer);
+		const token = ++checked;
+		checkTimer = window.setTimeout(async () => {
+			try {
+				const verdict = await call<Verdict>('check', { request: r });
+				if (token !== checked || running) return;
+				generateButton.disabled = !verdict.ok;
+				const once =
+					verdict.calibration_seconds > 0
+						? `, ${verdict.calibration_seconds} s of it calibrating the ${verdict.markets.join(' and ')} regimes (once per visit)`
+						: '';
+				status.textContent = verdict.ok
+					? `${verdict.rows.toLocaleString('en-US')} candles, about ${Math.max(1, Math.round(verdict.seconds))} s in your browser${once}.`
+					: (verdict.reason ?? '');
+			} catch {
+				/* the worker was stopped; the next change checks again */
+			}
+		}, 250);
+	}
+
+	// --- Generating, showing, downloading --------------------------------------
+	let shown: Request | undefined;
+
+	function setRunning(on: boolean) {
+		running = on;
+		generateButton.disabled = on;
+		cancelButton.hidden = !on;
+		form.setAttribute('aria-busy', String(on));
+	}
+
+	async function generate() {
+		const r = request();
+		const issue = problem(r);
+		if (issue) {
+			status.textContent = issue;
+			return;
+		}
+		setRunning(true);
+		const firstRun = !ready;
+		status.textContent = firstRun ? 'Starting Python…' : 'Simulating…';
+		try {
+			const summary = await call<Summary>('run', { request: r });
+			shown = r;
+			viewSymbol.replaceChildren(...summary.instruments.map((s) => new Option(s, s)));
+			viewTimeframe.replaceChildren(...summary.timeframes.map((tf) => new Option(tf, tf)));
+			// Show an hourly chart by default: m1 candles are too small to read.
+			const preferred = ['H1', 'H4', 'm30', 'm15', 'D1'].find((tf) => summary.timeframes.includes(tf));
+			viewTimeframe.value = preferred ?? summary.timeframes.at(-1)!;
+			setRunning(false);
+			status.textContent =
+				`Simulated in ${summary.seconds.toFixed(1)} s: ${summary.rows.toLocaleString('en-US')} candles for ` +
+				`${summary.instruments.length} instrument${summary.instruments.length > 1 ? 's' : ''}` +
+				(firstRun ? ' (after loading Python, which the browser now keeps).' : '.');
+			result.hidden = false;
+			await draw();
+		} catch (error) {
+			setRunning(false);
+			status.textContent = (error as Error).message;
+		}
+	}
+
+	async function draw() {
+		if (!shown) return;
+		const symbol = viewSymbol.value;
+		const timeframe = viewTimeframe.value;
+		const data = await call<{ total: number; candles: Candle[] }>('candles', { symbol, timeframe });
+		if (data.candles.length === 0) {
+			chart.replaceChildren();
+			note.textContent = `${symbol} has no ${timeframe} candle in this range: its market was closed.`;
+			return;
+		}
+		chart.innerHTML = chartMarkup(data.candles, {
+			instrument: symbol,
+			meta: `${timeframe} · ${shown.market} · seed ${shown.seed} · generated in your browser`,
+			label: `${symbol} ${timeframe} candles generated in this page with seed ${shown.seed}`,
+			// Stocks quote in cents; forex and crypto get decimals from their price.
+			decimals: shown.market === 'stocks' ? 2 : undefined,
+		});
+		attachReadout(chart.querySelector<HTMLElement>('.mf-chart')!);
+		note.textContent =
+			data.total > data.candles.length
+				? `Showing the last ${data.candles.length} of ${data.total.toLocaleString('en-US')} candles. The download has them all.`
+				: `${data.total.toLocaleString('en-US')} candles.`;
+	}
+
+	async function download(fmt: 'csv' | 'parquet') {
+		if (!shown) return;
+		const timeframe = viewTimeframe.value;
+		const before = status.textContent;
+		status.textContent = `Preparing the ${fmt === 'csv' ? 'CSV' : 'Parquet'} file…`;
+		try {
+			const bytes = await call<Uint8Array<ArrayBuffer>>('export', { timeframe, fmt });
+			const blob = new Blob([bytes], { type: fmt === 'csv' ? 'text/csv' : 'application/vnd.apache.parquet' });
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = `marketforge-${shown.market}-${timeframe}-seed${shown.seed}.${fmt}`;
+			link.click();
+			window.setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+			status.textContent = before;
+		} catch (error) {
+			status.textContent = (error as Error).message;
+		}
+	}
+
+	form.addEventListener('submit', (event) => {
+		event.preventDefault();
+		void generate();
+	});
+	form.addEventListener('input', (event) => {
+		const target = event.target as HTMLElement;
+		if (target === filter) renderSymbols();
+		else if ((target as HTMLInputElement).name === 'market') {
+			filter.value = '';
+			renderSymbols();
+		}
+		changed();
+	});
+	cancelButton.addEventListener('click', () => {
+		stopWorker(new Error('Cancelled. The next run restarts Python, from your browser’s cache.'));
+		setRunning(false);
+		changed();
+	});
+	$('[data-action="seed"]').addEventListener('click', () => {
+		field('seed').value = String(Math.floor(Math.random() * 1_000_000));
+		changed();
+	});
+	$('[data-action="csv"]').addEventListener('click', () => void download('csv'));
+	$('[data-action="parquet"]').addEventListener('click', () => void download('parquet'));
+	viewSymbol.addEventListener('change', () => void draw());
+	viewTimeframe.addEventListener('change', () => void draw());
+	for (const button of root.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+		button.addEventListener('click', async () => {
+			const text = $(`[data-code="${button.dataset.copy}"]`).textContent ?? '';
+			try {
+				await navigator.clipboard.writeText(text);
+				button.textContent = 'Copied';
+			} catch {
+				button.textContent = 'Select and copy';
+			}
+			window.setTimeout(() => (button.textContent = 'Copy'), 1500);
+		});
+	}
+
+	renderSymbols();
+	changed();
+</script>
+
+<style is:global>
+	/* Global, under .mf-playground: the symbol pills and the chart are created
+	   in the browser, where Astro's scoped styles would not reach them. */
+	.mf-playground {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1.5rem;
+		margin-top: 1.5rem;
+	}
+	.mf-playground .mf-pg-form {
+		display: grid;
+		gap: 1rem;
+		padding: 1rem;
+		border: 1px solid var(--mf-line-strong);
+		border-radius: 6px;
+		background: var(--mf-panel);
+	}
+	.mf-playground .mf-pg-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.25rem;
+		align-items: end;
+	}
+	.mf-playground label,
+	.mf-playground legend {
+		font-size: 0.8125rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-row > label {
+		display: grid;
+		gap: 0.3rem;
+	}
+	.mf-playground fieldset {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
+	}
+	.mf-playground legend {
+		padding: 0;
+		margin-bottom: 0.4rem;
+	}
+	.mf-playground input[type='date'],
+	.mf-playground input[type='number'],
+	.mf-playground input[type='search'],
+	.mf-playground select {
+		font: inherit;
+		font-size: 0.875rem;
+		color: var(--mf-text);
+		background: var(--mf-bg);
+		border: 1px solid var(--mf-line-strong);
+		border-radius: 4px;
+		padding: 0.35rem 0.5rem;
+		min-height: 2.25rem;
+	}
+	.mf-playground input[type='number'] {
+		width: 7rem;
+	}
+	.mf-playground .mf-pg-seed {
+		display: flex;
+		gap: 0.4rem;
+	}
+	.mf-playground .mf-pg-choice {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1.25rem;
+		align-items: center;
+		margin-bottom: 0.5rem;
+		color: var(--mf-text);
+	}
+	.mf-playground input[type='radio'] {
+		accent-color: var(--mf-text);
+	}
+	.mf-playground .mf-pg-choice label {
+		color: var(--mf-text);
+		font-size: 0.875rem;
+	}
+	.mf-playground .mf-pg-count {
+		font-size: 0.8125rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-pick {
+		display: grid;
+		gap: 0.5rem;
+	}
+	.mf-playground.mf-pg-all .mf-pg-pick {
+		display: none;
+	}
+	.mf-playground .mf-pg-filter {
+		max-width: 16rem;
+	}
+	.mf-playground .mf-pg-symbols {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		max-height: 9.5rem;
+		overflow-y: auto;
+		padding: 0.1rem;
+	}
+	.mf-playground .mf-pg-pills {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+	.mf-playground .mf-pg-pill {
+		position: relative;
+	}
+	.mf-playground .mf-pg-pill input {
+		position: absolute;
+		opacity: 0;
+		inset: 0;
+		margin: 0;
+		cursor: pointer;
+	}
+	.mf-playground .mf-pg-pill span {
+		display: inline-block;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid var(--mf-line-strong);
+		border-radius: 999px;
+		font-family: var(--sl-font-mono);
+		font-size: 0.75rem;
+		color: var(--mf-muted);
+		background: var(--mf-bg);
+	}
+	/* Amber is the view's one accent (the Generate button), so a chosen pill is
+	   marked in ink, not in amber. */
+	.mf-playground .mf-pg-pill input:checked + span {
+		color: var(--mf-text);
+		background: var(--mf-raised);
+		border-color: var(--mf-text);
+		font-weight: 600;
+	}
+	.mf-playground .mf-pg-pill input:focus-visible + span {
+		outline: 2px solid var(--mf-text);
+		outline-offset: 2px;
+	}
+	.mf-playground .mf-pg-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1rem;
+		align-items: center;
+	}
+	.mf-playground .mf-pg-button,
+	.mf-playground .mf-pg-small {
+		font: inherit;
+		color: var(--mf-text);
+		background: var(--mf-raised);
+		border: 1px solid var(--mf-line-strong);
+		border-radius: 4px;
+		cursor: pointer;
+	}
+	.mf-playground .mf-pg-button {
+		padding: 0.5rem 1rem;
+		font-weight: 600;
+	}
+	.mf-playground .mf-pg-small {
+		padding: 0.25rem 0.6rem;
+		font-size: 0.8125rem;
+	}
+	.mf-playground .mf-pg-primary {
+		color: var(--sl-color-black);
+		background: var(--sl-color-accent);
+		border-color: var(--sl-color-accent);
+	}
+	.mf-playground .mf-pg-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.mf-playground .mf-pg-status {
+		margin: 0;
+		flex: 1 1 16rem;
+		font-size: 0.875rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-result {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.75rem;
+	}
+	.mf-playground .mf-pg-result[hidden] {
+		display: none;
+	}
+	.mf-playground .mf-pg-downloads {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		align-items: center;
+		font-size: 0.8125rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-note {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-equivalent {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.6rem;
+	}
+	.mf-playground .mf-pg-equivalent p {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--mf-muted);
+	}
+	.mf-playground .mf-pg-code {
+		position: relative;
+	}
+	.mf-playground .mf-pg-code pre {
+		margin: 0;
+		padding: 0.75rem 4.5rem 0.75rem 0.9rem;
+		border: 1px solid var(--mf-line-strong);
+		border-radius: 6px;
+		background: var(--mf-bg);
+		overflow-x: auto;
+		font-family: var(--sl-font-mono);
+		font-size: 0.8125rem;
+		color: var(--mf-text);
+		white-space: pre;
+	}
+	.mf-playground .mf-pg-code button {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+	}
+</style>

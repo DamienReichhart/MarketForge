@@ -239,6 +239,14 @@ when that makes the data more realistic. Upgrading from 3.x? See
   and type tokens, and every logo, favicon and social image are in
   [`docs/brand`](docs/brand/README.md) and on the site's Brand page. The site
   now sets type in DM Sans and DM Mono, and link previews carry an image.
+- **Try MarketForge in your browser.** The site's
+  [Playground](https://damienreichhart.github.io/MarketForge/playground/)
+  runs the released package in the page itself: pick instruments, a range and
+  a seed, see the candles with their regimes, download them as CSV or Parquet,
+  and copy the equivalent command. It is a preview with limits the installed
+  package does not have (it is 10 to 100 times slower, capped in size, and not
+  bit-identical to an installed MarketForge), which the page states up front.
+  Nothing leaves the browser, and the runtime is served by the site itself.
 
 ## 3.1.1
 

@@ -17,6 +17,8 @@ export interface ChartOptions {
 	label: string;
 	/** A command shown in the footer, prefixed with `$`. */
 	command?: string;
+	/** Price decimals; by default from the price's magnitude ({@link priceDecimals}). */
+	decimals?: number;
 }
 
 export const REGIME_LABELS: Record<string, string> = {
@@ -95,7 +97,7 @@ export function chartMarkup(candles: Candle[], options: ChartOptions): string {
 	const y = (price: number) => priceTop + ((max - price) / (max - min)) * (priceBottom - priceTop);
 	const x = (i: number) => i * step + step / 2;
 	const last = candles.at(-1)!;
-	const decimals = priceDecimals(last[4]);
+	const decimals = options.decimals ?? priceDecimals(last[4]);
 	const fmt = formatter(decimals);
 	const hasSpread = last[6] !== null;
 	const hasRegime = last[7] !== null;

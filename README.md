@@ -25,6 +25,7 @@ marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --wit
 
 **[Documentation](https://damienreichhart.github.io/MarketForge/docs/)** ·
 [Quick start](https://damienreichhart.github.io/MarketForge/docs/quick-start/) ·
+[Try it in your browser](https://damienreichhart.github.io/MarketForge/playground/) ·
 [Changelog](https://damienreichhart.github.io/MarketForge/changelog/) ·
 [PyPI](https://pypi.org/project/marketforge/)
 

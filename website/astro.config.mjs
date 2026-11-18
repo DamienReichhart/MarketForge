@@ -56,6 +56,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'docs' },
 						{ label: 'Installation', slug: 'docs/installation' },
 						{ label: 'Quick start', slug: 'docs/quick-start' },
+						{ label: 'Playground', slug: 'playground' },
 						{ label: 'What it is not', slug: 'docs/limits' },
 						{ label: 'Migrating to 4.0', slug: 'docs/migrating-to-4' },
 					],

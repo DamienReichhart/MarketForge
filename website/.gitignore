@@ -8,3 +8,7 @@ src/content/docs/docs/adr/
 src/content/docs/docs/reference/glossary.md
 src/content/docs/docs/brand.md
 public/brand/
+
+# The playground's runtime and wheels, put there by scripts/sync-playground.mjs
+public/playground/
+.cache/

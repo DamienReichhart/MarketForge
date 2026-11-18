@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "sync": "node scripts/sync-content.mjs",
+    "sync": "node scripts/sync-content.mjs && node scripts/sync-playground.mjs",
     "dev": "npm run sync && astro dev",
     "build": "npm run sync && astro build",
     "preview": "astro preview",
     "check": "npm run sync && astro check",
     "check-links": "node scripts/check-links.mjs",
-    "check-external-links": "node scripts/check-external-links.mjs"
+    "check-external-links": "node scripts/check-external-links.mjs",
+    "test-playground": "node scripts/test-playground.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "0.43.1",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.12",
     "@types/node": "24.19.2",
+    "pyodide": "314.0.8",
     "typescript": "6.0.3"
   }
 }
