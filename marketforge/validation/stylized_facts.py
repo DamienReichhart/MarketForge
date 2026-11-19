@@ -190,11 +190,15 @@ def aggregated_kurtosis(returns: np.ndarray, minutes: int = 60) -> float:
     Aggregational Gaussianity: returns over longer horizons have thinner tails
     than minute returns, but remain heavier than a normal's.
     """
+    sums = aggregated(returns, minutes)
+    return float("nan") if sums.size < 20 else excess_kurtosis(sums)
+
+
+def aggregated(returns: np.ndarray, minutes: int = 60) -> np.ndarray:
+    """Non-overlapping sums of ``minutes`` returns (the last, partial one dropped)."""
     r = np.asarray(returns, dtype=float)
     n = r.size // minutes
-    if n < 20:
-        return float("nan")
-    return excess_kurtosis(r[: n * minutes].reshape(n, minutes).sum(axis=1))
+    return np.asarray(r[: n * minutes].reshape(n, minutes).sum(axis=1))
 
 
 def gap_variance_share(returns: np.ndarray, gaps: np.ndarray) -> float:

@@ -155,10 +155,18 @@ def validate_ohlcv(
             round(high + allowance, 4),
             provisional=loose,
         )
+        # A fortnight holds only ~70 stock hours: their kurtosis gets the
+        # same two-standard-error allowance as the minutes' (ADR 0010), and
+        # may fall below 0 by chance where the band's floor is 0.
+        hours = sf.aggregated(r, 60)
+        floor, ceiling = bands.hourly_kurtosis
+        if hours.size >= 20:
+            floor = round(floor - 2.0 * sf.excess_kurtosis_standard_error(hours), 4)
         report.metrics["hourly_kurtosis"] = _check(
             "hourly_kurtosis",
             sf.aggregated_kurtosis(r, 60),
-            *bands.hourly_kurtosis,
+            floor,
+            ceiling,
             provisional=loose,
         )
     if volume is not None and np.mean(np.asarray(volume) > 0) > 0.95:
