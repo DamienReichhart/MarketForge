@@ -164,3 +164,59 @@ def spread_widening(spread: np.ndarray, returns: np.ndarray, window: int = 30) -
     recent = s[window - 1 :]
     turbulent = turbulence >= np.quantile(turbulence, 0.9)
     return float(recent[turbulent].mean() / np.median(s))
+
+
+def volume_volatility_link(returns: np.ndarray, volume: np.ndarray) -> float:
+    """corr(|r|, log volume) over minutes that traded: big moves come with volume."""
+    a = np.abs(np.asarray(returns, dtype=float))
+    v = np.asarray(volume, dtype=float)
+    traded = v > 0
+    if traded.sum() < 3:
+        return float("nan")
+    return float(np.corrcoef(a[traded], np.log(v[traded]))[0, 1])
+
+
+def return_autocorrelation(returns: np.ndarray, lag: int = 1) -> float:
+    """Autocorrelation of returns at ``lag``: about 0, slightly negative for quoted mids."""
+    r = np.asarray(returns, dtype=float)
+    if r.size <= lag + 2:
+        return float("nan")
+    return float(np.corrcoef(r[:-lag], r[lag:])[0, 1])
+
+
+def aggregated_kurtosis(returns: np.ndarray, minutes: int = 60) -> float:
+    """Excess kurtosis of non-overlapping sums of ``minutes`` returns.
+
+    Aggregational Gaussianity: returns over longer horizons have thinner tails
+    than minute returns, but remain heavier than a normal's.
+    """
+    r = np.asarray(returns, dtype=float)
+    n = r.size // minutes
+    if n < 20:
+        return float("nan")
+    return excess_kurtosis(r[: n * minutes].reshape(n, minutes).sum(axis=1))
+
+
+def gap_variance_share(returns: np.ndarray, gaps: np.ndarray) -> float:
+    """Share of the variance that comes from the gaps over closures (overnight, weekend)."""
+    g2 = float(np.sum(np.asarray(gaps, dtype=float) ** 2))
+    r2 = float(np.sum(np.asarray(returns, dtype=float) ** 2))
+    return g2 / (g2 + r2) if g2 + r2 > 0 else float("nan")
+
+
+def spell_variation(regime_codes: np.ndarray) -> float:
+    """Coefficient of variation of regime spell lengths, in candles.
+
+    A Markov chain's spells are geometric, with a coefficient of variation
+    near 1; MarketForge's last a typical length (about 0.7, ADR 0017).
+    """
+    codes = np.asarray(regime_codes)
+    changes = np.flatnonzero(codes[1:] != codes[:-1]) + 1
+    lengths = np.diff(changes)  # whole spells: the first and last are cut by the sample
+    if lengths.size < SPELLS_NEEDED:
+        return float("nan")
+    return float(lengths.std() / lengths.mean())
+
+
+# Below this many spells the variation is noise: two weeks hold about ten.
+SPELLS_NEEDED = 40

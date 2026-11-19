@@ -39,6 +39,11 @@ The validator takes **`m1` candles only** and refuses other timeframes: the band
 | `leverage` | **Leverage effect**: returns are not positively correlated with next-period volatility. Looser for forex, where crosses have no natural "down". |
 | `range_efficiency` | mean(high − low) / mean(\|close − open\|). A pure random walk gives 2.0; real minutes wander less inside the bar. |
 | `spread_bps`, `spread_widening` | When the file has a `spread` column: the median spread in basis points is realistic, and the most turbulent minutes are about as much wider than the median as in real quotes. |
+| `return_autocorrelation` | **No easy edge**: minute returns barely autocorrelate (quoted mids revert a little, as MarketForge's microstructure noise makes them). |
+| `hourly_kurtosis` | **Aggregational Gaussianity**: hourly returns keep heavier tails than a normal's, but lighter than minutes'. |
+| `volume_volatility` | When the file has a `volume` column: big moves trade more volume (correlation of \|r\| and log volume). |
+| `gap_variance_share` | When the market closes (stocks overnight, forex at the weekend) and the file holds at least five gaps: the gaps' share of the variance. Provisional. |
+| `spell_variation` | When the file has a `regime` column and at least 40 whole spells: the spread of spell lengths, below a Markov chain's 1. A check of MarketForge's own model (real data has no labels). |
 
 ## Noise allowances
 
@@ -48,7 +53,7 @@ Heavy tails, long memory and the leverage effect allow two standard errors of sa
 
 The bands are anchored on the same statistics measured on real `m1` data.
 
-- **Crypto** is anchored on Binance 1-minute klines of seven coins (BTC, ETH, SOL, XRP, DOGE, TRX, LINK; February 2024), and its spread bands on Binance USDT-futures best bid/ask for the same coins. Generated crypto data falls inside the measured real range for \|r\| autocorrelation from 15 minutes to 1 day, clustering, leverage, range efficiency, volume dynamics and spread.
+- **Crypto** is anchored on Binance 1-minute klines of seven coins (BTC, ETH, SOL, XRP, DOGE, TRX, LINK; February 2024), and its spread bands on Binance USDT-futures best bid/ask for the same coins. Generated crypto data falls inside the measured real range for \|r\| autocorrelation from 15 minutes to 1 day, clustering, leverage, range efficiency, volume dynamics and spread. The 5.0 statistics (`return_autocorrelation`, `hourly_kurtosis`, `volume_volatility`) are measured on the same files.
 - **Forex and stocks** use **provisional** bands, for the spread too, until real reference data is measured for them, and their reports say so. No free source of forex or stock quotes was reachable when they were calibrated.
 
 With two-week windows and three seeds, all 624 instrument checks pass. Across 30 seeds, 6237 of 6240 pass; the three failures are stock fortnights in which volatility shows no memory at all, which is what that check is there to flag.
