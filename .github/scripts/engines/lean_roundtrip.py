@@ -7,7 +7,7 @@
 """Export a dataset for LEAN and run an algorithm on it in LEAN's own engine.
 
     python lean_roundtrip.py prepare WORKDIR   # dataset, export, algorithm
-    (run the quantconnect/lean image on WORKDIR, see engines.yml)
+    (run the quantconnect/lean image on WORKDIR: the engine-lean job of ci.yml)
     python lean_roundtrip.py check WORKDIR     # the algorithm saw every market
 
 The algorithm subscribes to a stock, a currency pair and a coin at minute
