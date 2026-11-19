@@ -26,7 +26,7 @@ Upgrading from 4.x? See
   stressed about a month in nine) makes high volatility and crashes likelier
   in every market at once and drifts them down together
   ([ADR 0016](docs/adr/0016-markets-share-a-macro-state-and-a-global-shock.md)).
-  BTC-AAPL is now 0.13 daily, 0.31 weekly and 0.44 monthly; crypto is
+  BTC-AAPL is now 0.13 daily, 0.28 weekly and 0.39 monthly; crypto is
   stressed 39% of the time stocks are, against 25% otherwise. Each market's
   own correlations are unchanged. `GeneratedData.macro()` labels every day.
 - **Stocks report earnings.** Gaps were scaled diffusion: AAPL's largest
@@ -35,7 +35,7 @@ Upgrading from 4.x? See
   own in the fourth to sixth week of each quarter, whatever the seed. The
   next open jumps by about 2.5 days of the stock's volatility, heavy-tailed
   (NVDA up to ~20%), and volatility, volume and the spread stay raised for a
-  few days. Daily kurtosis is 9-11 instead of 4-5. `earnings_move` sets the
+  few days. Daily kurtosis is 9-14 instead of 4-5. `earnings_move` sets the
   jump per stock (0 for none), and `GeneratedData.earnings()` lists the
   events. Dividends and splits are not modelled.
 - **Pegged currencies hold their pegs.** USDHKD wandered from 7.45 to 8.22
@@ -50,7 +50,7 @@ Upgrading from 4.x? See
   as at D1, unlike real markets (the Epps effect). The quoted mid now
   jitters around the efficient price by a quarter of the minute's
   volatility (0.15 for crypto): lag-1 autocorrelation of AAPL's m1 returns
-  is -0.04, and AAPL-MSFT is 0.75 at m1 against 0.81 daily. Each open is
+  is -0.04, and AAPL-MSFT is 0.73 at m1 against 0.81 daily. Each open is
   still the previous close, and forex crosses still derive from anchors.
 - **Stocks have opening and closing auctions.** The last minute held 0.6%
   of a day's volume; the closing cross now prints about 5-9%, and the open

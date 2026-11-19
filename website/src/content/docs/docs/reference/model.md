@@ -85,7 +85,7 @@ A **log-AR(1)** process. Volume rises with the size of the standardized move, wi
 
 ## Quotes and ticks
 
-The published mid jitters around the simulated, efficient price by a share of the minute's volatility (0.25 for stocks and forex, 0.15 for crypto), the **microstructure noise** of real quotes: minute returns revert slightly (AAPL's lag-1 autocorrelation is about -0.04) and minute correlations are lower than daily ones (AAPL-MSFT 0.75 at m1, 0.81 daily: the Epps effect). Each open is still the previous close.
+The published mid jitters around the simulated, efficient price by a share of the minute's volatility (0.25 for stocks and forex, 0.15 for crypto), the **microstructure noise** of real quotes: minute returns revert slightly (AAPL's lag-1 autocorrelation is about -0.04) and minute correlations are lower than daily ones (AAPL-MSFT 0.73 at m1, 0.81 daily: the Epps effect). Each open is still the previous close.
 
 Every price is then a whole number of the instrument's **tick**: a cent for stocks (a hundredth of a cent below $1), and about five significant digits elsewhere (0.00001 on EURUSD, 0.001 on USDJPY, 0.01 on XAUUSD, 0.1 on BTCUSD). `tick_size` in an override file sets it. A forex cross equals the product of its anchors to within the rounding of the three prices.
 
