@@ -57,3 +57,146 @@ marketforge generate -o tests/fixtures/market --from 2024-03-01 --days 31 \
 ## From one equity curve to a distribution
 
 A backtest on real data gives you one equity curve. Run the same strategy over many seeds to see the distribution of outcomes it produces, and see [Stress testing](../stress-testing/) for crashes and tail events.
+
+## Recipes for your engine
+
+MarketForge's frames are pandas DataFrames on a UTC index, so most engines take them with a rename. Each recipe below runs in CI against the released package and the engine's current version: if an engine changes its API, the page is fixed before you copy it. A converter that writes each engine's own file layout is [tracked as an issue](https://github.com/DamienReichhart/MarketForge/issues/27).
+
+### backtrader
+
+`PandasData` reads `open`, `high`, `low`, `close` and `volume` by name; it wants naive times, so drop the time zone (the times stay UTC).
+
+```python
+import backtrader as bt
+import marketforge as mf
+
+frame = mf.generate("AAPL", start="2024-01-02", days=30, seed=1, timeframes="m5")["AAPL"]["m5"]
+feed = bt.feeds.PandasData(dataname=frame.tz_convert(None))
+
+
+class SmaCross(bt.Strategy):
+    def __init__(self):
+        self.cross = bt.ind.CrossOver(bt.ind.SMA(period=10), bt.ind.SMA(period=30))
+
+    def next(self):
+        if self.cross > 0:
+            self.buy()
+        elif self.cross < 0:
+            self.close()
+
+
+cerebro = bt.Cerebro()
+cerebro.adddata(feed)
+cerebro.addstrategy(SmaCross)
+cerebro.run()
+print(round(cerebro.broker.getvalue(), 2))
+```
+
+### backtesting.py
+
+It wants capitalised column names.
+
+```python
+from backtesting import Backtest, Strategy
+from backtesting.lib import crossover
+from backtesting.test import SMA
+
+frame = mf.generate("ETHUSD", start="2024-01-01", days=30, seed=2, timeframes="H1")["ETHUSD"]["H1"]
+ohlcv = frame.tz_convert(None).rename(columns=str.capitalize)  # Open, High, Low, Close, Volume
+
+
+class Crossing(Strategy):
+    def init(self):
+        self.fast = self.I(SMA, self.data.Close, 10)
+        self.slow = self.I(SMA, self.data.Close, 30)
+
+    def next(self):
+        if crossover(self.fast, self.slow):
+            self.buy()
+        elif crossover(self.slow, self.fast):
+            self.position.close()
+
+
+stats = Backtest(ohlcv, Crossing, cash=100_000, commission=0.0005).run()
+print(stats["Return [%]"])
+```
+
+### vectorbt
+
+`panel()` is already the wide frame vectorbt broadcasts over: one column per instrument.
+
+```python
+import vectorbt as vbt
+
+data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", days=30, seed=3, timeframes="H1")
+close = data.panel("close", "H1")
+fast, slow = vbt.MA.run(close, 10), vbt.MA.run(close, 30)
+portfolio = vbt.Portfolio.from_signals(
+    close, fast.ma_crossed_above(slow), fast.ma_crossed_below(slow), fees=0.0005, freq="1h"
+)
+print(portfolio.total_return())
+```
+
+### Nautilus Trader
+
+Nautilus stamps a bar at its close and takes prices and sizes at the instrument's precision. Build the bars directly: its `BarDataWrangler` writes into the frame's buffers, which pandas 3 makes read-only.
+
+```python
+from decimal import Decimal
+
+from nautilus_trader.backtest.engine import BacktestEngine, BacktestEngineConfig
+from nautilus_trader.config import LoggingConfig
+from nautilus_trader.examples.strategies.ema_cross import EMACross, EMACrossConfig
+from nautilus_trader.model.currencies import USD
+from nautilus_trader.model.data import Bar, BarType
+from nautilus_trader.model.enums import AccountType, OmsType
+from nautilus_trader.model.identifiers import Venue
+from nautilus_trader.model.objects import Money
+from nautilus_trader.test_kit.providers import TestInstrumentProvider
+
+instrument = TestInstrumentProvider.default_fx_ccy("EUR/USD")
+bar_type = BarType.from_str(f"{instrument.id}-1-MINUTE-MID-EXTERNAL")
+m1 = mf.generate("EURUSD", start="2024-01-08", days=5, seed=5, timeframes="m1")["EURUSD"]["m1"]
+price, size = instrument.make_price, instrument.make_qty
+closes = (m1.index.as_unit("ns").asi8 + 60_000_000_000).tolist()  # a bar is stamped at its close
+bars = [
+    Bar(bar_type, price(o), price(h), price(l), price(c), size(v), ts, ts)
+    for o, h, l, c, v, ts in zip(*(m1[k] for k in ("open", "high", "low", "close", "volume")), closes)
+]
+
+engine = BacktestEngine(BacktestEngineConfig(logging=LoggingConfig(bypass_logging=True)))
+engine.add_venue(
+    Venue("SIM"), OmsType.HEDGING, AccountType.MARGIN, base_currency=USD,
+    starting_balances=[Money(100_000, USD)],
+)
+engine.add_instrument(instrument)
+engine.add_data(bars)
+engine.add_strategy(EMACross(EMACrossConfig(
+    instrument_id=instrument.id, bar_type=bar_type, trade_size=Decimal(10_000),
+    fast_ema_period=10, slow_ema_period=30,
+)))
+engine.run()
+print(len(engine.trader.generate_order_fills_report()), "fills")
+engine.dispose()
+```
+
+### freqtrade
+
+freqtrade reads one Feather file per pair and timeframe from its data directory, with a `date` column in milliseconds UTC. Write them, then `freqtrade backtesting --timeframe 5m --pairs BTC/USDT ...` finds them.
+
+```python
+from pathlib import Path
+
+names = {"m5": "5m", "H1": "1h", "D1": "1d"}
+data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=4, timeframes="m5,H1,D1")
+folder = Path("user_data/data/binance")
+folder.mkdir(parents=True, exist_ok=True)
+for symbol in data:
+    for timeframe, frame in data[symbol].items():
+        candles = frame.reset_index().rename(columns={"time": "date"})
+        candles["date"] = candles["date"].dt.as_unit("ms")
+        candles[["date", "open", "high", "low", "close", "volume"]].to_feather(
+            folder / f"{symbol.removesuffix('USD')}_USDT-{names[timeframe]}.feather"
+        )
+print(sorted(p.name for p in folder.iterdir()))
+```

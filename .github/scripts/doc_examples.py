@@ -53,6 +53,7 @@ import textwrap
 import time
 import tomllib
 import traceback
+import types
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -484,7 +485,11 @@ def check_page(path: Path, report: Report) -> None:
         return
     if not blocks:
         return
-    namespace: dict[str, Any] = {"__name__": "__doc_example__"}
+    # A real module, so libraries that look a class's module up (backtrader's
+    # metaclasses) find the page's classes.
+    module = types.ModuleType("__doc_example__")
+    sys.modules[module.__name__] = module
+    namespace: dict[str, Any] = module.__dict__
     exec("import marketforge as mf", namespace)
     started = time.perf_counter()
     with tempfile.TemporaryDirectory() as tmp, _working_directory(Path(tmp)):
