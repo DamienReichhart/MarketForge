@@ -94,26 +94,41 @@ class SessionSeasonality:
         """Seasonality multiplier s(t) for open-minute timestamps."""
         return np.asarray(self._raw(np.asarray(timestamps, dtype=np.int64)) / self._norm)
 
+    def factor_and_volume_log(self, timestamps: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """:meth:`factor` and :meth:`volume_log` at once (a stock's session clock, computed once)."""
+        ts = np.asarray(timestamps, dtype=np.int64)
+        if self._calendar.market != MarketType.STOCKS:
+            return self.factor(ts), np.zeros(ts.shape)
+        local = self._calendar.local_minutes(ts)
+        clock = (local % 1440, self._calendar.session_close_minute(local // 1440))
+        season = np.asarray(self._raw(ts, clock) / self._norm)
+        return season, np.asarray(self._auction_log(ts, clock) - np.log(self._auction_mean))
+
     def volume_log(self, timestamps: np.ndarray) -> np.ndarray:
         """Log multiplier of volume alone (the stock auctions), mean 1 over a year."""
         ts = np.asarray(timestamps, dtype=np.int64)
         return np.asarray(self._auction_log(ts) - np.log(self._auction_mean))
 
-    def _auction_log(self, ts: np.ndarray) -> np.ndarray:
+    def _auction_log(
+        self, ts: np.ndarray, clock: tuple[np.ndarray, np.ndarray] | None = None
+    ) -> np.ndarray:
         if self._calendar.market != MarketType.STOCKS:
             return np.zeros(ts.shape)
-        local = self._calendar.local_minutes(ts)
-        mod = local % 1440
-        close = self._calendar.session_close_minute(local // 1440)
+        mod, close = clock if clock is not None else self._clock(ts)
         out = np.where(mod == _NY_OPEN, np.log(_OPEN_AUCTION), 0.0)
         return np.asarray(np.where(mod == close - 1, np.log(_CLOSE_AUCTION), out))
 
-    def _raw(self, ts: np.ndarray) -> np.ndarray:
+    def _clock(self, ts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """New York minute-of-day of each stock minute, and its session's close."""
+        local = self._calendar.local_minutes(ts)
+        return local % 1440, self._calendar.session_close_minute(local // 1440)
+
+    def _raw(
+        self, ts: np.ndarray, clock: tuple[np.ndarray, np.ndarray] | None = None
+    ) -> np.ndarray:
         market = self._calendar.market
         if market == MarketType.STOCKS:
-            local = self._calendar.local_minutes(ts)
-            mod = local % 1440
-            close = self._calendar.session_close_minute(local // 1440)
+            mod, close = clock if clock is not None else self._clock(ts)
             since_open = mod - _NY_OPEN
             to_close = close - 1 - mod
             shape = (
