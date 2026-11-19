@@ -50,6 +50,8 @@ def test_the_open_after_a_report_gaps_more_than_other_opens(stocks):
 
 
 def test_earnings_can_be_switched_off(stocks):
+    # Without reports, the opens after the report days gap like any other
+    # open (a crash regime may still gap 10% overnight: that is not a report).
     quiet = mf.generate(
         "AAPL",
         start="2023-01-03",
@@ -57,6 +59,14 @@ def test_earnings_can_be_switched_off(stocks):
         seed=3,
         timeframes="D1",
         overrides={"AAPL": {"earnings_move": 0.0}},
-    )["AAPL"]["D1"]
-    gaps = np.abs(np.log(quiet["open"].to_numpy()[1:] / quiet["close"].to_numpy()[:-1]))
-    assert gaps.max() < 0.04
+    )
+    d1 = quiet["AAPL"]["D1"]
+    gaps = pd.Series(
+        np.abs(np.log(d1["open"].to_numpy()[1:] / d1["close"].to_numpy()[:-1])), index=d1.index[1:]
+    )
+    assert quiet.earnings().empty  # nothing was reported
+    events = stocks.earnings()
+    opens = events.loc[events.symbol == "AAPL", "opens"].dt.normalize()
+    on_report = gaps.index.normalize().isin(opens)
+    assert on_report.sum() == 4
+    assert gaps[on_report].mean() < 2 * gaps[~on_report].mean()
