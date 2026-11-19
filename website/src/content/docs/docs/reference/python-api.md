@@ -22,6 +22,7 @@ The supported API is what `import marketforge` exposes, listed on this page. Mod
 | --- | --- |
 | [`generate()`](#generate) | Candles in memory, as a [`GeneratedData`](#generateddata). |
 | [`generate_many()`](#generate_many) | `generate()` once per seed, in parallel processes. |
+| [`concat()`](#concat) | Several seeds' results of one timeframe in one frame, indexed by seed. |
 | [`generate_to_disk()`](#generate_to_disk) | A dataset on disk: candle files and the manifest, in bounded memory. |
 | [`read()`](#read) | Loads a dataset back into memory, with the right types. |
 | [`extend()`](#extend) | Continues a dataset forward in time. |
@@ -88,6 +89,21 @@ if __name__ == "__main__":
     for data in mf.generate_many("BTCUSD", seeds=range(64), start="2024-01-01", days=90,
                                  timeframes=["m5"], with_regime=True):
         train_on(data["BTCUSD"]["m5"])      # one independent history per seed
+```
+
+## concat()
+
+```python check=signature
+mf.concat(results, timeframe=None) -> pd.DataFrame
+```
+
+Stacks the results of several seeds, one timeframe, into one long frame indexed by `(seed, symbol, time)`, so a split by seed is a `.loc` away and no two seeds' rows can be confused. Two results with the same seed raise `ValueError`.
+
+```python check=static
+if __name__ == "__main__":
+    runs = mf.generate_many("BTCUSD", seeds=range(8), start="2024-01-01", days=30, timeframes="H1")
+    frame = mf.concat(runs)
+    train, test = frame.loc[0:5], frame.loc[6:7]
 ```
 
 ## generate_to_disk()
@@ -265,7 +281,9 @@ spells = data.spells("crypto")       # one row per regime spell
 | --- | --- |
 | `panel(column="close", timeframe=None)` | One column of every instrument side by side. Its index is the union of every instrument's candle times, so a value is NaN where that instrument's market was closed. It is never forward-filled. |
 | `to_long(timeframe=None)` | Every instrument in one frame indexed by `(symbol, time)`: the long format of most data and ML tooling. `.loc["BTCUSD"]` gives back one instrument. |
-| `to_numpy(timeframe=None, columns=("open", "high", "low", "close", "volume"))` | A `(time, instrument, column)` float array, its time index and its symbol list: `x, times, symbols = data.to_numpy("H1")`. NaN where a market was closed; the regime as its codes. |
+| `to_numpy(timeframe=None, columns=("open", "high", "low", "close", "volume"), *, dtype=np.float64)` | A `(time, instrument, column)` array, its time index and its symbol list: `x, times, symbols = data.to_numpy("H1", dtype=np.float32)`. NaN where a market was closed; the regime as its codes. |
+| `windows(timeframe=None, length=64, *, stride=1, features=("return", "log_volume"), target="regime", horizon=0, symbols=None, dtype=np.float32)` | Fixed-length windows of each instrument's candles for a sequence model, as a `Windows` that unpacks to `x, y, times, symbols`: `x` is `(windows, length, features)`, `y` the target `horizon` candles after each window's last one (0: at it; the regime as codes; `None` without a target). A feature is a column or `return`, `log_volume` or `range`. Windows never mix instruments. See [Training ML models](../../use-cases/machine-learning/#recipe-windows-for-a-sequence-model). |
+| `to_arrow(timeframe=None)`, `to_polars(timeframe=None)` | One timeframe in long format (`symbol`, `time`, then the candle columns) as an Arrow table, or a polars DataFrame (`pip install 'marketforge[polars]'`). |
 | `summary()` | One row per instrument and timeframe: market, candles, first and last candle. |
 | `save(path, *, format="csv", timestamps="unix", layout="split", overwrite=False)` | Writes the data as a dataset with a manifest, the files `generate_to_disk()` writes for the same settings, so it can be [extended](#extend) and [verified](#verify). Returns a [`DiskReport`](#diskreport). |
 

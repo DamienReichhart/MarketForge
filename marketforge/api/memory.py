@@ -275,3 +275,20 @@ def _frames(
             )
         frames.append(df)
     return frames
+
+
+def concat(results: Iterable[GeneratedData], timeframe: str | None = None) -> pd.DataFrame:
+    """
+    Several generations of one timeframe in one long frame, indexed by (seed, symbol, time).
+
+    For the results of :func:`generate_many`: every seed's candles side by side,
+    so a split by seed is a ``.loc`` away and no two seeds' rows can be confused.
+    """
+    results = list(results)
+    if not results:
+        raise ValueError("concat() needs at least one result")
+    seeds = [data.seed for data in results]
+    if len(set(seeds)) < len(seeds):
+        raise ValueError("Two results share a seed: their rows could not be told apart")
+    parts = {data.seed: data.to_long(timeframe) for data in results}
+    return pd.concat(parts, names=["seed", "symbol", "time"])

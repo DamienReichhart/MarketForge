@@ -1,8 +1,9 @@
 """Generated candles as fixed-size windows for a neural network.
 
-`to_numpy()` gives a (time, instrument, column) array. Windows of returns
-(not price levels: every seed starts at the same prices) make the inputs,
-and the regime at the window's end the label.
+`windows()` cuts each instrument's candles into windows of returns and log
+volume (not price levels: every seed starts at the same prices), labelled
+with the regime at each window's last candle. Training and validation use
+disjoint seeds, so they share no path.
 """
 
 import numpy as np
@@ -11,24 +12,23 @@ import marketforge as mf
 
 WINDOW = 64
 
-data = mf.generate(
-    "BTCUSD,ETHUSD,SOLUSD",
-    start="2024-01-01",
-    days=30,
-    seed=7,
-    timeframes="m5",
-    with_regime=True,
-)
-array, times, symbols = data.to_numpy("m5", columns=["close", "volume", "regime"])
-log_close = np.log(array[:, :, 0])
-returns = np.diff(log_close, axis=0)  # (time - 1, instrument)
-volume = np.log1p(array[1:, :, 1])
-regime = array[1:, 0, 2].astype(int)  # crypto shares one regime
 
-x = np.stack([returns, volume], axis=-1).reshape(len(returns), -1)  # (time, features)
-windows = np.lib.stride_tricks.sliding_window_view(x, WINDOW, axis=0).transpose(0, 2, 1)
-labels = regime[WINDOW - 1 :]
-print("inputs", windows.shape, "labels", labels.shape, "classes", np.bincount(labels))
+def windows(seed: int) -> tuple[np.ndarray, np.ndarray]:
+    data = mf.generate(
+        "BTCUSD,ETHUSD,SOLUSD",
+        start="2024-01-01",
+        days=30,
+        seed=seed,
+        timeframes="m5",
+        with_regime=True,
+    )
+    x, y, _, _ = data.windows("m5", WINDOW, stride=4)
+    return x, y
+
+
+x_train, y_train = windows(seed=7)
+x_valid, y_valid = windows(seed=8)
+print("inputs", x_train.shape, "labels", y_train.shape, "classes", np.bincount(y_train))
 
 try:
     import torch
@@ -37,7 +37,7 @@ except ImportError:
     print("Install torch to wrap these arrays in a DataLoader.")
 else:
     loader = DataLoader(
-        TensorDataset(torch.from_numpy(windows.copy()).float(), torch.from_numpy(labels)),
+        TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
         batch_size=256,
         shuffle=True,
     )
