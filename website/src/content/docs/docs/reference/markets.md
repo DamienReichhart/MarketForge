@@ -38,4 +38,5 @@ Annual volatility and drift in the catalog are what you get (for forex crosses, 
 - The index and oil CFDs in the forex catalog (GRXEUR, SPXUSD, WTIUSD, ...) trade on the forex calendar, nearly 24/5. Their real sessions and daily maintenance breaks are not modelled.
 - Forex is open on Christmas and New Year's Day.
 - One-off NYSE closures (9/11, Hurricane Sandy, national days of mourning) are not modelled.
+- Stocks report earnings (see [Model](../model/)), but pay no dividends and never split: prices are total-return-like and unadjusted, and a stock that rises far is never split back down.
 - Forex tick-volume levels, and forex and stock spread levels, are estimates, not measurements.

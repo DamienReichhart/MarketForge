@@ -20,9 +20,11 @@ import pyarrow as pa
 from numpy.typing import DTypeLike
 
 from marketforge.api.parsing import Names, TimeLike, as_names, parse_time
+from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
 from marketforge.domain.timeframes import Timeframe
+from marketforge.simulation.earnings import reports_between
 from marketforge.simulation.macro import macro_state
 
 if TYPE_CHECKING:
@@ -300,6 +302,38 @@ class GeneratedData(Mapping[str, InstrumentData]):
             index=index,
             name="macro",
         )
+
+    def earnings(self) -> pd.DataFrame:
+        """
+        The quarterly earnings events of the stocks held, in the range.
+
+        One row per report: ``symbol``, ``reported`` (the New York date after
+        whose close it came) and ``opens`` (the first candle after it, which
+        gaps by the report's jump). Every stock reports four times a year on
+        its own days, whatever the seed; the seed draws the jumps.
+        """
+        calendar = get_calendar(MarketType.STOCKS)
+        first = int(calendar.local_minutes(np.array([self._origin.start]))[0] // 1440)
+        last = int(calendar.local_minutes(np.array([self._origin.end - 60]))[0] // 1440)
+        rows = []
+        for symbol in self.symbols:
+            if self._instruments[symbol].market != MarketType.STOCKS.value:
+                continue
+            for day in reports_between(symbol, first - 1, last, calendar):
+                after = calendar.open_minutes(
+                    (day + 1) * 86_400, (day + 8) * 86_400
+                )  # local days are within a day of UTC ones
+                stamps = after[calendar.local_minutes(after) // 1440 > day]
+                if stamps.size == 0 or stamps[0] >= self._origin.end:
+                    continue
+                rows.append(
+                    {
+                        "symbol": symbol,
+                        "reported": pd.Timestamp(day * 86_400, unit="s").date(),
+                        "opens": pd.Timestamp(int(stamps[0]), unit="s", tz="UTC"),
+                    }
+                )
+        return pd.DataFrame(rows, columns=["symbol", "reported", "opens"])
 
     def _first_of(self, market: str) -> str:
         name = MarketType(str(market).strip().lower()).value

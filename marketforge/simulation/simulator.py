@@ -49,6 +49,13 @@ from marketforge.domain.markets import MarketType
 from marketforge.domain.time import MINUTES_PER_DAY, SECONDS_PER_DAY
 from marketforge.simulation.annualisation import closure_variance, effective_minutes_per_year
 from marketforge.simulation.anomalies import inject_anomalies
+from marketforge.simulation.earnings import (
+    BOOST_HORIZON,
+    EARNINGS_MOVE_DAYS,
+    EARNINGS_NU,
+    reports_between,
+    volatility_boost,
+)
 from marketforge.simulation.innovations import correlated_shocks, stressed_shocks
 from marketforge.simulation.kernels import (
     bar_arguments,
@@ -208,6 +215,17 @@ class MarketSimulator:
         calm, bear = macro_trends(_OPEN_MINUTES_PER_DAY[spec.market])
         along = sigma * self._mixing.covariance * d.global_coupling[0]
         self._macro_mu = (along * calm)[fa], (along * bear)[fa]
+        # Earnings events (stocks): the jump of each active factor's reports.
+        self._reports = spec.market == MarketType.STOCKS
+        daily = np.array([a.volatility for a in factors]) / np.sqrt(252.0)
+        moves = np.array(
+            [
+                EARNINGS_MOVE_DAYS * v if a.earnings_move is None else a.earnings_move
+                for a, v in zip(factors, daily, strict=True)
+            ]
+        )
+        self._report_symbols = [structure.factors[i] for i in fa]
+        self._report_moves = moves[fa]
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
@@ -318,6 +336,47 @@ class MarketSimulator:
         seq = np.random.SeedSequence([self.seed, _MARKET_STREAM[self.spec.market], day, stream])
         return np.random.Generator(np.random.PCG64(seq))
 
+    def _earnings(
+        self,
+        day: int,
+        ts: np.ndarray,
+        gap_rows: np.ndarray,
+        gap: np.ndarray,
+        prev_close_day: int | None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The day's volatility and gaps with earnings events: a jump at the
+        first open after a report, and raised volatility for a few days."""
+        today = int(self.calendar.local_minutes(ts[:1])[0] // 1440)
+        boost = np.ones(self._sigma.size)
+        jumps = np.zeros(self._sigma.size)
+        draws = None
+        for f, (symbol, move) in enumerate(
+            zip(self._report_symbols, self._report_moves, strict=True)
+        ):
+            if move <= 0.0:
+                continue
+            recent = reports_between(symbol, today - BOOST_HORIZON - 4, today - 1, self.calendar)
+            if not recent:
+                continue
+            opened = self._next_session(recent[-1])
+            boost[f] = float(volatility_boost(np.array([today - opened]))[0])
+            if prev_close_day is not None and gap_rows.size and prev_close_day <= recent[-1]:
+                if draws is None:  # one t draw per market factor, fixed shape
+                    t = self._day_rng(day, 3).standard_t(EARNINGS_NU, self._n_factors)
+                    draws = t[self._factors] * np.sqrt((EARNINGS_NU - 2.0) / EARNINGS_NU)
+                jumps[f] = move * draws[f]
+        if jumps.any():
+            gap = gap.copy()
+            gap[0] += jumps  # the session's first open is its first gap
+        return self._sigma * boost, gap
+
+    def _next_session(self, local_day: int) -> int:
+        """The local day of the first session after ``local_day``."""
+        nxt = local_day + 1
+        while self.calendar.session_close_minute(np.array([nxt]))[0] == 0:
+            nxt += 1
+        return nxt
+
     # ---------------------------------------------------------------- core
     def simulate_day(self, day: int, start: int, end: int) -> Bars | None:
         """Simulate the open minutes of UTC day `day` that fall within [start, end)."""
@@ -408,6 +467,11 @@ class MarketSimulator:
         # from pinning the narrower type inferred from this placeholder.
         gap_rows: np.ndarray = np.empty(0, dtype=np.intp)
         gap = np.empty((0, self._sigma.size))
+        prev_close_day = (
+            None
+            if st.last_timestamp is None
+            else int(self.calendar.local_minutes(np.array([st.last_timestamp]))[0] // 1440)
+        )
         if st.last_timestamp is not None:
             prev = np.concatenate(([st.last_timestamp], ts[:-1]))
             closed = (ts - prev) // 60 - 1
@@ -431,6 +495,9 @@ class MarketSimulator:
                     + self._mu * var_units[:, None]
                 )
 
+        sigma = self._sigma
+        if self._reports:
+            sigma, gap = self._earnings(day, ts, gap_rows, gap, prev_close_day)
         # Factor paths, then instruments.
         sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
             h,
@@ -438,7 +505,7 @@ class MarketSimulator:
             drift_m,
             season,
             z,
-            self._sigma,
+            sigma,
             self._mu + self._macro_mu[int(stressed)],
             self._trend,
             gap_rows,

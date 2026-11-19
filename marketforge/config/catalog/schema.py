@@ -37,6 +37,9 @@ class InstrumentParams:
             is 0.6 pip on EURUSD). None: the market's rule, from volatility.
         tick_size: The price step, a power of ten (0.01 for a US stock).
             None: the market's rule (see :func:`marketforge.domain.ticks.default_tick`).
+        earnings_move: Stocks: the standard deviation of the jump at the
+            open after each quarterly report, as a log return (0.05 is 5%).
+            None: 2.5 days of the stock's volatility; 0: no earnings events.
     """
 
     symbol: str
@@ -47,6 +50,7 @@ class InstrumentParams:
     volume_volatility: float = 0.5
     spread_bps: float | None = None
     tick_size: float | None = None
+    earnings_move: float | None = None
 
     def __post_init__(self) -> None:
         """Validate instrument parameters."""
@@ -64,6 +68,8 @@ class InstrumentParams:
                     f"tick_size must be between 1e-8 and the start price, got {self.tick_size}"
                 )
             decimals_of(self.tick_size)  # a power of ten
+        if self.earnings_move is not None and not 0.0 <= self.earnings_move < 1.0:
+            raise ValueError(f"earnings_move must be in [0, 1), got {self.earnings_move}")
 
 
 @dataclass

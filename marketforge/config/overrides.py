@@ -26,7 +26,8 @@ Keys: market (required for new instruments), start_price, volatility
 minute: coins for crypto, ticks for forex, shares for stocks),
 volume_volatility, spread_bps (typical quoted spread in basis points of the
 price; default: the market's rule), tick_size (the price step, a power of
-ten; default: the market's rule), correlations (to instruments of the same market;
+ten; default: the market's rule), earnings_move (stocks: the standard
+deviation of the jump after each quarterly report; 0 for none), correlations (to instruments of the same market;
 unspecified pairs of a new instrument default to 0).
 """
 
@@ -56,6 +57,7 @@ _FIELDS = (
     "volume_volatility",
     "spread_bps",
     "tick_size",
+    "earnings_move",
 )
 _KEYS = set(_FIELDS) | {"market", "correlations"}
 
