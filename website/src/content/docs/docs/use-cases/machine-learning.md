@@ -69,7 +69,7 @@ model = HistGradientBoostingClassifier(max_iter=200).fit(X, y)
 print(classification_report(test["regime"].astype(str), model.predict(test.drop(columns="regime"))))
 ```
 
-Do not expect a high score from a baseline like this. Trained on eight seeds and tested on two others, its accuracy is around 55%: it finds sustained trends down best, catches about half of the crashes and high-volatility spells, and confuses quiet uptrends with range. That is the point: the label lets you *measure* how much of a hidden state your features recover, which real data never lets you do. Regimes last hours to days and changes ramp in, so the first candles after a switch are hard to classify, as they would be on real data.
+Do not expect a high score from a baseline like this. Trained on eight seeds and tested on two others, its accuracy is around 45%: it finds high-volatility spells best (nine times in ten when it names one), and tells trends and range apart barely better than chance, because trends are weak, as in real markets: a spell of `trend_down` falls only about three times in five ([ADR 0018](../../adr/0018-the-volatility-budget-holds-at-every-horizon/)). That is the point: the label lets you *measure* how much of a hidden state your features recover, which real data never lets you do. Regimes last hours to days and changes ramp in, so the first candles after a switch are hard to classify, as they would be on real data.
 
 ## Recipe: windows for a sequence model
 
