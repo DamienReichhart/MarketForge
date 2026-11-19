@@ -310,7 +310,8 @@ class GeneratedData(Mapping[str, InstrumentData]):
         One row per report: ``symbol``, ``reported`` (the New York date after
         whose close it came) and ``opens`` (the first candle after it, which
         gaps by the report's jump). Every stock reports four times a year on
-        its own days, whatever the seed; the seed draws the jumps.
+        its own days, whatever the seed; the seed draws the jumps. A stock
+        whose ``earnings_move`` an override set to 0 reports nothing.
         """
         calendar = get_calendar(MarketType.STOCKS)
         first = int(calendar.local_minutes(np.array([self._origin.start]))[0] // 1440)
@@ -319,6 +320,8 @@ class GeneratedData(Mapping[str, InstrumentData]):
         for symbol in self.symbols:
             if self._instruments[symbol].market != MarketType.STOCKS.value:
                 continue
+            if self._origin.overrides.get(symbol, {}).get("earnings_move") == 0:
+                continue  # its reports were switched off: they move nothing
             for day in reports_between(symbol, first - 1, last, calendar):
                 after = calendar.open_minutes(
                     (day + 1) * 86_400, (day + 8) * 86_400
