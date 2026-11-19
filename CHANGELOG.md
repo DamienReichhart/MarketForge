@@ -38,6 +38,13 @@ Upgrading from 4.x? See
   few days. Daily kurtosis is 9-11 instead of 4-5. `earnings_move` sets the
   jump per stock (0 for none), and `GeneratedData.earnings()` lists the
   events. Dividends and splits are not modelled.
+- **Pegged currencies hold their pegs.** USDHKD wandered from 7.45 to 8.22
+  in ten years against the real 7.75-7.85 band, and EURDKK by 10% against
+  ERM II's 2.25%. Both now stay in their bands with a pull towards the
+  centre, and USDCNH is managed: a weak pull within 8% of its start price.
+- **Forex is thin at Christmas and New Year.** It traded those days as
+  any other; volatility and tick volume now fall to about a third of normal
+  on the 25th and the 1st, and spreads widen.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell

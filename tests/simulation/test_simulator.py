@@ -167,7 +167,7 @@ def test_regimes_persist_for_hours():
 
 
 def test_volume_units_per_market():
-    fx = _run("forex", 1, JAN_1_2024 + DAY, JAN_1_2024 + 2 * DAY)
+    fx = _run("forex", 1, JAN_1_2024 + 2 * DAY, JAN_1_2024 + 3 * DAY)  # past the holidays
     assert np.all(fx.volume == np.rint(fx.volume)) and fx.volume.min() >= 1
     syms = build_market_spec(load_market_config("forex")).symbols
     eurusd = fx.volume[:, syms.index("EURUSD")]

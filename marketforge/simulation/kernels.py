@@ -262,6 +262,58 @@ def factor_paths(
 
 
 @njit(cache=True, nogil=True)
+def pull_to_pegs(
+    log_open: np.ndarray,
+    log_close: np.ndarray,
+    returns: np.ndarray,
+    start: np.ndarray,
+    held: np.ndarray,
+    vectors: np.ndarray,
+    centres: np.ndarray,
+    half_widths: np.ndarray,
+    pulls: np.ndarray,
+) -> None:
+    """
+    Hold pegged pairs near their centres, in place.
+
+    Each peg is a pair whose log price is ``vectors[k] @ log_close[t]``; it is
+    moved through one factor, ``held[k]`` (the pegged currency's anchor),
+    whose path shifts by ``-pulls[k] * (level - centre) / vectors[k, held]``
+    per minute and by whatever keeps the level inside ``centre +- half_width``.
+    A shift carries to every later minute of that factor, as a price would.
+    ``start`` is each factor's log close before the first row.
+    """
+    n, f = log_close.shape
+    for k in range(held.shape[0]):
+        p = held[k]
+        weight = vectors[k, p]
+        shift = 0.0
+        prev = 0.0
+        for i in range(f):
+            prev += vectors[k, i] * start[i]
+        for t in range(n):
+            pull = -pulls[k] * (prev - centres[k]) / weight
+            log_open[t, p] += shift
+            shift += pull
+            close = log_close[t, p] + shift
+            level = 0.0
+            for i in range(f):
+                level += vectors[k, i] * (close if i == p else log_close[t, i])
+            excess = 0.0
+            if level > centres[k] + half_widths[k]:
+                excess = level - (centres[k] + half_widths[k])
+            elif level < centres[k] - half_widths[k]:
+                excess = level - (centres[k] - half_widths[k])
+            if excess != 0.0:
+                shift -= excess / weight
+                close -= excess / weight
+                level -= excess
+            log_close[t, p] = close
+            returns[t, p] = close - log_open[t, p]
+            prev = level
+
+
+@njit(cache=True, nogil=True)
 def project_signed(x: np.ndarray, index: np.ndarray, sign: np.ndarray) -> np.ndarray:
     """
     Instruments as signed sums of at most two factor columns.

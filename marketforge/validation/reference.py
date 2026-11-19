@@ -74,9 +74,10 @@ class Bands:
     anchored: bool
     # Spread bands. Without measured quotes they are provisional and only rule
     # out the absurd (docs/adr/0008): a median outside 0.05-40 basis points, or
-    # spreads that clearly narrow in the most turbulent minutes.
+    # spreads that clearly narrow in the most turbulent minutes. A holiday's
+    # thin hours are quiet and wide, which pulls the ratio a little below 1.
     spread_bps: tuple[float, float] = (0.05, 40.0)
-    spread_widening: tuple[float, float | None] = (0.9, None)
+    spread_widening: tuple[float, float | None] = (0.85, None)
     spread_anchored: bool = False
 
 
