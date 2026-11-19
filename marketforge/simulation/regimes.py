@@ -16,7 +16,6 @@ import numpy as np
 from marketforge.config.catalog.forex.risk import RISK_LOADINGS
 from marketforge.config.factors import split_pair
 from marketforge.config.model_params import RegimeParams
-from marketforge.simulation.kernels import regime_spells
 from marketforge.simulation.macro import CALM_DAYS, STRESSED_DAYS
 
 # EMA weight per minute for regime multipliers (~15-minute ramp).
@@ -97,48 +96,55 @@ def normalised_spell_targets(
 
 @lru_cache(maxsize=32)
 def _cached_spell_targets(params: RegimeParams, per_day: int) -> tuple[np.ndarray, np.ndarray]:
+    """Exact long-run moments of the regime multipliers, mixed over the macro state.
+
+    With the macro state fixed, regime i holds a share of time proportional to
+    pi_i * m_i, where pi is the stationary distribution of the jump chain and
+    m_i the mean spell (shortened while stressed for calm regimes, which may
+    end early). The smoothing lags each jump from j to i: over the spell that
+    follows, it adds (x_j - x_i) / a to the integral of x and
+    2 x_i (x_j - x_i) / a + (x_j - x_i)^2 / (1 - (1 - a)^2) to that of x^2,
+    exactly when spells outlast the ramp (hours against 15 minutes). Macro
+    spells (weeks) outlast regime spells, so the two states mix by their
+    shares. Exact, where a simulation of the chain carried percent-level
+    noise into every market's volatility.
+    """
     drift = spell_trends(params)
     vol = np.asarray(params.volatility_multipliers, dtype=float)
-    mean = np.asarray(params.mean_minutes())
-    initial = params.get_regime_index(params.initial_regime)
-    # Visit every regime many times: >= ~2000 spells of the longest.
-    n = int(min(20_000_000, max(400_000, 2000 * float(mean.max()))))
-    rng = np.random.Generator(np.random.PCG64(20260613))
-    u = rng.random(n)
-    lengths = rng.gamma(params.spell_shape, 1.0 / params.spell_shape, n)
-    stressed = _macro_path(rng, n, per_day)
-    _, d, v, *_ = regime_spells(
-        u,
-        lengths,
-        np.asarray(params.jump_rows(False)),
-        np.asarray(params.jump_rows(True)),
-        mean,
-        stressed,
-        1.0 / params.minutes_per_step,
-        drift,
-        vol,
-        REGIME_SMOOTHING,
-        initial,
-        0.0,
-        float(drift[initial]),
-        float(vol[initial]),
-    )
-    burn = min(n // 10, int(20 * float(mean.max())))
-    vol_scale = 1.0 / np.sqrt(np.mean(v[burn:] ** 2))
-    drift_shift = -float(np.mean(d[burn:]))
-    targets = (drift + drift_shift, vol * vol_scale)
+    stressed_share = STRESSED_DAYS / (CALM_DAYS + STRESSED_DAYS)
+    mean_drift = mean_square = 0.0
+    for stressed, share in ((False, 1.0 - stressed_share), (True, stressed_share)):
+        d, v2 = _fixed_state_moments(params, drift, vol, stressed)
+        mean_drift += share * d
+        mean_square += share * v2
+    targets = (drift - mean_drift, vol / np.sqrt(mean_square))
     for a in targets:
         a.setflags(write=False)  # shared by every simulator: never mutated
     return targets
 
 
-def _macro_path(rng: np.random.Generator, n: int, per_day: int) -> np.ndarray:
-    """A macro state per open minute with the statistics of the real one."""
-    days = n // per_day + 1
-    flips = rng.random(days)
-    state, out = 0, np.empty(days, dtype=np.int8)
-    for day in range(days):
-        out[day] = state
-        if flips[day] < 1.0 / (STRESSED_DAYS if state else CALM_DAYS):
-            state = 1 - state
-    return np.repeat(out, per_day)[:n]
+def _fixed_state_moments(
+    params: RegimeParams, drift: np.ndarray, vol: np.ndarray, stressed: bool
+) -> tuple[float, float]:
+    """Long-run mean of the smoothed trend, and mean square of the smoothed volatility."""
+    cumulative = np.asarray(params.jump_rows(stressed))
+    jumps = np.diff(
+        np.concatenate([np.zeros((cumulative.shape[0], 1)), cumulative], axis=1), axis=1
+    )
+    eigenvalues, eigenvectors = np.linalg.eig(jumps.T)
+    pi = np.real(eigenvectors[:, np.argmin(np.abs(eigenvalues - 1.0))])
+    pi = pi / pi.sum()
+    mean = np.asarray(params.mean_minutes())
+    if stressed:  # calm spells also end at a rate h: E[min(T, Exp(h))] for T ~ m Gamma(k)/k
+        h, k = 1.0 / params.minutes_per_step, params.spell_shape
+        shortened = (1.0 - (1.0 + h * mean / k) ** -k) / h
+        mean = np.where(np.arange(mean.size) <= 2, shortened, mean)
+    cycle = float(pi @ mean)  # mean minutes per spell
+    a = REGIME_SMOOTHING
+    rate = pi[:, None] * jumps / cycle  # jumps from j (row) to i (column), per minute
+    dd = drift[:, None] - drift[None, :]  # x_j - x_i
+    dv = vol[:, None] - vol[None, :]
+    mean_drift = float(pi * mean @ drift) / cycle + float(np.sum(rate * dd)) / a
+    lag2 = 2.0 * vol[None, :] * dv / a + dv**2 / (1.0 - (1.0 - a) ** 2)
+    mean_square = float(pi * mean @ vol**2) / cycle + float(np.sum(rate * lag2))
+    return mean_drift, mean_square

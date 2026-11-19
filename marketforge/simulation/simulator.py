@@ -37,6 +37,7 @@ independent of which instruments are written and of the end of the range.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -99,6 +100,7 @@ STRESS_COMPRESSION = 0.3
 # Open minutes in a typical day of each market (the regimes' macro clock).
 _OPEN_MINUTES_PER_DAY = {MarketType.CRYPTO: 1440, MarketType.FOREX: 1440, MarketType.STOCKS: 390}
 _MEAN_ABS_Z = float(np.sqrt(2.0 / np.pi))
+_UNIT_UNIFORM = float(np.sqrt(12.0))  # scales U(-1/2, 1/2) to unit variance
 _VAR_ABS_Z = 1.0 - 2.0 / np.pi
 _Z_CLIP = 10.0
 
@@ -245,6 +247,7 @@ class MarketSimulator:
             ]
         )
         self._report_symbols = [structure.factors[i] for i in fa]
+        self._report_days: dict[tuple[str, int], np.ndarray] = {}
         self._report_moves = moves[fa]
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
@@ -389,9 +392,10 @@ class MarketSimulator:
         ):
             if move <= 0.0:
                 continue
-            recent = reports_between(symbol, today - BOOST_HORIZON - 4, today - 1, self.calendar)
-            if not recent:
+            last = self._last_report(symbol, today)
+            if last is None:
                 continue
+            recent = [last]
             opened = self._next_session(recent[-1])
             boost[f] = float(volatility_boost(np.array([today - opened]))[0])
             if prev_close_day is not None and gap_rows.size and prev_close_day <= recent[-1]:
@@ -415,6 +419,21 @@ class MarketSimulator:
         st.slow = x
         return np.asarray(np.exp(x - self._slow_std**2))
 
+    def _last_report(self, symbol: str, today: int) -> int | None:
+        """The latest report of ``symbol`` in the days before ``today`` whose effects last."""
+        year = (today - 365) // 365
+        key = (symbol, year)
+        days = self._report_days.get(key)
+        if days is None:  # three years of reports around this one, once
+            first = (year * 365) - 400
+            days = np.array(reports_between(symbol, first, first + 1600, self.calendar))
+            self._report_days[key] = days
+        k = int(np.searchsorted(days, today, side="left")) - 1
+        if k < 0 or days[k] < today - BOOST_HORIZON - 4:
+            return None
+        return int(days[k])
+
+    @functools.cache  # noqa: B019 - one simulator per market and run
     def _next_session(self, local_day: int) -> int:
         """The local day of the first session after ``local_day``."""
         nxt = local_day + 1
@@ -488,8 +507,8 @@ class MarketSimulator:
             st.drift_mult,
             st.vol_mult,
         )
-        if self._stress.any():
-            stress = self._stress[regimes]
+        stress = self._stress[regimes]
+        if stress.any():  # a day of calm regimes needs no stress shocks at all
             scale = (
                 np.sqrt((nu - 2.0) / nu) / np.sqrt(chi_all[rows] / nu)
                 if self._nu is not None
@@ -504,7 +523,7 @@ class MarketSimulator:
         h, st.garch_variance, st.garch_shock = gjr_garch(
             z, *self._garch, st.garch_variance, st.garch_shock
         )
-        season = self.seasonality.factor(ts)
+        season, volume_season = self.seasonality.factor_and_volume_log(ts)
 
         # Gaps after closures: at most a few rows a day.
         # intp, not int64: it is what np.nonzero returns below, so both paths
@@ -565,8 +584,11 @@ class MarketSimulator:
         if self._noise > 0.0:
             # Quotes jitter around the efficient price; each open is still
             # the previous close (plus any gap).
-            draw = self._day_rng(day, 4).standard_normal((MINUTES_PER_DAY, self._n_factors))
-            eta = self._noise * sigma_f * self._select_factors(draw, rows)
+            # Uniform of unit variance, in float32: a quote's jitter needs no
+            # normal tail nor double precision, and this costs a tenth of a
+            # market-wide day of normals.
+            draw = self._day_rng(day, 4).random((MINUTES_PER_DAY, self._n_factors), np.float32)
+            eta = (self._noise * _UNIT_UNIFORM) * sigma_f * (self._select_factors(draw, rows) - 0.5)
             before = np.empty_like(eta)
             before[0] = 0.0 if st.noise is None else st.noise
             before[1:] = eta[:-1]
@@ -606,7 +628,7 @@ class MarketSimulator:
             level_i,
         )
         np.exp(prices, out=prices)  # open, close, bridge high, bridge low
-        log_volume_season = np.log(season) + self.seasonality.volume_log(ts)
+        log_volume_season = np.log(season) + volume_season
         np.log(level_i, out=level_i)
         phi, lam, kappa = self._volume
         high, low, volume = finish_bars(
