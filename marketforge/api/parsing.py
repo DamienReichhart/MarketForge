@@ -20,6 +20,9 @@ from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 
 TimeLike = int | float | str | dt.datetime | dt.date
+# Unix seconds past this (the year 5138) are milliseconds or microseconds
+# taken for seconds: crypto exchanges export milliseconds.
+_LARGEST_SECONDS = 100_000_000_000
 # One name, several names separated by commas, or any iterable of names.
 Names = str | Iterable[str]
 
@@ -39,13 +42,15 @@ def parse_time(value: TimeLike) -> int:
     Accepts Unix seconds (int, float or digit string), ISO 8601 dates or
     datetimes ("2024-01-01", "2024-01-01T09:30", "2024-01-01T09:30-05:00"),
     and ``date`` / ``datetime`` objects. Naive values are taken as UTC.
+
+    Raises:
+        ValueError: on a number too large to be Unix seconds, such as Unix
+            milliseconds; nothing is converted silently.
     """
     if isinstance(value, bool):
         raise TypeError("time must not be a bool")
-    if isinstance(value, (int, np.integer)):
-        return int(value)
-    if isinstance(value, float):
-        return int(value)
+    if isinstance(value, (int, np.integer, float)):
+        return _seconds(value)
     if isinstance(value, dt.datetime):
         moment = value
     elif isinstance(value, dt.date):
@@ -53,7 +58,7 @@ def parse_time(value: TimeLike) -> int:
     elif isinstance(value, str):
         text = value.strip()
         if text.lstrip("-").isdigit():
-            return int(text)
+            return _seconds(int(text))
         try:
             moment = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
         except ValueError:
@@ -66,6 +71,16 @@ def parse_time(value: TimeLike) -> int:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=dt.UTC)
     return int(moment.timestamp())
+
+
+def _seconds(value: float) -> int:
+    if abs(value) >= _LARGEST_SECONDS:
+        unit, divisor = ("milliseconds", 1000) if abs(value) < 1e14 else ("microseconds", 10**6)
+        raise ValueError(
+            f"Time {value} is not Unix seconds (it would be after the year 5000); it looks "
+            f"like Unix {unit}: divide it by {divisor:,}"
+        )
+    return int(value)
 
 
 def parse_seed(seed: int | None) -> int:

@@ -8,14 +8,15 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import difflib
 import warnings
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from marketforge._warnings import PACKAGE_DIRS
 from marketforge.api.parsing import (
     Names,
     TimeLike,
@@ -27,6 +28,7 @@ from marketforge.api.parsing import (
     parse_timeframes,
     range_end,
 )
+from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.config.loader import load_catalog
 from marketforge.config.overrides import Overrides, resolve_overrides
 from marketforge.domain.anomalies import AnomalyType
@@ -117,6 +119,7 @@ def plan_request(
     overrides: Overrides | None = None,
     days: int | None = None,
     include_bid_ask: bool = False,
+    allow_closed: bool = False,
 ) -> Request:
     """
     Resolve user input into a :class:`Request`.
@@ -129,15 +132,21 @@ def plan_request(
     Names (instruments, markets, timeframes, anomalies) may be given as a list or
     as one comma-separated string, in any letter case.
 
+    ``allow_closed`` accepts a range in which every requested market is closed
+    (an extension may end on a weekend); otherwise such a range is an error.
+
     Raises:
-        ValueError: on unknown instruments or markets, an empty selection, or an
-            invalid time range.
+        ValueError: on unknown instruments or markets, an empty selection, an
+            invalid time range, or a range in which every market is closed.
         TypeError: on a seed that is not an integer.
     """
     t0 = parse_time(start)
     t1 = range_end(t0, end, days)
     if t0 >= t1:
-        raise ValueError(f"start ({t0}) must be before end ({t1})")
+        raise ValueError(
+            f"The range is empty: it starts at {_iso(t0)} and ends at {_iso(t1)}; "
+            "the start must be before the end"
+        )
     if t0 < 0:
         raise ValueError(
             f"The range starts before 1970-01-01 (Unix time {t0}); MarketForge simulates "
@@ -152,7 +161,7 @@ def plan_request(
     wanted_markets = parse_markets(markets)
     symbol_market = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
     by_market: dict[MarketType, list[str]] = {}
-    requested = [a.upper() for a in as_names(instruments)]
+    requested = list(dict.fromkeys(a.upper() for a in as_names(instruments)))
     if requested:
         unknown = [a for a in requested if a not in symbol_market]
         if unknown:
@@ -169,7 +178,7 @@ def plan_request(
         if dropped:
             warnings.warn(
                 f"{', '.join(dropped)} not in the requested markets, so not generated",
-                skip_file_prefixes=_PACKAGE_DIR,
+                skip_file_prefixes=PACKAGE_DIRS,
             )
     else:
         for m in wanted_markets or list(MarketType):
@@ -180,6 +189,8 @@ def plan_request(
         for m, selected in by_market.items()
     ]
     _warn_about_ignored_cross_overrides(plans, resolved)
+    if not allow_closed:
+        _require_an_open_market(plans, t0, t1)
     return Request(
         plans,
         t0,
@@ -193,9 +204,6 @@ def plan_request(
         include_bid_ask=include_bid_ask,
     )
 
-
-# Warnings point at the caller's code, not at MarketForge's.
-_PACKAGE_DIR = (str(Path(__file__).resolve().parents[1]),)
 
 # What a forex cross takes from its anchors, not from its own parameters (ADR 0002).
 _DERIVED_KEYS = ("start_price", "volatility", "drift", "correlations")
@@ -218,8 +226,31 @@ def _warn_about_ignored_cross_overrides(
             warnings.warn(
                 f"{symbol} is a forex cross derived from {' and '.join(anchors)}: its "
                 f"{', '.join(ignored)} override is ignored. Override the anchors instead.",
-                skip_file_prefixes=_PACKAGE_DIR,
+                skip_file_prefixes=PACKAGE_DIRS,
             )
+
+
+# When each market trades, for the error about a range in which none does.
+_HOURS = {
+    MarketType.CRYPTO: "crypto trades around the clock",
+    MarketType.FOREX: "forex trades from Sunday 17:00 to Friday 17:00 New York time",
+    MarketType.STOCKS: "stocks trade 09:30 to 16:00 New York time on NYSE trading days only",
+}
+
+
+def _require_an_open_market(plans: list[MarketPlan], start: int, end: int) -> None:
+    if any(get_calendar(plan.market).is_open_during(start, end) for plan in plans):
+        return
+    hours = "; ".join(_HOURS[plan.market] for plan in plans)
+    raise ValueError(
+        f"Nothing to generate: {' and '.join(p.market.value for p in plans)} "
+        f"{'is' if len(plans) == 1 else 'are'} closed for the whole range "
+        f"{_iso(start)} to {_iso(end)} ({hours})"
+    )
+
+
+def _iso(seconds: int) -> str:
+    return dt.datetime.fromtimestamp(seconds, dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
 
 
 def _unknown_instruments(unknown: list[str], known: list[str]) -> str:

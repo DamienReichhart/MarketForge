@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from marketforge._version import MODEL_REVISION, __version__
-from marketforge.api.execution import execute, warn_about_empty
+from marketforge.api.execution import NothingGenerated, execute, warn_about_empty
 from marketforge.api.parsing import Names, TimeLike, parse_time
 from marketforge.api.planning import (
     DEFAULT_TIMEFRAMES,
@@ -174,6 +174,7 @@ def plan_extension(
         include_spread=manifest.include_spread,
         include_bid_ask=manifest.include_bid_ask,
         overrides=manifest.overrides,
+        allow_closed=True,
     )
     request.extends_from = manifest.end
     for plan in request.plans:
@@ -269,7 +270,14 @@ def write_request(
             for market, c in checkpoints.items()
         },
     )
-    report.manifest = (commit_extension if extending else write_manifest)(root, manifest)
     if not extending:
-        warn_about_empty(pair for writer in writers.values() for pair in writer.empty)
+        try:
+            warn_about_empty(
+                (pair for writer in writers.values() for pair in writer.empty),
+                total=report.n_files,
+            )
+        except NothingGenerated:
+            clear_dataset(root, overwrite=True)  # header-only files are not a dataset
+            raise
+    report.manifest = (commit_extension if extending else write_manifest)(root, manifest)
     return report
