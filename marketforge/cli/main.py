@@ -22,6 +22,7 @@ import click
 
 from marketforge import __version__
 from marketforge.cli.commands.calibrate import calibrate
+from marketforge.cli.commands.export import export
 from marketforge.cli.commands.extend import extend
 from marketforge.cli.commands.generate import generate
 from marketforge.cli.commands.info import info
@@ -74,6 +75,7 @@ cli.add_command(calibrate)
 cli.add_command(list_instruments)
 cli.add_command(validate)
 cli.add_command(verify)
+cli.add_command(export)
 
 
 def main() -> None:

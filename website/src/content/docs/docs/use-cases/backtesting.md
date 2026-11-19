@@ -182,21 +182,22 @@ engine.dispose()
 
 ### freqtrade
 
-freqtrade reads one Feather file per pair and timeframe from its data directory, with a `date` column in milliseconds UTC. Write them, then `freqtrade backtesting --timeframe 5m --pairs BTC/USDT ...` finds them.
+`marketforge export freqtrade` writes a dataset as freqtrade's data directory expects it: one Feather file per pair and timeframe, `{BASE}_{QUOTE}-{timeframe}.feather` with a `date` column in UTC. `--quote USDT` names the coins' dollar as an exchange that lists them against USDT does.
 
-```python
-from pathlib import Path
-
-names = {"m5": "5m", "H1": "1h", "D1": "1d"}
-data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=4, timeframes="m5,H1,D1")
-folder = Path("user_data/data/binance")
-folder.mkdir(parents=True, exist_ok=True)
-for symbol in data:
-    for timeframe, frame in data[symbol].items():
-        candles = frame.reset_index().rename(columns={"time": "date"})
-        candles["date"] = candles["date"].dt.as_unit("ms")
-        candles[["date", "open", "high", "low", "close", "volume"]].to_feather(
-            folder / f"{symbol.removesuffix('USD')}_USDT-{names[timeframe]}.feather"
-        )
-print(sorted(p.name for p in folder.iterdir()))
+```bash
+marketforge generate -o ./coins -i BTCUSD,ETHUSD --from 2024-01-01 --days 30 --seed 4 -t m5,H1,D1
+marketforge export freqtrade ./coins user_data/data/binance --quote USDT
 ```
+
+Then `freqtrade backtesting --timeframe 1h --pairs BTC/USDT ETH/USDT ...` finds the candles. Timeframes freqtrade does not have (`m2`, `m10`, `m20`, `H3`) are skipped and listed. In Python, `mf.export("freqtrade", "coins", "user_data/data/binance", quote="USDT")`.
+
+### LEAN (QuantConnect)
+
+`marketforge export lean` turns a dataset's `m1` candles into LEAN's data folder: zipped minute files per day, and hour and daily files per ticker. Stocks go under `equity/usa` (New York time, prices in ten-thousandths, with a map and a factor file), coins under `crypto/coinbase`, currency pairs under `forex/oanda`, and gold, the index and the oil CFDs under `cfd/oanda` (UTC). Forex and CFDs have quote bars: generate with `--with-bid-ask` (or `--with-spread`) so they hold the spread.
+
+```bash
+marketforge generate -o ./mixed -i AAPL,EURUSD,BTCUSD --from 2024-03-04 --days 6 --seed 7 -t m1 --with-bid-ask
+marketforge export lean ./mixed ./lean-data
+```
+
+Point LEAN's `data-folder` at `./lean-data`, next to its own `market-hours` and `symbol-properties` folders, and `AddEquity("AAPL")`, `AddForex("EURUSD", market=Market.Oanda)` and `AddCrypto("BTCUSD", market=Market.Coinbase)` read the candles. CI runs an algorithm on such an export in LEAN's own Docker image every week.
