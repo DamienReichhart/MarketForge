@@ -279,7 +279,8 @@ def pull_to_pegs(
     Each peg is a pair whose log price is ``vectors[k] @ log_close[t]``; it is
     moved through one factor, ``held[k]`` (the pegged currency's anchor),
     whose path shifts by ``-pulls[k] * (level - centre) / vectors[k, held]``
-    per minute and by whatever keeps the level inside ``centre +- half_width``.
+    per minute and by whatever keeps the level inside ``centre +- half_width``,
+    at each open (after a gap) and each close.
     A shift carries to every later minute of that factor, as a price would.
     ``start`` is each factor's log close before the first row.
     """
@@ -294,6 +295,19 @@ def pull_to_pegs(
         for t in range(n):
             pull = -pulls[k] * (prev - centres[k]) / weight
             log_open[t, p] += shift
+            # The open too stays in the band: the peg holds over a closure,
+            # so a reopening gap cannot carry the pair out of it.
+            opened = 0.0
+            for i in range(f):
+                opened += vectors[k, i] * log_open[t, i]
+            over = 0.0
+            if opened > centres[k] + half_widths[k]:
+                over = opened - (centres[k] + half_widths[k])
+            elif opened < centres[k] - half_widths[k]:
+                over = opened - (centres[k] - half_widths[k])
+            if over != 0.0:
+                shift -= over / weight
+                log_open[t, p] -= over / weight
             shift += pull
             close = log_close[t, p] + shift
             level = 0.0

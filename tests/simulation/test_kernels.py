@@ -330,6 +330,8 @@ def test_pull_to_pegs_is_bit_exact_and_keeps_the_band():
     rng = np.random.default_rng(11)
     close = rng.normal(0, 2e-3, (500, 3)).cumsum(0)
     open_ = np.vstack([np.zeros((1, 3)), close[:-1]])
+    open_[250] += 0.05  # a reopening gap far out of the band
+    close[250:] += 0.05
     returns = close - open_
     rest = (
         np.zeros(3),
@@ -347,4 +349,6 @@ def test_pull_to_pegs_is_bit_exact_and_keeps_the_band():
         np.testing.assert_array_equal(a, b)
     level = compiled[1][:, 0] + compiled[1][:, 1]  # the pegged pair: factors 0 and 1
     assert np.abs(level).max() <= 0.01 + 1e-12
+    opened = compiled[0][:, 0] + compiled[0][:, 1]  # opens too, the gap's included
+    assert np.abs(opened).max() <= 0.01 + 1e-12
     np.testing.assert_allclose(compiled[2], compiled[1] - compiled[0], atol=1e-15)
