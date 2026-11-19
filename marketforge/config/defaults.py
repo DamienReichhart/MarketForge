@@ -219,6 +219,7 @@ STOCKS_DEFAULTS = MarketDefaults(
         reopen_minutes=5.0,
     ),
     intrabar_volatility_ratio=0.7,  # provisional
+    integer_volume=True,  # whole shares
     # Overnight (1050 min) variance ~ 0.3 of a 390-minute session; a weekend
     # adds ~40% more, in line with empirical overnight/weekend ratios.
     closure_variance_scale=20.0,

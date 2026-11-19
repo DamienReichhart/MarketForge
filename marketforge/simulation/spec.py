@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 import numpy as np
@@ -18,6 +19,7 @@ from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.config.model_params import AnomalyConfig
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
+from marketforge.domain.ticks import TickGrid, decimals_of, default_tick
 
 
 @dataclass(frozen=True)
@@ -59,4 +61,17 @@ def build_market_spec(
         factor_correlation=corr,
         defaults=defaults,
         anomaly=anomaly,
+    )
+
+
+def tick_grid(spec: MarketSpec, symbols: Sequence[str]) -> TickGrid:
+    """The tick grid of some instruments of a market, in their order."""
+    by_symbol = {a.symbol: a for a in spec.instruments}
+    ticks = [
+        by_symbol[s].tick_size or default_tick(spec.market, by_symbol[s].start_price)
+        for s in symbols
+    ]
+    return TickGrid(
+        np.array([decimals_of(t) for t in ticks], dtype=np.int64),
+        sub_penny=spec.market == MarketType.STOCKS,
     )

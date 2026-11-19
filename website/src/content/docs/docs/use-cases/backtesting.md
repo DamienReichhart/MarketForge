@@ -34,7 +34,7 @@ The spread widens in turbulent markets, in quiet hours and at the reopen: forex 
 
 `GeneratedData.panel()` puts every instrument on the union of their candle times, with NaN where a market was closed, never forward-filled. Mixing AAPL and BTCUSD shows immediately whether your engine handles instruments that do not trade at the same times.
 
-Forex crosses are derived from anchor pairs, so `EURJPY == EURUSD * USDJPY` at every minute: a triangular-arbitrage strategy should find nothing. If it does, the engine has a look-ahead or alignment bug.
+Forex crosses are derived from anchor pairs, so `EURJPY == EURUSD * USDJPY` at every minute, to within the tick each is quoted on: a triangular-arbitrage strategy should find nothing once it pays the spread. If it does, the engine has a look-ahead or alignment bug.
 
 ### Higher timeframes
 

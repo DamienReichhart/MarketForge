@@ -24,7 +24,7 @@ The single forex instrument that ties a code to the rest of the forex market; an
 _Avoid_: major, base pair, primary pair
 
 **Cross**:
-A forex instrument that is not an anchor pair; its prices are derived from anchor pairs so that every triangle is arbitrage-free.
+A forex instrument that is not an anchor pair; its prices are derived from anchor pairs so that every triangle is arbitrage-free, to within the tick each price is quoted on.
 _Avoid_: derived pair, synthetic pair
 
 **Catalog**:

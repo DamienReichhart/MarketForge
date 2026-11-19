@@ -31,6 +31,7 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from marketforge.domain.bars import Bars
+from marketforge.domain.ticks import TickGrid
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.encoding import candle_schema, record_batch, rounded_columns
 from marketforge.output.formats import Layout, OutputFormat, TimestampFormat, check_formats
@@ -63,6 +64,7 @@ class CandleWriter:
         include_bid_ask: bool = False,
         layout: Layout = Layout.SPLIT,
         metadata: Mapping[str, str] | None = None,
+        ticks: TickGrid | None = None,
     ) -> None:
         """
         With ``extend``, candles are added to the files a dataset already has:
@@ -89,6 +91,7 @@ class CandleWriter:
             long=self._long,
         )
         self._market = market
+        self._ticks = ticks  # of the market's instruments, in column order
         self._metadata = {**(metadata or {}), "market": market}
         self._dictionaries = {
             "symbol": pa.array(list(symbols), pa.string()),
@@ -157,7 +160,13 @@ class CandleWriter:
     def write(self, timeframe: Timeframe, bars: Bars | None) -> None:
         if bars is None or len(bars) == 0:
             return
-        ts, fields = rounded_columns(bars, self._columns, self._spread, self._bid_ask)
+        ts, fields = rounded_columns(
+            bars,
+            self._columns,
+            self._spread,
+            self._bid_ask,
+            None if self._ticks is None else self._ticks,
+        )
         regime = (bars.regime.astype(np.int8),) if self.include_regime else ()
         rows = len(bars)
         if self._long:

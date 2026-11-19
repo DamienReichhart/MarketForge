@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from marketforge.domain.markets import MarketType
+from marketforge.domain.ticks import decimals_of
 
 
 @dataclass
@@ -34,6 +35,8 @@ class InstrumentParams:
         volume_volatility: Lognormal sigma of the volume noise.
         spread_bps: Typical quoted spread in basis points of the price (0.55
             is 0.6 pip on EURUSD). None: the market's rule, from volatility.
+        tick_size: The price step, a power of ten (0.01 for a US stock).
+            None: the market's rule (see :func:`marketforge.domain.ticks.default_tick`).
     """
 
     symbol: str
@@ -43,6 +46,7 @@ class InstrumentParams:
     volume_base: float = 1000.0
     volume_volatility: float = 0.5
     spread_bps: float | None = None
+    tick_size: float | None = None
 
     def __post_init__(self) -> None:
         """Validate instrument parameters."""
@@ -54,6 +58,12 @@ class InstrumentParams:
             raise ValueError(f"volume_base must be positive, got {self.volume_base}")
         if self.spread_bps is not None and self.spread_bps <= 0:
             raise ValueError(f"spread_bps must be positive, got {self.spread_bps}")
+        if self.tick_size is not None:
+            if not 1e-8 <= self.tick_size <= self.start_price:
+                raise ValueError(
+                    f"tick_size must be between 1e-8 and the start price, got {self.tick_size}"
+                )
+            decimals_of(self.tick_size)  # a power of ten
 
 
 @dataclass
