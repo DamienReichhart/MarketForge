@@ -84,8 +84,20 @@ The standardized random innovation that drives one minute of one anchor series.
 _Avoid_: noise, innovation (in user-facing text), epsilon
 
 **Regime**:
-The market-wide hidden state (trend up, trend down, range, high volatility, crash) that sets the trend and scales the volatility of every instrument of a market at once. A trend moves the market's main factor: all coins, all stocks, or the dollar.
+The market-wide hidden state (trend up, trend down, range, high volatility, crash) that sets the trend and scales the volatility of every instrument of a market at once. A trend moves the market's main factor: all coins, all stocks, or the dollar. Each market has its own regime; the macro state only shifts the odds of the next one.
 _Avoid_: phase, mode, state
+
+**Spell**:
+One uninterrupted stay of a market in a single regime, from the minute it enters it to the minute it leaves.
+_Avoid_: episode, run, duration (a spell has a duration)
+
+**Macro state**:
+The world-wide hidden state, calm or stressed, shared by every market; while it is stressed, each market is more likely to enter high volatility or a crash.
+_Avoid_: global regime (a regime belongs to one market), contagion, risk-off
+
+**Global shock**:
+The common random innovation every market's shocks load on, which links crypto, forex and stocks; index CFDs load on it most.
+_Avoid_: world factor, macro factor, stress (stress acts within one market)
 
 **Trend strength**:
 A regime's expected log return over an average spell of the regime, in units of that spell's volatility, along the market's main factor.
@@ -107,6 +119,14 @@ _Avoid_: event, glitch, gap (gaps are not anomalies)
 The market's current volatility level relative to normal (GARCH multiplier times regime multiplier, excluding intraday seasonality); volume rises with it.
 _Avoid_: stress, heat
 
+**Tick size**:
+The smallest price step an instrument's prices are quoted in; every published price is a whole number of ticks.
+_Avoid_: pip (a pip is a forex convention, often ten ticks), precision, decimals
+
+**Earnings event**:
+A stock's scheduled quarterly results, released while its market is closed, that open the next session with a jump and raise its volatility and volume for a few days.
+_Avoid_: earnings gap (the gap is what the event produces), announcement, news
+
 **Spread**:
 The quoted bid-ask difference around a candle's mid price, in price units; candle prices are mid prices.
 _Avoid_: commission, slippage, cost
@@ -124,6 +144,10 @@ _Avoid_: realism metric, KPI
 **Dataset**:
 The directory of candle files one generation produces, together with its manifest.
 _Avoid_: output directory (in prose), dump, export
+
+**Layout**:
+How a dataset's candles are split into files: one file per instrument and timeframe (the default), or the long layout of one file per timeframe holding every instrument.
+_Avoid_: structure, partitioning, schema
 
 **Manifest**:
 The record kept inside a dataset of how it was produced: version, seed, range, instruments, timeframes, format and overrides.
