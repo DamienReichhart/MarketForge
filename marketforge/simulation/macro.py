@@ -37,6 +37,19 @@ ERA_DAYS = 4096
 CALM_DAYS = 240.0
 STRESSED_DAYS = 30.0
 CALM, STRESSED = 0, 1
+# A stressed spell is a world bear market: each market's global direction
+# falls by this many of the spell's own standard deviations, on average.
+# Calm days drift up by the share that keeps the long-run drift at zero.
+STRESSED_TREND = -1.0
+
+
+def macro_trends(open_minutes_per_day: int) -> tuple[float, float]:
+    """Per-minute trend of the global direction (in units of its per-minute
+    volatility) on calm and on stressed days."""
+    spell = STRESSED_DAYS * open_minutes_per_day
+    stressed = STRESSED_TREND / np.sqrt(spell)
+    calm = -stressed * STRESSED_DAYS / CALM_DAYS
+    return float(calm), float(stressed)
 
 
 @dataclass(frozen=True)
