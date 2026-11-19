@@ -224,3 +224,33 @@ def test_extend_continues_a_dataset_from_another_version_with_the_same_model_rev
     manifest.write_text(json.dumps({**doc, "marketforge": "4.0.1"}))
     mf.extend(tmp_path, "2024-01-09")
     assert read_manifest(tmp_path).end == mf.parse_time("2024-01-09")
+
+
+@pytest.mark.parametrize("killed", ["while generating", "while swapping files in"])
+def test_recovering_an_extension_leaves_files_marketforge_did_not_write_alone(
+    tmp_path, monkeypatch, killed
+):
+    mf.generate_to_disk(
+        tmp_path, "BTCUSD", start="2024-01-01", end="2024-01-05", seed=3, fmt="parquet"
+    )
+    (tmp_path / "notebooks").mkdir()
+    theirs = tmp_path / "notebooks" / "work.tmp"
+    theirs.write_text("mine")
+    beside = tmp_path / "crypto" / "notes.tmp"
+    beside.write_text("also mine")
+
+    def dies(*_):
+        raise KeyboardInterrupt
+
+    if killed == "while generating":
+        monkeypatch.setattr(disk, "recover", lambda root: None)
+        monkeypatch.setattr(disk, "commit_extension", dies)
+    else:
+        monkeypatch.setattr(manifest_module, "recover", dies)
+    with pytest.raises(KeyboardInterrupt):
+        mf.extend(tmp_path, "2024-01-08")
+    monkeypatch.undo()
+    manifest_module.recover(tmp_path)
+    assert theirs.read_text() == "mine"
+    assert beside.read_text() == "also mine"
+    assert not (tmp_path / "notebooks" / "work").exists()

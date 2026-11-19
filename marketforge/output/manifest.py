@@ -195,11 +195,15 @@ def recover(dataset: str | os.PathLike[str]) -> None:
     if not journal.exists():
         return
     pending = root / _PENDING_MANIFEST_NAME
-    rewritten = list(root.rglob("*" + REWRITE_SUFFIX))
+    # Only candle files MarketForge rewrote: other *.tmp files are the user's.
+    rewritten = [
+        path
+        for path in dataset_files(root)
+        if path.name.endswith(REWRITE_SUFFIX) and path != pending
+    ]
     if pending.exists():  # every file is complete: finish swapping them in
         for path in rewritten:
-            if path != pending:
-                os.replace(path, path.with_name(path.name.removesuffix(REWRITE_SUFFIX)))
+            os.replace(path, path.with_name(path.name.removesuffix(REWRITE_SUFFIX)))
         os.replace(pending, root / MANIFEST_NAME)
     else:  # interrupted while generating: back to the dataset as it was
         for name, size in json.loads(journal.read_text(encoding="utf-8")).items():
