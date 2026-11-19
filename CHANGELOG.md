@@ -1,5 +1,48 @@
 # Changelog
 
+## 5.0.0
+
+A model that links markets and prices on real ticks, an API that speaks
+one language, and data that drops straight into ML and backtesting tools.
+Upgrading from 4.x? See
+[Migrating to 5.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-5/).
+
+### Output changes
+- **Prices sit on each instrument's tick.** Open, high, low and close were
+  mid prices with 8 decimals (0.0005% of AAPL closes fell on a cent). Every
+  price is now a whole number of ticks: a cent for stocks (a hundredth of a
+  cent below $1), and about five significant digits elsewhere, 0.00001 on
+  EURUSD, 0.001 on USDJPY, 0.01 on XAUUSD, 0.1 on BTCUSD. `tick_size` sets
+  it per instrument in an override file. Bid and ask take half the spread
+  each way, outwards onto the grid. A forex cross equals the product of its
+  anchors to within the rounding of the three prices (two ticks), not to
+  the last bit.
+- **Stock volume is whole shares**, as forex tick volume already was.
+
+### Breaking changes
+- **One vocabulary for Python and the command line.** `fmt=` is `format=`;
+  `include_regime=`, `include_spread=` and `include_bid_ask=` are
+  `with_regime=`, `with_spread=` and `with_bid_ask=`; `--market` is
+  `--markets` on `generate` and `list-instruments`; `--config` is
+  `--overrides`; `validate --input PATH` is `validate PATH`. The old
+  spellings fail with a message naming the new one for the whole 5.x series.
+- **Every entry point generates the eight standard timeframes by default**,
+  m1, m5, m15, m30, H1, H4, D1 and W1: `generate()` gave m1 only.
+  `timeframes="all"` gives all 17.
+- **`GeneratedData` is a read-only object, not a `dict`**: iterate it or use
+  `.symbols`, `.frame()` and `.instrument()`. Symbols are sorted.
+- **Ranges that can produce nothing are errors**: every requested market
+  closed throughout (AAPL on a Saturday), or no complete candle of any
+  requested timeframe. Nothing is written.
+- **Times too large to be Unix seconds are refused** (Unix milliseconds
+  became the year 55969), with the unit they look like.
+- **`validate` needs at least 1,950 m1 candles**, a week of stock sessions:
+  a 30-minute file failed on kurtosis alone.
+- **Feather files are uncompressed**, so a memory-mapped read is zero-copy
+  as documented; they are about the size of CSV. Use Parquet for small files.
+- **The manifest spells its flags `with_regime`, `with_spread` and
+  `with_bid_ask`**, and records the layout and every file's checksum.
+
 ## 4.0.0
 
 The most realistic MarketForge yet, and the easiest to build on:

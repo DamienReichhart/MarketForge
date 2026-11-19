@@ -7,7 +7,7 @@ name = "marketforge"
 # Single source of truth for the release version. The CD pipeline releases
 # `v<version>` when this changes on main; `marketforge.__version__` reads it
 # back from the installed metadata.
-version = "4.0.0"
+version = "5.0.0"
 description = "Synthetic OHLCV market data for training AI trading models and testing backtesters: labelled regimes, real trading calendars, reproducible from a seed"
 readme = "README.md"
 license = "Apache-2.0"

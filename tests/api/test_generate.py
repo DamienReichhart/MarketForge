@@ -442,8 +442,13 @@ def test_bid_and_ask_quote_the_close_around_the_mid(tmp_path):
     only = mf.generate("EURUSD", with_bid_ask=True, **kwargs)["EURUSD"]["H1"]
     assert list(both.columns) == ["open", "high", "low", "close", "volume", "spread", "bid", "ask"]
     assert list(only.columns) == ["open", "high", "low", "close", "volume", "bid", "ask"]
-    np.testing.assert_allclose(both["ask"] - both["bid"], both["spread"], rtol=1e-9)
-    np.testing.assert_allclose((both["ask"] + both["bid"]) / 2, both["close"], rtol=1e-12)
+    # Half the spread each way, outwards onto the 0.00001 tick.
+    tick = 1e-5
+    on_grid = lambda x: np.abs(x / tick - np.rint(x / tick)) < 1e-6
+    assert on_grid(both["bid"]).all() and on_grid(both["ask"]).all()
+    assert (both["bid"] <= both["close"] - both["spread"] / 2 + 1e-12).all()
+    assert (both["ask"] >= both["close"] + both["spread"] / 2 - 1e-12).all()
+    assert (both["ask"] - both["bid"] - both["spread"] < 2 * tick).all()
     pd.testing.assert_frame_equal(only, both.drop(columns="spread"))
 
     mf.generate_to_disk(

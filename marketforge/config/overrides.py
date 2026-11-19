@@ -25,7 +25,8 @@ Keys: market (required for new instruments), start_price, volatility
 (annualised), drift (annualised log drift), volume_base (mean volume per
 minute: coins for crypto, ticks for forex, shares for stocks),
 volume_volatility, spread_bps (typical quoted spread in basis points of the
-price; default: the market's rule), correlations (to instruments of the same market;
+price; default: the market's rule), tick_size (the price step, a power of
+ten; default: the market's rule), correlations (to instruments of the same market;
 unspecified pairs of a new instrument default to 0).
 """
 
@@ -47,7 +48,15 @@ from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.domain.markets import MarketType
 
-_FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility", "spread_bps")
+_FIELDS = (
+    "start_price",
+    "volatility",
+    "drift",
+    "volume_base",
+    "volume_volatility",
+    "spread_bps",
+    "tick_size",
+)
 _KEYS = set(_FIELDS) | {"market", "correlations"}
 
 

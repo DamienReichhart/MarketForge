@@ -114,3 +114,20 @@ def test_contradictory_edits_get_the_nearest_valid_matrix_and_say_how_far():
     for (a, b), rho in {(0, 1): 0.95, (0, 2): 0.95, (1, 2): -0.95}.items():
         raw[s[a], s[b]] = raw[s[b], s[a]] = rho
     assert np.linalg.norm(m - raw) <= np.linalg.norm(_clipped(raw) - raw) + 1e-9
+
+
+def test_tick_size_is_overridable_and_must_be_a_power_of_ten():
+    import marketforge as mf
+
+    data = mf.generate(
+        "BTCUSD",
+        start="2024-01-02",
+        days=1,
+        seed=1,
+        timeframes="m1",
+        overrides={"BTCUSD": {"tick_size": 10.0}},
+    )
+    close = data["BTCUSD"]["m1"]["close"].to_numpy()
+    assert (close % 10 == 0).all()
+    with pytest.raises(ValueError, match="power of ten"):
+        mf.generate("BTCUSD", start="2024-01-02", days=1, overrides={"BTCUSD": {"tick_size": 0.5}})

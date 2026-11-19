@@ -110,7 +110,8 @@ def test_stocks_gap_only_at_session_open(stocks_two_weeks):
     jumps = r.open[1:] != r.close[:-1]
     new_session = np.diff(r.timestamps) > 60
     assert not jumps[~new_session].any()
-    assert jumps[new_session].all()
+    # A small gap can round to nothing on the cent grid.
+    assert jumps[new_session].mean() > 0.8
 
 
 def test_forex_has_no_saturday_candles_and_crosses_are_arbitrage_free():
@@ -119,8 +120,10 @@ def test_forex_has_no_saturday_candles_and_crosses_are_arbitrage_free():
     assert not any(sat)
     syms = build_market_spec(load_market_config("forex")).symbols
     i, j, k = (syms.index(s) for s in ("EURJPY", "EURUSD", "USDJPY"))
-    np.testing.assert_allclose(r.close[:, i], r.close[:, j] * r.close[:, k], rtol=1e-12)
-    np.testing.assert_allclose(r.open[:, i], r.open[:, j] * r.open[:, k], rtol=1e-12)
+    # Each is quoted on its own tick (0.001 for EURJPY), so the identity holds
+    # to within the rounding of the three prices (two EURJPY ticks), as on a venue.
+    np.testing.assert_allclose(r.close[:, i], r.close[:, j] * r.close[:, k], atol=0.002)
+    np.testing.assert_allclose(r.open[:, i], r.open[:, j] * r.open[:, k], atol=0.002)
 
 
 def test_no_minute_dominates_volume(stocks_two_weeks):
@@ -251,7 +254,7 @@ def test_flash_crash_dips_and_recovers():
     ratio = (crash / base)[:, 0]
     hit = np.nonzero(ratio != 1.0)[0]
     assert 0 < hit.size <= spec_crash.anomaly.flash_crash_recovery_candles
-    assert ratio.min() == pytest.approx(1.0 - spec_crash.anomaly.flash_crash_magnitude)
+    assert ratio.min() == pytest.approx(1.0 - spec_crash.anomaly.flash_crash_magnitude, rel=1e-4)
     assert np.all(np.diff(hit) == 1)  # one contiguous episode, back to the base path after
 
 

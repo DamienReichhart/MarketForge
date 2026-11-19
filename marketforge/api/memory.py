@@ -28,7 +28,10 @@ from marketforge.config.overrides import Overrides
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
+from marketforge.domain.ticks import TickGrid
 from marketforge.domain.timeframes import Timeframe
+from marketforge.output.encoding import quotes
+from marketforge.simulation.spec import tick_grid
 
 
 @renamed_arguments
@@ -112,6 +115,7 @@ def generate(
                 request.include_regime,
                 request.include_spread,
                 request.include_bid_ask,
+                tick_grid(plan.spec, plan.selected),
             )
             for symbol, frame in zip(plan.selected, built, strict=True):
                 frames.setdefault(symbol, {})[tf.name] = frame
@@ -237,6 +241,7 @@ def _frames(
     include_regime: bool,
     include_spread: bool,
     include_bid_ask: bool = False,
+    ticks: TickGrid | None = None,
 ) -> list[pd.DataFrame]:
     """
     One DataFrame per instrument from a market's candle chunks.
@@ -264,9 +269,12 @@ def _frames(
     for j in range(n_instruments):
         df = pd.DataFrame(block[j].T, index=index, columns=list(columns), copy=False)
         if include_bid_ask:
-            half = df["spread"] / 2
-            df["bid"] = df["close"] - half
-            df["ask"] = df["close"] + half
+            grid = None if ticks is None else ticks.take(np.array([j]))
+            bid, ask = quotes(
+                df["close"].to_numpy()[:, None], df["spread"].to_numpy()[:, None], grid
+            )
+            df["bid"] = bid[:, 0]
+            df["ask"] = ask[:, 0]
             if not include_spread:
                 df = df.drop(columns="spread")
         if include_regime:

@@ -18,4 +18,4 @@ except metadata.PackageNotFoundError:  # pragma: no cover - uninstalled checkout
 # release, in any release that changes the candles an existing seed
 # produces, and list the change under "Output changes" in CHANGELOG.md.
 # `extend` only continues datasets written with the same revision.
-MODEL_REVISION = 1
+MODEL_REVISION = 2
