@@ -19,8 +19,8 @@ def max_drawdown(equity: np.ndarray) -> float:
 results = []
 # 200 alternative years, generated in parallel processes, yielded in seed order
 for data in mf.generate_many("SPXUSD,XAUUSD,EURUSD", seeds=range(200), start="2024-01-01",
-                             end="2025-01-01", timeframes=["H1"], include_spread=True,
-                             include_regime=True):
+                             end="2025-01-01", timeframes=["H1"], with_spread=True,
+                             with_regime=True):
     equity = run_my_strategy(data)            # your backtest, returning an equity curve
     results.append(max_drawdown(equity))
 
@@ -31,7 +31,7 @@ The worst 1% of drawdowns across 200 histories says far more about risk than the
 
 ## Crash and high-volatility regimes
 
-The base model already contains stress. The market moves between trend, range, **high volatility** and **crash** regimes, with heavy-tailed Student-t shocks whose tail risk is shared across a market, so sell-offs hit every instrument at once. With `include_regime=True`, you can break results down by regime and see where a strategy loses:
+The base model already contains stress. The market moves between trend, range, **high volatility** and **crash** regimes, with heavy-tailed Student-t shocks whose tail risk is shared across a market, so sell-offs hit every instrument at once. With `with_regime=True`, you can break results down by regime and see where a strategy loses:
 
 ```python check=static
 candles = data["SPXUSD"]["H1"]
@@ -49,7 +49,7 @@ On top of the realistic base you can inject events that are **deliberately unrea
 | `flash_crash` | Multi-candle V-shaped crashes and recoveries. |
 
 ```bash
-marketforge generate -o ./stress --from 2024-01-01 --days 90 --market crypto \
+marketforge generate -o ./stress --from 2024-01-01 --days 90 --markets crypto \
     --anomalies spikes,flash_crash --with-regime --seed 13
 ```
 

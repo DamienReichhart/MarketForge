@@ -36,7 +36,7 @@
 
 ```bash
 pip install marketforge
-marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --with-regime --with-spread --seed 42
+marketforge generate -o ./data --from 2024-01-01 --days 90 --markets crypto --with-regime --with-spread --seed 42
 ```
 
 That is 90 days of all 53 crypto instruments, every timeframe from `m1` to
@@ -101,7 +101,7 @@ seed per process.
 | **Arbitrage-free forex** | One anchor pair per currency is simulated and every cross is derived from them, so `EURJPY == EURUSD * USDJPY` at every minute. |
 | **Validated, not eyeballed** | Heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread are checked for every instrument, across seeds, against bands measured on real crypto minute data (forex and stock bands are still provisional). The validator ships with the package, and `marketforge calibrate` fits instruments to your own data. |
 | **Reproducible** | A seed fixes every random shock by market and minute. The same seed and version give the same EURUSD, bit for bit on a given platform, whether you generate it alone or with 207 other instruments. CI enforces it on every commit. |
-| **Extendable** | Every dataset carries a manifest of how it was made. `marketforge extend` continues it, byte-identical to generating the whole range at once. |
+| **Extendable** | Every dataset carries a manifest of how it was made. `marketforge extend` continues it with exactly the candles of one longer run (byte-identical in CSV), and `marketforge verify` proves a dataset unaltered. |
 | **Built for ML pipelines** | `generate_many()` runs seeds in parallel processes for leak-free splits, `to_numpy()` gives `(time, instrument, feature)` tensors, `read()` loads datasets back with the right types, and Feather files load with no copy. |
 | **Fast, bounded memory** | Compiled (Numba) kernels stream the simulation day by day. A year of EURUSD across all 8 timeframes takes about 2 s; a month of all 208 instruments about 6 s. Memory does not grow with the range. |
 
@@ -112,17 +112,17 @@ seed per process.
 marketforge generate -o ./eurusd --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
 # A whole market as Parquet, with regime labels and the bid-ask spread
-marketforge generate -o ./crypto --from 2024-01-01 --days 180 --market crypto \
+marketforge generate -o ./crypto --from 2024-01-01 --days 180 --markets crypto \
     --format parquet --with-regime --with-spread --seed 7
 
 # What would a run produce (files, rows, disk size, time)? Nothing is written.
-marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
+marketforge generate --from 2015-01-01 --to 2025-01-01 --markets all --dry-run
 
 # Continue a dataset: 30 more days, same seed, instruments, timeframes and format
 marketforge extend ./eurusd --days 30
 
 # Check an m1 file against real-market stylized facts (exit code 1 on failure)
-marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
+marketforge validate ./eurusd/forex/EURUSD_m1.csv
 ```
 
 Every option is in the
@@ -138,7 +138,7 @@ import marketforge as mf
 for data in mf.generate_many(
     "BTCUSD,ETHUSD,SOLUSD", seeds=range(64),
     start="2024-01-01", end="2024-04-01", timeframes=["m5"],
-    include_regime=True, include_spread=True,
+    with_regime=True, with_spread=True,
 ):
     x, times, symbols = data.to_numpy("m5")          # (time, instrument, OHLCV), NaN when closed
     labels = data["BTCUSD"]["m5"]["regime"]          # ground-truth regime per candle
@@ -146,7 +146,7 @@ for data in mf.generate_many(
 
 # Years of data, streamed to disk; continued later
 mf.generate_to_disk("./data", markets="stocks", start="2015-01-01", end="2025-01-01",
-                    seed=1, fmt="parquet", jobs=3)
+                    seed=1, format="parquet", jobs=3)
 mf.extend("./data", "2025-02-01")
 
 # Check minute candles against the bands measured on real markets

@@ -21,7 +21,7 @@ MarketForge simulates **208 crypto, forex and US stock instruments minute by min
 
 ```bash
 pip install marketforge
-marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --with-regime --seed 42
+marketforge generate -o ./data --from 2024-01-01 --days 90 --markets crypto --with-regime --seed 42
 ```
 
 That is 90 days of all 53 crypto instruments, every default timeframe from `m1` to `W1`, with the regime of every candle, the same on every run with seed 42. The same from Python:
@@ -29,7 +29,7 @@ That is 90 days of all 53 crypto instruments, every default timeframe from `m1` 
 ```python
 import marketforge as mf
 
-data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=42, timeframes=["H1"], include_regime=True)
+data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=42, timeframes=["H1"], with_regime=True)
 candles = data["BTCUSD"]["H1"]  # a pandas DataFrame: open, high, low, close, volume, regime
 ```
 
@@ -37,7 +37,7 @@ The [quick start](quick-start/) goes from here to loading, validating and extend
 
 ## The five regimes
 
-A market is always in one hidden state, shared by every instrument in it. With `--with-regime` (or `include_regime=True`) it is written next to each candle, in the `regime` column. The five colours of the MarketForge mark are these five regimes, in this order.
+A market is always in one hidden state, shared by every instrument in it. With `--with-regime` (or `with_regime=True`) it is written next to each candle, in the `regime` column. The five colours of the MarketForge mark are these five regimes, in this order.
 
 <RegimeTable />
 
