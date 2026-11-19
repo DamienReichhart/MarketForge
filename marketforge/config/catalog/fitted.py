@@ -5,14 +5,26 @@
 # See the LICENSE file in the project root for full license information.
 
 """
-The fitted correlation matrix of each built-in market, shipped as data.
+The fitted correlation matrices of each built-in market, shipped as data.
 
-``fitted_correlation.json`` beside each market's catalog holds the factors'
-fitted correlation matrix (see :mod:`marketforge.config.catalog.correlation`)
-and a digest of the problem it solves: the stated correlations, the weights
-and the volatilities. Loading checks the digest, so editing a catalog without
-refitting (``python scripts/fit_correlations.py``) fails loudly instead of
-silently using a stale matrix.
+``fitted_correlation.json`` beside each market's catalog holds two matrices
+of the market's factors and a digest of the problem they solve (the stated
+correlations, the weights and the volatilities):
+
+- ``daily``: the valid matrix closest to what the catalog states (see
+  :mod:`marketforge.config.catalog.correlation`, ADR 0012). The catalog's
+  correlations are those of daily returns, as real ones are measured.
+- ``matrix``: the minute shocks' matrix the simulator uses, chosen so that
+  the daily returns it simulates correlate as ``daily`` says. The regimes'
+  common trends and stress shocks correlate daily returns more than minute
+  shocks (ADR 0018), so it is the lower of the two.
+
+``horizon`` is the straight line from minute to daily correlations over every
+pair, which turns an override file's correlations (daily, like the catalog's)
+into minute ones. Loading checks the digest and the model revision the minute
+matrix was fitted for, so editing a catalog or the model without refitting
+(``python scripts/fit_correlations.py``) fails loudly instead of silently
+using a stale matrix.
 """
 
 from __future__ import annotations
@@ -21,9 +33,11 @@ import hashlib
 import json
 from dataclasses import dataclass
 from importlib import resources
+from typing import Any
 
 import numpy as np
 
+from marketforge._version import MODEL_REVISION
 from marketforge.config.catalog.correlation import (
     DEFAULT_WEIGHT,
     DERIVED_DEFAULT_WEIGHT,
@@ -112,14 +126,24 @@ def fit(market: MarketType) -> np.ndarray:
     )
 
 
-def document(market: MarketType, factor_correlation: np.ndarray) -> str:
+def document(
+    market: MarketType,
+    daily: np.ndarray,
+    minute: np.ndarray | None = None,
+    horizon: tuple[float, float] = (1.0, 0.0),
+) -> str:
+    """The JSON file of a market's fit: ``daily`` and the ``minute`` matrix that gives it."""
     p = fit_problem(market)
+    minute = daily if minute is None else minute
     return (
         json.dumps(
             {
                 "digest": p.digest(),
+                "model_revision": MODEL_REVISION,
                 "factors": list(p.structure.factors),
-                "matrix": [[float(v) for v in row] for row in factor_correlation],
+                "horizon": {"slope": horizon[0], "intercept": horizon[1]},
+                "daily": [[float(v) for v in row] for row in daily],
+                "matrix": [[float(v) for v in row] for row in minute],
             },
             indent=0,
         )
@@ -127,16 +151,34 @@ def document(market: MarketType, factor_correlation: np.ndarray) -> str:
     )
 
 
-def load_fitted(market: MarketType) -> tuple[np.ndarray, list[str]]:
-    """The full instrument correlation matrix of a built-in market, and its symbol order."""
+def _document(market: MarketType) -> dict[str, Any]:
     p = fit_problem(market)
     text = resources.files(f"marketforge.config.catalog.{market.value}").joinpath(FILE_NAME)
-    doc = json.loads(text.read_text(encoding="utf-8"))
+    doc: dict[str, Any] = json.loads(text.read_text(encoding="utf-8"))
     if doc["digest"] != p.digest() or doc["factors"] != list(p.structure.factors):
         raise RuntimeError(
             f"The {market.value} catalog changed since its correlations were fitted: "
             "run `python scripts/fit_correlations.py`"
         )
+    if doc.get("model_revision") != MODEL_REVISION:
+        raise RuntimeError(
+            f"The {market.value} correlations were fitted for model revision "
+            f"{doc.get('model_revision')}, not {MODEL_REVISION}: run `python scripts/fit_correlations.py`"
+        )
+    return doc
+
+
+def minute_correlation(market: MarketType, daily: float) -> float:
+    """The minute shocks' correlation that gives a pair the daily correlation ``daily``."""
+    line = _document(market)["horizon"]
+    rho = (float(daily) - line["intercept"]) / line["slope"]
+    return float(np.clip(rho, -0.99, 0.99))
+
+
+def load_fitted(market: MarketType) -> tuple[np.ndarray, list[str]]:
+    """The full instrument correlation matrix of a built-in market, and its symbol order."""
+    p = fit_problem(market)
+    doc = _document(market)
     factor_correlation = np.array(doc["matrix"], dtype=float)
     if p.structure.is_identity:
         return factor_correlation, p.symbols
