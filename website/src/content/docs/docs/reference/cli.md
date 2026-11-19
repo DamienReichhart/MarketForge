@@ -70,6 +70,7 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --markets all --dry-run
 | --- | --- |
 | `-o, --output-dir DIR` | Where to write `{market}/{SYMBOL}_{timeframe}.{csv,parquet,feather}` and `marketforge.json`. Required unless `--dry-run`. |
 | `--format` | `csv` (default), `parquet` (smallest) or `feather` (fastest to load). See [Output format](../output/#csv-parquet-or-feather). |
+| `--layout` | `split` (default): one file per instrument and timeframe. `long`, for Parquet and Feather: one file per market and timeframe, `{market}/{timeframe}.parquet`, with `symbol` and `market` columns. See [Output format](../output/#the-long-layout). |
 | `--timestamps` | `unix` seconds (default); `iso`, such as `2024-01-02T14:30:00Z`, for CSV; `datetime`, a native UTC time column, for Parquet and Feather. |
 | `--with-spread` | Adds `spread`: the mean quoted bid-ask spread of the candle, in price units. See [Bid-ask spread](../spread/). |
 | `--with-bid-ask` | Adds `bid` and `ask`: the quotes around the close, `close ∓ spread / 2`. |
@@ -135,6 +136,7 @@ Summarises a dataset from its manifest, without reading the candle files: the ve
 
 ```bash check=static
 marketforge verify ./eurusd
+marketforge verify ./eurusd --checksums   # fast: no regeneration
 ```
 
 Regenerates the dataset from its manifest in a temporary directory beside it and compares every file with it: CSV files byte for byte, Parquet and Feather files value for value (an extended file keeps its earlier row groups, so its bytes differ from a file written in one go). It lists any that differ, are missing or are extra. It exits with **1** unless all of them match, which means the dataset was modified, or written on another kind of machine (see [Reproducibility](../reproducibility/#across-machines)). A dataset written by another model revision is refused, with the version to verify it with.
@@ -142,6 +144,7 @@ Regenerates the dataset from its manifest in a temporary directory beside it and
 | Option | Meaning |
 | --- | --- |
 | `DATASET` | The directory holding `marketforge.json`. |
+| `--checksums` | Compare each file with the SHA-256 its manifest recorded when it was written, instead of regenerating: seconds instead of the generation time, and any model revision. It proves the files unaltered since they were written, not that this MarketForge would write them. |
 | `-j, --jobs N` | Markets regenerated in parallel. |
 
 Verifying takes as long as generating the dataset did, and needs as much free space on the dataset's disk. From Python: `mf.verify(path)`, which returns a `VerifyReport`.

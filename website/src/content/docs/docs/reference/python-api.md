@@ -96,8 +96,8 @@ if __name__ == "__main__":
 mf.generate_to_disk(
     output_dir, instruments=None, *, start, end=None, days=None, markets=None, seed=None,
     timeframes=None, anomalies=(), with_regime=False, with_spread=False,
-    with_bid_ask=False, overrides=None, format="csv", timestamps="unix", jobs=None,
-    on_day=None, overwrite=False,
+    with_bid_ask=False, overrides=None, format="csv", timestamps="unix", layout="split",
+    jobs=None, on_day=None, overwrite=False,
 ) -> DiskReport
 ```
 
@@ -108,6 +108,7 @@ Writes a dataset, `{output_dir}/{market}/{SYMBOL}_{timeframe}.{format}` plus the
 | `output_dir` | Where to write the dataset. Created if needed. |
 | `format` | `"csv"`, `"parquet"` or `"feather"`, in any letter case. See [Output format](../output/#csv-parquet-or-feather). |
 | `timestamps` | `"unix"` seconds; `"iso"` 8601 strings, for CSV; `"datetime"`, a native UTC time column, for Parquet and Feather. |
+| `layout` | `"split"`: one file per instrument and timeframe. `"long"`, for Parquet and Feather: one file per market and timeframe with `symbol` and `market` columns. See [Output format](../output/#the-long-layout). |
 | `jobs` | Markets simulated in parallel threads. Default: one per market, up to the CPU count, as on the command line. Each market uses one core, so only a request spanning several markets is faster with more. |
 | `on_day` | A callable invoked with the market after each simulated day, for progress reporting. |
 | `overwrite` | Replace the dataset already in `output_dir`. Without it, a directory holding one (a manifest, or candle files an interrupted run left) raises `FileExistsError`. Only files MarketForge wrote are deleted. |
@@ -146,10 +147,10 @@ Summarises a dataset from its manifest without reading its candles: what `market
 ## verify()
 
 ```python check=signature
-mf.verify(dataset, *, jobs=None) -> VerifyReport
+mf.verify(dataset, *, checksums=False, jobs=None) -> VerifyReport
 ```
 
-Regenerates a dataset from its manifest, in a temporary directory beside it, and compares every file with it: CSV byte for byte, Parquet and Feather value for value. It takes as long as the generation did and as much free space on the dataset's disk. Raises `ValueError` for a dataset written by another model revision. Returns a [`VerifyReport`](#verifyreport).
+Regenerates a dataset from its manifest, in a temporary directory beside it, and compares every file with it: CSV byte for byte, Parquet and Feather value for value. It takes as long as the generation did and as much free space on the dataset's disk. With `checksums=True` nothing is regenerated: each file is compared with the SHA-256 the manifest recorded when it was written, which takes seconds and works for any model revision. Raises `ValueError` for a dataset written by another model revision (without `checksums`), or with no recorded checksums (written before 5.0, with `checksums`). Returns a [`VerifyReport`](#verifyreport).
 
 ```python check=static
 report = mf.verify("./data")
@@ -266,7 +267,7 @@ spells = data.spells("crypto")       # one row per regime spell
 | `to_long(timeframe=None)` | Every instrument in one frame indexed by `(symbol, time)`: the long format of most data and ML tooling. `.loc["BTCUSD"]` gives back one instrument. |
 | `to_numpy(timeframe=None, columns=("open", "high", "low", "close", "volume"))` | A `(time, instrument, column)` float array, its time index and its symbol list: `x, times, symbols = data.to_numpy("H1")`. NaN where a market was closed; the regime as its codes. |
 | `summary()` | One row per instrument and timeframe: market, candles, first and last candle. |
-| `save(path, *, format="csv", timestamps="unix", overwrite=False)` | Writes the data as a dataset with a manifest, the files `generate_to_disk()` writes for the same settings, so it can be [extended](#extend) and [verified](#verify). Returns a [`DiskReport`](#diskreport). |
+| `save(path, *, format="csv", timestamps="unix", layout="split", overwrite=False)` | Writes the data as a dataset with a manifest, the files `generate_to_disk()` writes for the same settings, so it can be [extended](#extend) and [verified](#verify). Returns a [`DiskReport`](#diskreport). |
 
 `timeframe` may be omitted when only one is held; otherwise a `ValueError` lists the choices.
 
@@ -278,6 +279,7 @@ What `generate_to_disk()` and `extend()` return.
 | --- | --- |
 | `seed` | The seed of the dataset. |
 | `paths` | Every file written, as `{market: {symbol: {timeframe: Path}}}`: `report.paths["stocks"]["AAPL"]["D1"]`. |
+| `files` | Every candle file written, once each (instruments share files in the long layout). |
 | `n_files` | The number of files. |
 | `manifest` | The path of `marketforge.json`. |
 

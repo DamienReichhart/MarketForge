@@ -31,14 +31,23 @@ REGIME_TYPE = pa.dictionary(pa.int8(), pa.string())
 DATETIME_TYPE = pa.timestamp("s", tz="UTC")
 
 
+# The long layout's symbol and market columns, dictionary-encoded.
+SYMBOL_TYPE = pa.dictionary(pa.int16(), pa.string())
+MARKET_TYPE = pa.dictionary(pa.int8(), pa.string())
+
+
 def candle_schema(
     include_regime: bool,
     include_spread: bool = False,
     datetime: bool = False,
     include_bid_ask: bool = False,
+    long: bool = False,
+    metadata: dict[str, str] | None = None,
 ) -> pa.Schema:
-    """Arrow schema of written candles."""
+    """Arrow schema of written candles; ``long`` adds the symbol and market columns."""
     fields = [pa.field("timestamp", DATETIME_TYPE if datetime else pa.int64())]
+    if long:
+        fields += [pa.field("symbol", SYMBOL_TYPE), pa.field("market", MARKET_TYPE)]
     fields += [pa.field(c, pa.float64()) for c in (*_PRICE_FIELDS, "volume")]
     if include_spread:
         fields.append(pa.field("spread", pa.float64()))
@@ -46,7 +55,7 @@ def candle_schema(
         fields += [pa.field("bid", pa.float64()), pa.field("ask", pa.float64())]
     if include_regime:
         fields.append(pa.field("regime", REGIME_TYPE))
-    return pa.schema(fields)
+    return pa.schema(fields, metadata=metadata)
 
 
 def rounded_columns(
@@ -80,15 +89,26 @@ def rounded_columns(
     return np.ascontiguousarray(bars.timestamps, dtype=np.int64), fields
 
 
-def record_batch(parts: list[tuple[np.ndarray, ...]], schema: pa.Schema) -> pa.RecordBatch:
-    """One record batch from buffered (timestamps, o, h, l, c, v[, spread][, regime]) chunks."""
+def record_batch(
+    parts: list[tuple[np.ndarray, ...]],
+    schema: pa.Schema,
+    dictionaries: dict[str, pa.Array] | None = None,
+) -> pa.RecordBatch:
+    """
+    One record batch from buffered chunks, one array per schema field in order.
+
+    A dictionary-encoded field holds codes into ``dictionaries[name]`` (the
+    regime's names are built in).
+    """
+    names = {"regime": REGIME_NAMES, **(dictionaries or {})}
     arrays = []
     for k, field in enumerate(schema):
         chunk = [p[k] for p in parts]
         values = chunk[0] if len(chunk) == 1 else np.concatenate(chunk)
-        if field.type == REGIME_TYPE:
-            codes = pa.array(np.asarray(values, dtype=np.int8), pa.int8())
-            arrays.append(pa.DictionaryArray.from_arrays(codes, REGIME_NAMES))
+        if pa.types.is_dictionary(field.type):
+            index_type = field.type.index_type
+            codes = pa.array(np.asarray(values, dtype=index_type.to_pandas_dtype()), index_type)
+            arrays.append(pa.DictionaryArray.from_arrays(codes, names[field.name]))
         else:
             arrays.append(pa.array(values, field.type))
     return pa.RecordBatch.from_arrays(arrays, schema=schema)

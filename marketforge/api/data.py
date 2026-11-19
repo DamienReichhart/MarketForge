@@ -389,6 +389,7 @@ class GeneratedData(Mapping[str, InstrumentData]):
         *,
         format: str = "csv",
         timestamps: str = "unix",
+        layout: str = "split",
         overwrite: bool = False,
     ) -> DiskReport:
         """
@@ -405,7 +406,9 @@ class GeneratedData(Mapping[str, InstrumentData]):
         """
         from marketforge.api.disk import save_data  # disk imports this module
 
-        return save_data(self, path, format=format, timestamps=timestamps, overwrite=overwrite)
+        return save_data(
+            self, path, format=format, timestamps=timestamps, layout=layout, overwrite=overwrite
+        )
 
     @property
     def origin(self) -> Origin:
