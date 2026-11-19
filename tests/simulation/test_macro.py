@@ -118,4 +118,5 @@ def test_index_cfds_follow_the_stock_markets_trends_week_to_week():
     weekly = np.log(closes.groupby(level=0).last().ffill().dropna()).resample("W-FRI").last().diff()
     weekly = weekly.dropna()
     market = weekly[stocks.split(",")].mean(axis=1)
-    assert weekly["SPXUSD"].corr(market) > 0.45  # 0.1 when only the shocks were shared
+    # About 0.6; 0.1 when only the world shock was shared.
+    assert weekly["SPXUSD"].corr(market) > 0.45
