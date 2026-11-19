@@ -1,6 +1,6 @@
 ---
 title: Extending and verifying
-description: "Inspect a dataset with marketforge info, continue it forward in time with marketforge extend, byte-identical to one longer run, and prove it unaltered with marketforge verify."
+description: "Inspect a dataset with marketforge info, continue it forward in time with marketforge extend, exactly as one longer run, and prove it unaltered with marketforge verify."
 ---
 
 Every dataset carries its [manifest](../../reference/output/#the-manifest), `marketforge.json`: the version, seed, range, instruments, options and resolved overrides that made it, and a checkpoint of the model's state at its end. Three commands use it.
@@ -39,7 +39,7 @@ marketforge extend ./data --to 2025-03-01     # or --days 30
 mf.extend("./data", "2025-03-01")
 ```
 
-`extend` takes everything but the new end from the manifest, so the seed, instruments, timeframes, format, columns and overrides cannot drift. Afterwards the dataset holds **exactly the candles one generation up to the new end would have produced**; CSV files are byte-identical to it.
+`extend` takes everything but the new end from the manifest, so the seed, instruments, timeframes, format, columns and overrides cannot drift. Afterwards the dataset holds **exactly the candles one generation up to the new end would have produced**. CSV files are byte-identical to it; Parquet and Feather files hold identical values, but keep their earlier row groups, so their bytes differ from a file written in one go.
 
 That makes it practical to keep a long-running synthetic feed: generate a year once, then extend it a month at a time, and every consumer sees the same history. It is also how to build a long dataset in steps you can schedule.
 
@@ -69,7 +69,7 @@ marketforge verify ./data
 24/24 files identical to a fresh generation
 ```
 
-`verify` regenerates the dataset from its manifest in a temporary directory and compares every file byte for byte. It exits with code 1, listing the files that differ, are missing or are extra, unless all of them match. Use it:
+`verify` regenerates the dataset from its manifest in a temporary directory beside it and compares every file with it: CSV byte for byte, Parquet and Feather value for value. From Python, `mf.verify(path)` returns the same verdict as a `VerifyReport`. It exits with code 1, listing the files that differ, are missing or are extra, unless all of them match. Use it:
 
 - before you publish results, to prove the data under them is what its manifest says;
 - in CI, to catch a dataset that was edited, truncated or mixed with another;

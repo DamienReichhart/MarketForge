@@ -3,7 +3,7 @@ title: "Bid-ask spread"
 description: "The optional spread column: how it is modelled, what it reacts to, and which levels are measured or estimated."
 ---
 
-With `--with-spread` (or `include_spread=True`), each candle carries the **mean quoted bid-ask spread** of its minutes, in price units. Candle prices are mid prices, so:
+With `--with-spread` (or `with_spread=True`), each candle carries the **mean quoted bid-ask spread** of its minutes, in price units. Candle prices are mid prices, so:
 
 ```text title="Bid and ask from the mid price"
 bid = price - spread / 2

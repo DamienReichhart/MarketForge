@@ -43,7 +43,7 @@ Asking for more timeframes costs disk space and little time: the simulation is t
 
 At every minute a market is in one of five **regimes**: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. The regime sets the drift and scales the volatility and correlations of every instrument in the market. It lasts hours to days and changes gradually.
 
-Real data never tells you which regime it was in. MarketForge does: with `--with-regime` or `include_regime=True`, each candle carries the regime at its close. It is a ground-truth label for supervised learning and an answer key for regime detectors. See [Regimes](../reference/model/#regimes).
+Real data never tells you which regime it was in. MarketForge does: with `--with-regime` or `with_regime=True`, each candle carries the regime at its close. It is a ground-truth label for supervised learning and an answer key for regime detectors. See [Regimes](../reference/model/#regimes).
 
 ## Candles are mid prices; the spread is a column
 

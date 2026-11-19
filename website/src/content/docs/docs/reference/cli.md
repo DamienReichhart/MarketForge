@@ -12,7 +12,7 @@ marketforge [--debug] COMMAND [OPTIONS]
 | [`generate`](#generate) | Writes a dataset: one candle file per instrument and timeframe, and the manifest. |
 | [`extend`](#extend) | Continues a dataset forward in time with the settings it was made with. |
 | [`info`](#info) | Summarises a dataset from its manifest, and says whether it can be extended. |
-| [`verify`](#verify) | Regenerates a dataset from its manifest and compares every file byte for byte. |
+| [`verify`](#verify) | Regenerates a dataset from its manifest and compares every file with it. |
 | [`validate`](#validate) | Checks `m1` candles against the stylized facts of real markets. |
 | [`calibrate`](#calibrate) | Fits instruments to your own `m1` files and writes an override file. |
 | [`list-instruments`](#list-instruments) | Lists the catalog, with your overrides applied if you give them. |
@@ -31,11 +31,11 @@ These formats are shared by every command that takes them.
 
 | Value | Accepted forms |
 | --- | --- |
-| Time | `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds (`1704067200`). UTC unless an offset is given. Ranges start at 1970-01-01 at the earliest. |
+| Time | `2024-01-01`, `2024-01-01T09:30`, `2024-01-01T09:30-05:00` or Unix seconds (`1704067200`). UTC unless an offset is given. Ranges start at 1970-01-01 at the earliest. Unix milliseconds are refused, with a hint to divide them by 1,000. |
 | Range | `--from` is inclusive and `--to` exclusive: `--from 2024-01-01 --to 2024-02-01` is all of January. `--days N` instead of `--to` gives N whole days. |
 | Instruments | Comma-separated catalog symbols in any letter case: `eurusd,AAPL,BtcUsd`. Their markets are inferred. See [Markets & calendars](../markets/). |
 | Markets | `crypto`, `forex`, `stocks`, a comma-separated list of them, or `all`. |
-| Timeframes | Any of `m1, m2, m3, m5, m10, m15, m20, m30, H1, H2, H3, H4, H6, H8, H12, D1, W1`, comma-separated, in any letter case. |
+| Timeframes | Any of `m1, m2, m3, m5, m10, m15, m20, m30, H1, H2, H3, H4, H6, H8, H12, D1, W1`, comma-separated, in any letter case, or `all`. Without the option: the eight standard timeframes, `m1, m5, m15, m30, H1, H4, D1, W1`. |
 
 ## generate
 
@@ -44,11 +44,11 @@ These formats are shared by every command that takes them.
 marketforge generate -o ./eurusd --from 2024-01-01 --to 2025-01-01 --instruments EURUSD --seed 42
 
 # A whole market as Parquet, with regime labels and the bid-ask spread
-marketforge generate -o ./crypto --from 2024-01-01 --days 180 --market crypto \
+marketforge generate -o ./crypto --from 2024-01-01 --days 180 --markets crypto \
     --format parquet --with-regime --with-spread --seed 7
 
 # What would a run produce (files, rows, disk size, time)? Nothing is written.
-marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
+marketforge generate --from 2015-01-01 --to 2025-01-01 --markets all --dry-run
 ```
 
 ### What to generate
@@ -58,11 +58,11 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `--from TIME` | Start of the range, inclusive. Required. |
 | `--to TIME` or `--days N` | End of the range (exclusive), or its length in days. Give exactly one. |
 | `-i, --instruments LIST` | The instruments to write. |
-| `-m, --market LIST` | Every instrument of these markets. The default when `--instruments` is not given is `all`. With `--instruments`, keeps only those in these markets. |
+| `-m, --markets LIST` | Every instrument of these markets. The default when `--instruments` is not given is `all`. With `--instruments`, keeps only those in these markets. |
 | `-s, --seed N` | A non-negative integer. Without it a random seed is drawn, printed and recorded in the manifest, so the run can still be reproduced. |
-| `-t, --timeframes LIST` | Default: `m1,m5,m15,m30,H1,H4,D1,W1`. |
+| `-t, --timeframes LIST` | Default: the eight standard timeframes, `m1,m5,m15,m30,H1,H4,D1,W1`; `all` gives all 17. |
 | `--anomalies LIST` | Deliberately unrealistic stress events: `spikes`, `flash_crash`. See [Stress testing](../../use-cases/stress-testing/#anomalies-deliberately-extreme-events). |
-| `--config FILE` | A TOML [override file](../../guides/custom-instruments/) that changes or adds instruments. |
+| `--overrides FILE` | A TOML [override file](../../guides/custom-instruments/) that changes or adds instruments. |
 
 ### Columns and files
 
@@ -82,10 +82,10 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --dry-run
 | `-j, --jobs N` | Markets simulated in parallel. Default: one per market, up to the CPU count. Each market runs on one core, so `--jobs` only helps when several markets are generated. |
 | `--dry-run` | Print the plan (range, seed, instruments, files, rows, size, time) and exit without writing. |
 | `--overwrite` | Replace the dataset already in `--output-dir`. Only files MarketForge wrote are deleted. |
-| `--no-progress` | Hide the progress bar. |
+| `--progress / --no-progress` | Show or hide the progress bar. Default: shown only when the output is a terminal, so CI logs stay clean. |
 | `-q, --quiet` | Print nothing but warnings and errors: for scripts and CI. |
 
-`generate` refuses a directory that already holds a dataset (a manifest, or candle files an interrupted run left behind), so two datasets never mix. A file that receives no candle, because the market was closed for the whole range or the range is shorter than the candle, is written empty with a warning.
+`generate` refuses a directory that already holds a dataset (a manifest, or candle files an interrupted run left behind), so two datasets never mix. A range in which every requested market is closed (AAPL on a Saturday), or that holds no complete candle of any requested timeframe, is an error and writes nothing. A file that receives no candle while others do, because its market was closed or the range is shorter than the candle, is written empty, with a warning when you named that timeframe.
 
 ## extend
 
@@ -102,7 +102,7 @@ Continues a dataset up to a new end. The seed, instruments, timeframes, format, 
 | `--to TIME` or `--days N` | The new end (exclusive), or the number of days to add. |
 | `-j, --jobs N` | Markets simulated in parallel. |
 | `--dry-run` | Print what would be added and exit. |
-| `--no-progress` | Hide the progress bar. |
+| `--progress / --no-progress` | Show or hide the progress bar (default: only on a terminal). |
 | `-q, --quiet` | Print nothing but warnings and errors. |
 
 A dataset written by another model revision is refused, with the version that can extend it.
@@ -116,7 +116,7 @@ marketforge info ./eurusd --json
 
 ```text title="Output"
 Dataset ./eurusd
-  Written by  MarketForge 4.0.0 (model revision 1)
+  Written by  MarketForge 5.0.0 (model revision 2)
   Seed        42
   Range       2024-01-01 00:00 UTC -> 2025-01-01 00:00 UTC
   forex       1 instrument(s): EURUSD
@@ -137,39 +137,39 @@ Summarises a dataset from its manifest, without reading the candle files: the ve
 marketforge verify ./eurusd
 ```
 
-Regenerates the dataset from its manifest in a temporary directory and compares every file byte for byte, listing any that differ, are missing or are extra. It exits with **1** unless all of them match, which means the dataset was modified, or written on another kind of machine (see [Reproducibility](../reproducibility/#across-machines)). A dataset written by another model revision is refused, with the version to verify it with.
+Regenerates the dataset from its manifest in a temporary directory beside it and compares every file with it: CSV files byte for byte, Parquet and Feather files value for value (an extended file keeps its earlier row groups, so its bytes differ from a file written in one go). It lists any that differ, are missing or are extra. It exits with **1** unless all of them match, which means the dataset was modified, or written on another kind of machine (see [Reproducibility](../reproducibility/#across-machines)). A dataset written by another model revision is refused, with the version to verify it with.
 
 | Option | Meaning |
 | --- | --- |
 | `DATASET` | The directory holding `marketforge.json`. |
 | `-j, --jobs N` | Markets regenerated in parallel. |
 
-Verifying takes as long as generating the dataset did, and needs as much free disk space.
+Verifying takes as long as generating the dataset did, and needs as much free space on the dataset's disk. From Python: `mf.verify(path)`, which returns a `VerifyReport`.
 
 ## validate
 
 ```bash check=static
-marketforge validate --input ./eurusd/forex/EURUSD_m1.csv
-marketforge validate --input ./eurusd                    # every m1 file of a dataset
-marketforge validate --input ./my_eurusd_m1.csv --market forex
+marketforge validate ./eurusd/forex/EURUSD_m1.csv
+marketforge validate ./eurusd                    # every m1 file of a dataset
+marketforge validate ./my_eurusd_m1.csv --market forex
 ```
 
-Measures heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread, and compares each with the band measured on real markets. It prints a report (one line per file for a dataset) and exits with **1** if any statistic is outside its band. It works on any file with those columns, including your own real data. See [Validation](../../guides/validation/).
+Measures heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread, and compares each with the band measured on real markets. It prints a report (one line per file for a dataset) and exits with **1** if any statistic is outside its band. In a dataset, a file that cannot be validated (an empty file of a holiday week, one too short) is listed as skipped and the others are still checked; a single file that cannot be validated is an error. It works on any file with those columns, including your own real data. See [Validation](../../guides/validation/).
 
 | Option | Meaning |
 | --- | --- |
-| `--input PATH` | A CSV, Parquet or Feather file of `m1` candles with `open`, `high`, `low` and `close` columns, or a dataset directory, to check every `m1` file in it. Other timeframes and empty files are refused. Required. |
-| `--market` | `crypto`, `forex` or `stocks`: whose bands to apply. Optional for a file MarketForge wrote, whose path (`{market}/{SYMBOL}_m1`) names the market. |
+| `PATH` | A CSV, Parquet or Feather file of `m1` candles with `open`, `high`, `low` and `close` columns, or a dataset directory, to check every `m1` file in it. Other timeframes, and files of fewer than 1,950 candles (a week of stock sessions), are refused. |
+| `-m, --market` | `crypto`, `forex` or `stocks`: whose bands to apply. Optional for a file MarketForge wrote, whose path (`{market}/{SYMBOL}_m1`) names the market. |
 | `--json` | Print each file's statistics, bands and verdict as JSON. |
 
 ## calibrate
 
 ```bash check=static
 marketforge calibrate real/EURUSD_m1.csv real/GBPUSD_m1.csv --market forex -o mine.toml
-marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --config mine.toml
+marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --overrides mine.toml
 ```
 
-Fits instruments to `m1` candle files you have, and are allowed to use, and writes an override file to generate data like them. Each file is one instrument: the symbol is the part of the file name before the first `_`. A catalog symbol gets new parameters, and any other becomes a new instrument. What is fitted is listed in [Custom instruments](../../guides/custom-instruments/#fit-instruments-to-your-own-data).
+Fits instruments to `m1` candle files you have, and are allowed to use, and writes an override file to generate data like them. Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`): the symbol comes from the name. A catalog symbol gets new parameters, and any other becomes a new instrument. What is fitted is listed in [Custom instruments](../../guides/custom-instruments/#fit-instruments-to-your-own-data).
 
 | Option | Meaning |
 | --- | --- |
@@ -180,15 +180,27 @@ Fits instruments to `m1` candle files you have, and are allowed to use, and writ
 ## list-instruments
 
 ```bash check=static
-marketforge list-instruments --market forex
-marketforge list-instruments --config my_instruments.toml
+marketforge list-instruments --markets forex
+marketforge list-instruments --search eur
+marketforge list-instruments --overrides my_instruments.toml
 marketforge list-instruments --json
 ```
 
-Lists every instrument with its market, start price and annual volatility. Forex crosses are marked as derived: their prices come from [anchor pairs](../markets/#arbitrage-free-forex).
+Lists every instrument with its market, start price, annual volatility and drift, and mean volume per open minute. Forex crosses are marked as derived: their prices come from [anchor pairs](../markets/#arbitrage-free-forex).
 
 | Option | Meaning |
 | --- | --- |
-| `-m, --market` | Only this market: `crypto`, `forex` or `stocks`. |
-| `--config FILE` | An override file to apply first, to check your own instruments. |
+| `-m, --markets LIST` | Only these markets: `crypto`, `forex`, `stocks`, comma-separated, or `all`. |
+| `-s, --search TEXT` | Only the symbols that contain `TEXT`, in any letter case: `--search jpy`. |
+| `--overrides FILE` | An override file to apply first, to check your own instruments. |
 | `--json` | Print the instruments as JSON. |
+
+## Renamed in 5.0
+
+The 4.x spellings of these options fail with a message naming the new one, for the whole 5.x series.
+
+| 4.x | 5.0 |
+| --- | --- |
+| `generate --market`, `list-instruments --market` | `--markets` |
+| `--config FILE` | `--overrides FILE` |
+| `validate --input PATH` | `validate PATH` |

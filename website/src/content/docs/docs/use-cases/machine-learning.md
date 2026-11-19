@@ -11,7 +11,7 @@ A model trained only on synthetic data learns the generator, not the market. Use
 
 ## What you get
 
-- **Ground-truth labels.** With `include_regime=True` (or `--with-regime`), every candle carries the hidden regime the simulator was in: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. It is the true state, not a label inferred after the fact.
+- **Ground-truth labels.** With `with_regime=True` (or `--with-regime`), every candle carries the hidden regime the simulator was in: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`. It is the true state, not a label inferred after the fact.
 - **Unlimited, independent samples.** Each seed is a new, statistically realistic history. Disjoint seeds give train, validation and test sets that share no path, so no information leaks between them.
 - **Realistic statistics.** Heavy tails, volatility clustering, long memory, the leverage effect and intraday seasonality are [validated](../../guides/validation/) against real minute data. A model that relies on returns being Gaussian fails here as it would on real data.
 - **Multi-asset structure.** Instruments of a market share a correlation matrix, tail dependence and one regime, so cross-sectional models see realistic co-movement.
@@ -31,7 +31,7 @@ def load(split: str):
     yield from mf.generate_many(
         "BTCUSD,ETHUSD,SOLUSD", seeds=SPLITS[split],
         start="2024-01-01", end="2024-04-01", timeframes=["m5"],
-        include_regime=True, include_spread=True,
+        with_regime=True, with_spread=True,
     )
 ```
 
@@ -50,7 +50,7 @@ from sklearn.metrics import classification_report
 
 def features(seed: int) -> pd.DataFrame:
     candles = mf.generate("BTCUSD", start="2024-01-01", end="2024-02-01", seed=seed,
-                          timeframes=["m5"], include_regime=True)["BTCUSD"]["m5"]
+                          timeframes=["m5"], with_regime=True)["BTCUSD"]["m5"]
     r = np.log(candles["close"]).diff()
     out = pd.DataFrame({
         f"{name}_{w}": getattr(r.rolling(w), name)()
@@ -81,7 +81,7 @@ import marketforge as mf
 
 def windows(seed: int, length: int = 128):
     data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", end="2024-03-01",
-                       seed=seed, timeframes=["m5"], include_regime=True)
+                       seed=seed, timeframes=["m5"], with_regime=True)
     returns = np.log(data.panel("close", "m5")).diff().dropna()       # time × instrument
     regime = data["BTCUSD"]["m5"]["regime"].cat.codes.reindex(returns.index)
     x = np.lib.stride_tricks.sliding_window_view(returns.to_numpy(np.float32), length, axis=0)
@@ -111,7 +111,7 @@ For datasets larger than memory, write Parquet to disk and stream it:
 ```bash check=static
 for seed in $(seq 0 63); do
   marketforge generate -o ./train/seed-$seed --from 2020-01-01 --to 2024-01-01 \
-      --market crypto -t m5,H1 --format parquet --with-regime --with-spread --seed $seed --no-progress
+      --markets crypto -t m5,H1 --format parquet --with-regime --with-spread --seed $seed --no-progress
 done
 ```
 
