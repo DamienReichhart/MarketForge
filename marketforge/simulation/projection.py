@@ -41,8 +41,14 @@ class Projection:
 
     @classmethod
     def build(
-        cls, structure: FactorStructure, inst: np.ndarray, correlation: np.ndarray
+        cls,
+        structure: FactorStructure,
+        inst: np.ndarray,
+        correlation: np.ndarray,
+        extra: Callable[[np.ndarray], np.ndarray] | None = None,
     ) -> Projection:
+        """``extra`` maps the factors the instruments need to more that must
+        be simulated with them (a peg's reference currency)."""
         empty = np.empty((0, 2), dtype=np.int64)
         if structure.is_identity:
             return cls(inst, "identity", empty, empty.astype(float), np.empty((0, 0)), inst, (), ())
@@ -54,6 +60,8 @@ class Projection:
         )
         if simple:
             factors = np.unique(np.concatenate(nonzero))
+            if extra is not None:
+                factors = np.union1d(factors, extra(factors))
             kind = "signed"
         else:
             factors = np.arange(structure.weights.shape[1])

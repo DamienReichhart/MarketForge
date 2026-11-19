@@ -40,6 +40,16 @@ _FX_FIX = 0.3
 # Thinner edges of the week (New York time): Friday from noon, Sunday's open.
 _FX_FRIDAY = 0.7
 _FX_SUNDAY = 0.6
+# Holidays the forex market trades through, thinly (New York dates): most
+# desks are shut on Christmas and New Year's Day, half-staffed around them.
+_FX_HOLIDAYS = {
+    (12, 25): 0.35,
+    (1, 1): 0.35,
+    (12, 24): 0.6,
+    (12, 26): 0.6,
+    (12, 31): 0.6,
+    (1, 2): 0.7,
+}
 # Crypto diurnal cycle: amplitude, peak minute (UTC) and weekend factor.
 _CRYPTO_AMPLITUDE = 0.3
 _CRYPTO_PEAK = 900
@@ -163,7 +173,19 @@ def _forex_shape(ts: np.ndarray, new_york_minutes: np.ndarray) -> np.ndarray:
     weekday = ((new_york_minutes // 1440) + 3) % 7  # Monday = 0
     shape = shape * np.where((weekday == 4) & (ny >= 12 * 60), _FX_FRIDAY, 1.0)
     shape = shape * np.where((weekday == 6) & (ny < 20 * 60), _FX_SUNDAY, 1.0)
-    return np.asarray(shape)
+    return np.asarray(shape * _holiday_factor(new_york_minutes // 1440))
+
+
+def _holiday_factor(local_days: np.ndarray) -> np.ndarray:
+    """Thin-market multiplier of each New York day: 1 except around Christmas and New Year."""
+    days = np.asarray(local_days, dtype=np.int64)
+    factor = np.ones(days.shape)
+    dates = days.astype("datetime64[D]")
+    months = dates.astype("datetime64[M]").astype(np.int64) % 12 + 1
+    monthdays = (dates - dates.astype("datetime64[M]")).astype(np.int64) + 1
+    for (month, day), value in _FX_HOLIDAYS.items():
+        factor[(months == month) & (monthdays == day)] = value
+    return factor
 
 
 @cache

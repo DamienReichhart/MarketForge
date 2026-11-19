@@ -62,6 +62,7 @@ from marketforge.simulation.kernels import (
     factor_paths,
     finish_bars,
     gjr_garch,
+    pull_to_pegs,
     regime_spells,
 )
 from marketforge.simulation.macro import (
@@ -73,6 +74,7 @@ from marketforge.simulation.macro import (
     macro_state,
     macro_trends,
 )
+from marketforge.simulation.pegs import market_pegs, peg_factors
 from marketforge.simulation.projection import Projection, SessionShape
 from marketforge.simulation.regimes import (
     REGIME_SMOOTHING,
@@ -181,7 +183,10 @@ class MarketSimulator:
         )
 
         # ---- active subset: the selected instruments and their factors ----
-        self._projection = Projection.build(structure, inst, spec.factor_correlation)
+        pegs = market_pegs(spec)
+        self._projection = Projection.build(
+            structure, inst, spec.factor_correlation, extra=lambda needed: peg_factors(pegs, needed)
+        )
         fa = self._projection.factors
         self._factors = fa
         self._all_factors = fa.size == self._n_factors and bool(np.all(fa == np.arange(fa.size)))
@@ -191,6 +196,16 @@ class MarketSimulator:
         )
         self._sigma = sigma[fa]
         self._mu = mu[fa]
+        # The pegs whose currency is simulated, in active-factor positions.
+        position = {int(f): k for k, f in enumerate(fa)}
+        live = [peg for peg in pegs if peg.held in position]
+        self._pegs = (
+            np.array([position[peg.held] for peg in live], dtype=np.int64),
+            np.array([peg.vector[fa] for peg in live]).reshape(len(live), fa.size),
+            np.array([peg.centre for peg in live]),
+            np.array([peg.half_width for peg in live]),
+            np.array([peg.pull for peg in live]),
+        )
         # A trend moves the market's main factor: each series by its volatility
         # times its loading on that factor (ADR 0013).
         # In forex the main factor is the dollar: trend_up is the dollar falling.
@@ -495,6 +510,7 @@ class MarketSimulator:
                     + self._mu * var_units[:, None]
                 )
 
+        start_log_price = st.log_price
         sigma = self._sigma
         if self._reports:
             sigma, gap = self._earnings(day, ts, gap_rows, gap, prev_close_day)
@@ -512,6 +528,8 @@ class MarketSimulator:
             gap,
             st.log_price,
         )
+        if self._pegs[0].size:
+            pull_to_pegs(log_open_f, log_close_f, returns_f, start_log_price, *self._pegs)
         st.log_price = log_close_f[-1].copy()
         st.last_timestamp = int(ts[-1])
         proj = self._projection
