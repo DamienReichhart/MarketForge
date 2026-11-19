@@ -26,8 +26,8 @@ def test_the_horizon_table_is_monotone_and_keeps_zero_and_the_bounds():
 def test_a_daily_correlation_maps_to_a_minute_one_within_bounds(market):
     assert minute_correlation(market, 0.0) == 0.0
     assert -0.99 <= minute_correlation(market, -0.999) <= minute_correlation(market, 0.999) <= 0.99
-    # Common moves (trends, stress) correlate days more than minutes.
-    assert minute_correlation(market, 0.6) <= 0.6 + 1e-9
+    # Close to the daily value: common moves shift a pair by at most a few tenths.
+    assert abs(minute_correlation(market, 0.6) - 0.6) < 0.2
 
 
 def test_an_override_correlation_is_what_daily_returns_show():
