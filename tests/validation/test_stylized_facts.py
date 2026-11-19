@@ -83,3 +83,33 @@ def test_the_leverage_standard_error_is_calibrated_on_generated_stocks():
             errors.append(sf.leverage_standard_error(r))
     ratio = np.std(values) / np.median(errors)
     assert 0.7 < ratio < 1.6  # 1/sqrt(n) gives about 2.5 here
+
+
+def test_the_5_0_statistics_on_known_series():
+    rng = np.random.default_rng(0)
+    r = rng.standard_normal(60 * 500)
+    assert abs(sf.return_autocorrelation(r)) < 0.02
+    assert sf.return_autocorrelation(np.diff(r)) == pytest.approx(-0.5, abs=0.02)  # noise
+    assert abs(sf.aggregated_kurtosis(r, 60)) < 0.5
+    v = np.exp(np.abs(r) + rng.normal(0, 0.1, r.size))
+    assert sf.volume_volatility_link(r, v) > 0.9
+    assert sf.gap_variance_share(np.ones(9), np.ones(1)) == pytest.approx(0.1)
+    geometric = np.repeat(np.arange(400) % 2, rng.geometric(0.01, 400))
+    assert sf.spell_variation(geometric) == pytest.approx(1.0, abs=0.12)
+    assert np.isnan(sf.spell_variation(np.repeat([0, 1] * 5, 50)))  # too few spells
+
+
+def test_validate_checks_volume_gaps_and_spells_when_it_can():
+    import marketforge as mf
+
+    frame = mf.generate(
+        "AAPL", start="2024-01-02", days=60, seed=1, timeframes="m1", with_regime=True
+    )["AAPL"]["m1"]
+    report = mf.validate(frame, "stocks")
+    assert {
+        "return_autocorrelation",
+        "hourly_kurtosis",
+        "volume_volatility",
+        "gap_variance_share",
+    } <= set(report.metrics)
+    assert report.passed, report.summary()

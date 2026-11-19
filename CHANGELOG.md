@@ -70,6 +70,15 @@ Upgrading from 4.x? See
   now lasts its mean times a Gamma(2) draw, and regimes still never react to
   prices ([ADR 0017](docs/adr/0017-regimes-are-semi-markov-spells-and-never-react-to-price.md)).
 
+### Validation
+- **Five more statistics.** Minute-return autocorrelation, hourly kurtosis
+  (aggregational Gaussianity) and the volume-volatility link, anchored on
+  the same Binance minute data as the other crypto bands (provisional for
+  forex and stocks); the gaps' share of the variance where a market closes;
+  and, for data with regime labels, the spread of spell lengths.
+- **A dataset's unusable files are skipped**, not fatal, and samples under
+  1,950 m1 candles are refused instead of failing on noise.
+
 ### Breaking changes
 - **One vocabulary for Python and the command line.** `fmt=` is `format=`;
   `include_regime=`, `include_spread=` and `include_bid_ask=` are

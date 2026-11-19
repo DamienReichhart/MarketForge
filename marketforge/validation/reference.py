@@ -37,6 +37,10 @@ class Reference:
     spread_source: str = ""
     spread_bps: tuple[float, float] | None = None
     spread_widening: tuple[float, float] | None = None
+    # Measured since 5.0 (scripts/measure_real_data.py, same files).
+    return_autocorrelation: tuple[float, float] | None = None
+    hourly_kurtosis: tuple[float, float] | None = None
+    volume_volatility: tuple[float, float] | None = None
 
 
 REFERENCES: dict[MarketType, Reference] = {
@@ -58,6 +62,11 @@ REFERENCES: dict[MarketType, Reference] = {
         ),
         spread_bps=(0.024, 1.946),
         spread_widening=(1.004, 1.347),
+        # Spot klines are trade prices, which bounce off the bid and ask
+        # (ETHUSDT -0.118 for a fortnight); MarketForge's are quoted mids.
+        return_autocorrelation=(-0.118, 0.050),
+        hourly_kurtosis=(0.251, 93.296),
+        volume_volatility=(0.397, 0.554),
     ),
 }
 
@@ -79,6 +88,16 @@ class Bands:
     spread_bps: tuple[float, float] = (0.05, 40.0)
     spread_widening: tuple[float, float | None] = (0.85, None)
     spread_anchored: bool = False
+    # Since 5.0. Provisional unless measured: minute returns barely
+    # autocorrelate, hourly returns keep heavier tails than a normal's (but
+    # lighter than minutes'), big moves trade more, gaps hold a share of the
+    # variance where markets close, and regime spells last a typical length.
+    return_autocorrelation: tuple[float, float] = (-0.25, 0.1)
+    hourly_kurtosis: tuple[float, float] = (0.0, 200.0)
+    volume_volatility_min: float = 0.1
+    gap_variance_share: tuple[float, float] = (0.03, 0.6)
+    spell_variation: tuple[float, float] = (0.3, 0.95)
+    extra_anchored: bool = False
 
 
 def _from_reference(ref: Reference) -> Bands:
@@ -98,6 +117,17 @@ def _from_reference(ref: Reference) -> Bands:
         long_memory_min=0.5 * ref.abs_acf_60[0],
         anchored=True,
     )
+    if ref.return_autocorrelation and ref.hourly_kurtosis and ref.volume_volatility:
+        bands = replace(
+            bands,
+            return_autocorrelation=(
+                ref.return_autocorrelation[0] - 0.05,
+                ref.return_autocorrelation[1] + 0.03,
+            ),
+            hourly_kurtosis=(0.5 * ref.hourly_kurtosis[0], 1.5 * ref.hourly_kurtosis[1]),
+            volume_volatility_min=0.5 * ref.volume_volatility[0],
+            extra_anchored=True,
+        )
     if ref.spread_bps is None or ref.spread_widening is None:
         return bands
     return replace(
