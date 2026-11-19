@@ -18,6 +18,22 @@ Upgrading from 4.x? See
   anchors to within the rounding of the three prices (two ticks), not to
   the last bit.
 - **Stock volume is whole shares**, as forex tick volume already was.
+- **Markets move together.** Each market was simulated alone: BTC and AAPL
+  had a daily correlation of 0.02, a stock crash never touched crypto, and
+  the S&P CFD did not follow S&P stocks. A world-wide shock now drives part
+  of every market's main move, a closed market receives in its gap what
+  the world did meanwhile, and a world-wide **macro state** (calm, or
+  stressed about a month in nine) makes high volatility and crashes likelier
+  in every market at once and drifts them down together
+  ([ADR 0016](docs/adr/0016-markets-share-a-macro-state-and-a-global-shock.md)).
+  BTC-AAPL is now 0.13 daily, 0.31 weekly and 0.44 monthly; crypto is
+  stressed 39% of the time stocks are, against 25% otherwise. Each market's
+  own correlations are unchanged. `GeneratedData.macro()` labels every day.
+- **Regimes last a typical length.** Spell lengths were geometric (their
+  spread equalled their mean), so an HMM was exactly the right model of the
+  data and detectors scored better than they can on real markets. A spell
+  now lasts its mean times a Gamma(2) draw, and regimes still never react to
+  prices ([ADR 0017](docs/adr/0017-regimes-are-semi-markov-spells-and-never-react-to-price.md)).
 
 ### Breaking changes
 - **One vocabulary for Python and the command line.** `fmt=` is `format=`;

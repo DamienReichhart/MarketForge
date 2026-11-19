@@ -16,7 +16,8 @@ import numpy as np
 from marketforge.config.catalog.forex.risk import RISK_LOADINGS
 from marketforge.config.factors import split_pair
 from marketforge.config.model_params import RegimeParams
-from marketforge.simulation.kernels import regime_chain
+from marketforge.simulation.kernels import regime_spells
+from marketforge.simulation.macro import CALM_DAYS, STRESSED_DAYS
 
 # EMA weight per minute for regime multipliers (~15-minute ramp).
 REGIME_SMOOTHING = 1.0 / 15.0
@@ -78,59 +79,66 @@ def forex_risk_direction(anchors: Sequence[str]) -> np.ndarray:
     return np.array(loads)
 
 
-def normalised_regime_targets(
-    cumulative: np.ndarray, drift: np.ndarray, vol: np.ndarray, initial: int
+def normalised_spell_targets(
+    params: RegimeParams, open_minutes_per_day: int
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Rescale regime targets so that, over the long run (smoothing included), the
-    mean trend is 0 and the mean squared volatility multiplier is 1. Without
-    this the configured annual drift and volatility were not what the
-    simulation produced (e.g. stocks drifted down on average).
+    Regime targets rescaled so that, over the long run (smoothing and the macro
+    state included), the mean trend is 0 and the mean squared volatility
+    multiplier is 1. Without this the configured annual drift and volatility
+    were not what the simulation produced (e.g. stocks drifted down on average).
 
-    The calibration runs a multi-million-step chain (~0.15 s and up to ~200 MB
-    of temporaries), so its result is cached per distinct set of parameters.
+    The chain is run for millions of minutes with a fixed seed and a macro path
+    of the same statistics, so its result is cached per set of parameters.
     """
-    key = (
-        cumulative.shape,
-        np.ascontiguousarray(cumulative, dtype=float).tobytes(),
-        np.ascontiguousarray(drift, dtype=float).tobytes(),
-        np.ascontiguousarray(vol, dtype=float).tobytes(),
-        int(initial),
-    )
-    d, v = _cached_regime_targets(key)
+    d, v = _cached_spell_targets(params, int(open_minutes_per_day))
     return d.copy(), v.copy()
 
 
 @lru_cache(maxsize=32)
-def _cached_regime_targets(
-    key: tuple[tuple[int, ...], bytes, bytes, bytes, int],
-) -> tuple[np.ndarray, np.ndarray]:
-    shape, cum_bytes, drift_bytes, vol_bytes, initial = key
-    cumulative = np.frombuffer(cum_bytes).reshape(shape).copy()
-    drift = np.frombuffer(drift_bytes).copy()
-    vol = np.frombuffer(vol_bytes).copy()
-    # Simulate long enough to visit every regime many times (>= ~2000 mean
-    # durations of the stickiest one), with a fixed seed: deterministic.
-    stay = np.diff(
-        np.concatenate([np.zeros((cumulative.shape[0], 1)), cumulative], axis=1), axis=1
-    ).diagonal()
-    longest = float(np.max(1.0 / np.maximum(1.0 - stay, 1e-9)))
-    n = int(min(20_000_000, max(400_000, 2000 * longest)))
-    u = np.random.Generator(np.random.PCG64(20260613)).random(n)
-    _, d, v, *_ = regime_chain(
+def _cached_spell_targets(params: RegimeParams, per_day: int) -> tuple[np.ndarray, np.ndarray]:
+    drift = spell_trends(params)
+    vol = np.asarray(params.volatility_multipliers, dtype=float)
+    mean = np.asarray(params.mean_minutes())
+    initial = params.get_regime_index(params.initial_regime)
+    # Visit every regime many times: >= ~2000 spells of the longest.
+    n = int(min(20_000_000, max(400_000, 2000 * float(mean.max()))))
+    rng = np.random.Generator(np.random.PCG64(20260613))
+    u = rng.random(n)
+    lengths = rng.gamma(params.spell_shape, 1.0 / params.spell_shape, n)
+    stressed = _macro_path(rng, n, per_day)
+    _, d, v, *_ = regime_spells(
         u,
-        cumulative,
+        lengths,
+        np.asarray(params.jump_rows(False)),
+        np.asarray(params.jump_rows(True)),
+        mean,
+        stressed,
+        1.0 / params.minutes_per_step,
         drift,
         vol,
         REGIME_SMOOTHING,
         initial,
+        0.0,
         float(drift[initial]),
         float(vol[initial]),
     )
-    burn = min(n // 10, int(20 * longest))
+    burn = min(n // 10, int(20 * float(mean.max())))
     vol_scale = 1.0 / np.sqrt(np.mean(v[burn:] ** 2))
     drift_shift = -float(np.mean(d[burn:]))
     targets = (drift + drift_shift, vol * vol_scale)
     for a in targets:
         a.setflags(write=False)  # shared by every simulator: never mutated
     return targets
+
+
+def _macro_path(rng: np.random.Generator, n: int, per_day: int) -> np.ndarray:
+    """A macro state per open minute with the statistics of the real one."""
+    days = n // per_day + 1
+    flips = rng.random(days)
+    state, out = 0, np.empty(days, dtype=np.int8)
+    for day in range(days):
+        out[day] = state
+        if flips[day] < 1.0 / (STRESSED_DAYS if state else CALM_DAYS):
+            state = 1 - state
+    return np.repeat(out, per_day)[:n]

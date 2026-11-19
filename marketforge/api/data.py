@@ -23,6 +23,7 @@ from marketforge.api.parsing import Names, TimeLike, as_names, parse_time
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
 from marketforge.domain.timeframes import Timeframe
+from marketforge.simulation.macro import macro_state
 
 if TYPE_CHECKING:
     from marketforge.api.disk import DiskReport
@@ -278,6 +279,27 @@ class GeneratedData(Mapping[str, InstrumentData]):
         )
         out["duration"] = out["end"] - out["start"]
         return out
+
+    def macro(self) -> pd.Series:
+        """
+        The macro state of every UTC day of the range: ``calm`` or ``stressed``.
+
+        The world-wide state every market's regimes answer to: while it is
+        stressed, high volatility and crashes are likelier everywhere at once
+        and the world drifts down. A label for models that should see a
+        sell-off coming in more than one market.
+        """
+        first, last = self._origin.start // 86_400, (self._origin.end - 1) // 86_400
+        days = range(first, last + 1)
+        states = [macro_state(self._seed, day) for day in days]
+        index = pd.DatetimeIndex(
+            pd.to_datetime([d * 86_400 for d in days], unit="s", utc=True), name="day"
+        )
+        return pd.Series(
+            pd.Categorical.from_codes(states, categories=["calm", "stressed"]),
+            index=index,
+            name="macro",
+        )
 
     def _first_of(self, market: str) -> str:
         name = MarketType(str(market).strip().lower()).value
