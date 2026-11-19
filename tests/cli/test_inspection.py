@@ -66,6 +66,27 @@ def test_validate_a_whole_dataset(tmp_path):
     assert "kurtosis" in " ".join(doc["forex/EURUSD_m1.csv"]["metrics"])
 
 
+def test_one_unusable_file_does_not_stop_the_others(tmp_path):
+    # 2024-01-15 is an NYSE holiday: AAPL's m1 file is empty, BTCUSD's is full.
+    mf.generate_to_disk(
+        tmp_path, "AAPL,BTCUSD", start="2024-01-13", end="2024-01-20", seed=7, timeframes="m1"
+    )
+    res = _run("validate", "--input", str(tmp_path))
+    assert res.exit_code == 0, res.output
+    assert "ok   crypto/BTCUSD_m1.csv" in res.output
+    assert "skip stocks/AAPL_m1.csv" in res.output and "1,560 candle(s)" in res.output
+    assert "1/1 files pass (1 skipped)" in res.output
+
+
+def test_validating_a_file_too_short_to_mean_anything_is_an_error(tmp_path):
+    mf.generate_to_disk(
+        tmp_path, "BTCUSD", start="2024-01-02", end="2024-01-02T00:30", seed=1, timeframes="m1"
+    )
+    res = _run("validate", "--input", str(tmp_path / "crypto" / "BTCUSD_m1.csv"))
+    assert res.exit_code == 1
+    assert "needs at least 1,950 m1 candles" in res.output and "Usage" not in res.output
+
+
 def test_validating_a_dataset_without_m1_says_so(tmp_path):
     _dataset(tmp_path, timeframes="H1")
     res = _run("validate", "--input", str(tmp_path))

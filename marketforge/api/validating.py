@@ -19,6 +19,9 @@ from marketforge.domain.markets import MarketType
 from marketforge.validation.report import ValidationReport, validate_ohlcv
 
 _PRICES = ("open", "high", "low", "close")
+# Below a week of stock sessions (5 x 390 minutes) the statistics are noise:
+# a 30-minute file failed on kurtosis alone.
+MIN_CANDLES = 1950
 
 
 def validate(
@@ -41,7 +44,8 @@ def validate(
 
     Raises:
         ValueError: if the candles are not m1 (the bands only describe minute
-            returns), a price column is missing, or the market is unknown.
+            returns), fewer than :data:`MIN_CANDLES` (a week of stock
+            sessions), a price column is missing, or the market is unknown.
     """
     if isinstance(data, pd.DataFrame):
         frame, source = data, "the DataFrame"
@@ -73,6 +77,12 @@ def validate(
         raise ValueError(
             f"{source} holds {spacing:g}-minute candles; the validation bands describe m1 "
             "candles only"
+        )
+    if len(frame) < MIN_CANDLES:
+        raise ValueError(
+            f"{source} holds {len(frame):,} candle(s); validation needs at least "
+            f"{MIN_CANDLES:,} m1 candles (a week of stock sessions) for its statistics to mean "
+            "anything"
         )
     open_, high, low, close = (frame[c].to_numpy() for c in _PRICES)
     spread = frame["spread"].to_numpy() if "spread" in frame.columns else None
