@@ -15,6 +15,7 @@ import pyarrow as pa
 
 from marketforge.domain.bars import Bars
 from marketforge.domain.regimes import RegimeType
+from marketforge.domain.ticks import TickGrid
 
 PRICE_DECIMALS = 8
 VOLUME_DECIMALS = 4
@@ -63,6 +64,7 @@ def rounded_columns(
     columns: Sequence[int],
     include_spread: bool = True,
     include_bid_ask: bool = False,
+    ticks: TickGrid | None = None,
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """
     Timestamps, and open/high/low/close/volume (and spread, when the candles
@@ -83,10 +85,20 @@ def rounded_columns(
     if include_bid_ask:
         if bars.spread is None:
             raise ValueError("bid and ask need the spread to be simulated")
-        half = bars.spread / 2
-        fields.append(rounded(bars.close - half, PRICE_DECIMALS))
-        fields.append(rounded(bars.close + half, PRICE_DECIMALS))
+        bid, ask = quotes(bars.close, bars.spread, ticks)
+        fields.append(rounded(bid, PRICE_DECIMALS))
+        fields.append(rounded(ask, PRICE_DECIMALS))
     return np.ascontiguousarray(bars.timestamps, dtype=np.int64), fields
+
+
+def quotes(
+    close: np.ndarray, spread: np.ndarray, ticks: TickGrid | None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bid and ask around the close: half the spread each way, outwards onto the tick grid."""
+    half = spread / 2
+    if ticks is None:
+        return close - half, close + half
+    return ticks.floor(close - half), ticks.ceil(close + half)
 
 
 def record_batch(

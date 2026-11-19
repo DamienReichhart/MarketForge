@@ -21,7 +21,9 @@ from marketforge.calendars.trading_calendar import TradingCalendar, get_calendar
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
+from marketforge.domain.ticks import FINEST_DECIMALS, TickGrid
 from marketforge.domain.timeframes import Timeframe
+from marketforge.output.encoding import quotes
 
 _PRICES = ("open", "high", "low", "close", "volume")
 
@@ -112,13 +114,24 @@ def resample(frame: pd.DataFrame, timeframe: str, market: str | MarketType) -> p
         index=time_index(out.timestamps),
     )
     if has_quotes:
-        result["bid"] = result["close"] - result["spread"] / 2
-        result["ask"] = result["close"] + result["spread"] / 2
+        close, spread = (result[c].to_numpy()[:, None] for c in ("close", "spread"))
+        bid, ask = quotes(close, spread, _grid_of(frame))
+        result["bid"], result["ask"] = bid[:, 0], ask[:, 0]
     if has_regime:
         result["regime"] = pd.Categorical.from_codes(
             out.regime.astype(int), categories=[r.value for r in RegimeType]
         )
     return result[columns]
+
+
+def _grid_of(frame: pd.DataFrame) -> TickGrid | None:
+    """The tick the quotes are on: the coarsest power of ten every bid and ask sits on."""
+    quoted = np.concatenate([frame["bid"].to_numpy(float), frame["ask"].to_numpy(float)])
+    for decimals in range(-4, FINEST_DECIMALS + 1):
+        scaled = quoted * 10.0**decimals
+        if np.all(np.abs(scaled - np.rint(scaled)) < 1e-6):
+            return TickGrid(np.array([decimals]))
+    return None  # not on any grid: quote half the spread each way, unrounded
 
 
 def _check_minutes(stamps: np.ndarray, market: MarketType) -> None:

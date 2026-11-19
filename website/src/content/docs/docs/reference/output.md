@@ -48,10 +48,10 @@ timestamp,open,high,low,close,volume
 | Column | Meaning |
 | --- | --- |
 | `timestamp` | Start of the candle, in Unix seconds (UTC), or `2024-01-02T14:30:00Z` with `--timestamps iso` (CSV), or a native UTC time column with `--timestamps datetime` (Parquet, Feather), which Spark, DuckDB and polars read as time. |
-| `open`, `high`, `low`, `close` | **Mid prices**, rounded to 8 decimals (trailing zeros are not written). |
-| `volume` | Rounded to 4 decimals. Base asset for crypto (BTC for BTCUSD), shares for stocks, **tick volume** (integer price updates per minute) for forex. |
+| `open`, `high`, `low`, `close` | **Mid prices**, each a whole number of the instrument's **tick**: a cent for stocks (a hundredth of a cent below $1), and about five significant digits elsewhere (0.00001 on EURUSD, 0.001 on USDJPY, 0.01 on XAUUSD, 0.1 on BTCUSD). An override file sets `tick_size`. Trailing zeros are not written. |
+| `volume` | Base asset for crypto (BTC for BTCUSD), to 4 decimals; **whole shares** for stocks; **tick volume** (whole price updates per minute) for forex. |
 | `spread` | With `--with-spread`: the mean quoted bid-ask spread of the candle, in price units. `bid = price - spread / 2`, `ask = price + spread / 2`. |
-| `bid`, `ask` | With `--with-bid-ask`: the quotes around the close, `close - spread / 2` and `close + spread / 2`. |
+| `bid`, `ask` | With `--with-bid-ask`: the quotes around the close, half the spread each way, outwards onto the tick grid: `close - spread / 2` rounded down and `close + spread / 2` rounded up. |
 | `regime` | With `--with-regime`, last: `trend_up`, `trend_down`, `range`, `high_volatility` or `crash`, the regime the market was in at the candle's close. CSV files hold the name; Parquet and Feather files and frames in memory hold the same categorical, whose codes (`.cat.codes`) are 0 to 4 in that order. |
 
 Parquet and Feather files also say what they hold in their metadata: `marketforge` (the version), `model_revision`, `seed`, `market`, `timeframe` and, in the split layout, `symbol` (`pyarrow.parquet.read_schema(path).metadata`).

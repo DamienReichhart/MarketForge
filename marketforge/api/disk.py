@@ -37,9 +37,11 @@ from marketforge.api.planning import (
     plan_request,
 )
 from marketforge.api.renamed import renamed_arguments
+from marketforge.config.loader import load_catalog
 from marketforge.config.overrides import Overrides
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
+from marketforge.domain.ticks import TickGrid
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.file_limits import ensure_open_file_capacity
 from marketforge.output.formats import Layout, OutputFormat, TimestampFormat, check_formats
@@ -56,6 +58,7 @@ from marketforge.output.manifest import (
     write_manifest,
 )
 from marketforge.output.writer import CandleWriter
+from marketforge.simulation.spec import build_market_spec, tick_grid
 
 
 @dataclass
@@ -269,6 +272,7 @@ def write_request(
             timestamps=timestamps,
             layout=shape,
             metadata=file_metadata(request.seed),
+            ticks=tick_grid(plan.spec, plan.selected),
         )
         for plan in request.plans
     }
@@ -399,6 +403,7 @@ def save_data(
             timestamps=stamps,
             layout=shape,
             metadata=file_metadata(data.seed),
+            ticks=ticks_of(MarketType(market), symbols, origin.overrides),
         )
         for tf in timeframes:
             writer.write(tf, _bars([data.frame(s, tf.name) for s in symbols]))
@@ -433,6 +438,11 @@ def save_data(
     manifest.files = _records(root, report.files)
     report.manifest = write_manifest(root, manifest)
     return report
+
+
+def ticks_of(market: MarketType, symbols: list[str], overrides: Overrides | None) -> TickGrid:
+    """The tick grid of some instruments, overrides applied."""
+    return tick_grid(build_market_spec(load_catalog(overrides)[market]), symbols)
 
 
 def _bars(frames: list[pd.DataFrame]) -> Bars:

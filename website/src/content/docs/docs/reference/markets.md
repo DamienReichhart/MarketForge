@@ -23,7 +23,7 @@ No candle is printed while a market is closed. A **gap** between the last close 
 
 ## Arbitrage-free forex
 
-Only one **anchor pair** per currency code is simulated; every **cross** is derived from them, so `EURJPY == EURUSD * USDJPY` at every minute and every triangle is arbitrage-free. Crosses take their volatility and start price from their anchor pairs. See [ADR 0002](../../adr/0002-derive-forex-crosses-from-anchor-pairs/).
+Only one **anchor pair** per currency code is simulated; every **cross** is derived from them, so `EURJPY == EURUSD * USDJPY` at every minute and every triangle is arbitrage-free. Each price is then rounded to its own tick, as quotes are, so the identity holds to within two ticks of the cross, far inside the spread. Crosses take their volatility and start price from their anchor pairs. See [ADR 0002](../../adr/0002-derive-forex-crosses-from-anchor-pairs/).
 
 ## Correlations
 

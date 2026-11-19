@@ -47,6 +47,7 @@ mf.generate("BTCUSD", start="2024-01-01", end="2024-03-01",
 | `volume_base` | Mean volume per open minute, in the market's unit. |
 | `volume_volatility` | Lognormal sigma of the volume noise. |
 | `spread_bps` | Typical bid-ask spread in basis points. Set it to match your broker; built-in instruments derive it per market. |
+| `tick_size` | The price step, a power of ten (`0.01`, `0.0001`). Default: a cent for stocks, about five significant digits of the start price elsewhere. Every price is rounded to it. |
 | `correlations` | Correlations with other instruments of the same market. |
 
 ## Correlations

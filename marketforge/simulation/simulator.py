@@ -66,7 +66,7 @@ from marketforge.simulation.regimes import (
     spell_trends,
 )
 from marketforge.simulation.seasonality import get_seasonality
-from marketforge.simulation.spec import MarketSpec
+from marketforge.simulation.spec import MarketSpec, tick_grid
 from marketforge.simulation.spread import minutes_since_reopen, quoted_spread
 
 # Stable per-market stream identifiers (part of the reproducibility contract).
@@ -215,6 +215,9 @@ class MarketSimulator:
                 for s, v in zip(selected, annual, strict=True)
             ]
         )
+
+        # Prices are published on each instrument's tick.
+        self.ticks = tick_grid(spec, selected)
 
         self._state = _State(
             log_price=np.log([a.start_price for a in factors])[fa],
@@ -445,6 +448,10 @@ class MarketSimulator:
                     np.arange(rows.size) if session.positions is None else session.positions
                 ),
             )
+        # On the tick grid: rounding is monotone, so high and low still bound
+        # open and close, and each open still equals the previous close.
+        for name in ("open", "high", "low", "close"):
+            setattr(result, name, self.ticks.round(getattr(result, name)))
         if self.spec.defaults.integer_volume:
             result.volume = np.maximum(np.rint(result.volume), 1.0)
         if self._spread:

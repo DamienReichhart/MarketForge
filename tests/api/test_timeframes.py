@@ -49,7 +49,13 @@ def test_resample_drops_the_partial_candles_at_the_edges():
 @pytest.fixture(scope="module")
 def aapl():
     return mf.generate(
-        "AAPL", start="2024-01-08", days=5, seed=4, timeframes="m1,H1,D1", with_bid_ask=True
+        "AAPL",
+        start="2024-01-08",
+        days=5,
+        seed=4,
+        timeframes="m1,H1,D1",
+        with_bid_ask=True,
+        with_spread=True,
     )["AAPL"]
 
 
@@ -80,3 +86,7 @@ def test_resample_drops_the_candles_around_missing_minutes(aapl):
 def test_resample_keeps_bid_and_ask(aapl):
     d1 = mf.resample(aapl["m1"], "D1", "stocks")
     pd.testing.assert_frame_equal(d1, aapl["D1"], rtol=1e-12)
+    # Without the spread, it is rebuilt from the quotes: on the same cent grid.
+    quotes_only = mf.resample(aapl["m1"].drop(columns="spread"), "D1", "stocks")
+    cents = quotes_only[["bid", "ask"]].to_numpy() * 100
+    np.testing.assert_allclose(cents, np.rint(cents), atol=1e-6)
