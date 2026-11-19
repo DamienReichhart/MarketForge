@@ -55,7 +55,7 @@ from marketforge.simulation.kernels import (
     factor_paths,
     finish_bars,
     gjr_garch,
-    regime_chain,
+    regime_spells,
 )
 from marketforge.simulation.macro import (
     STRESSED,
@@ -64,6 +64,7 @@ from marketforge.simulation.macro import (
     global_shocks,
     global_stress_shocks,
     macro_state,
+    macro_trends,
 )
 from marketforge.simulation.projection import Projection, SessionShape
 from marketforge.simulation.regimes import (
@@ -71,8 +72,7 @@ from marketforge.simulation.regimes import (
     dollar_portfolio,
     forex_risk_direction,
     main_factor_loadings,
-    normalised_regime_targets,
-    spell_trends,
+    normalised_spell_targets,
 )
 from marketforge.simulation.seasonality import get_seasonality
 from marketforge.simulation.spec import MarketSpec, tick_grid
@@ -87,6 +87,8 @@ STRESS_LOADING = 0.95
 # Below 1, pulls weakly exposed series towards that loading too: in a crash
 # even a loosely correlated coin moves with BTC.
 STRESS_COMPRESSION = 0.3
+# Open minutes in a typical day of each market (the regimes' macro clock).
+_OPEN_MINUTES_PER_DAY = {MarketType.CRYPTO: 1440, MarketType.FOREX: 1440, MarketType.STOCKS: 390}
 _MEAN_ABS_Z = float(np.sqrt(2.0 / np.pi))
 _VAR_ABS_Z = 1.0 - 2.0 / np.pi
 _Z_CLIP = 10.0
@@ -102,6 +104,7 @@ class _State:
     vol_mult: float
     volume_memory: np.ndarray  # (I,) one per selected instrument
     last_timestamp: int | None = None
+    spell_left: float = 0.0  # open minutes left in the current regime spell
 
 
 class MarketSimulator:
@@ -160,14 +163,14 @@ class MarketSimulator:
         self._garch = (1.0 - g.persistence, g.alpha, g.beta, g.gamma)
 
         rp = d.regime_params
-        self._regime_cum = np.cumsum(np.asarray(rp.per_minute_matrix(), dtype=float), axis=1)
-        self._regime_cum[:, -1] = 1.0
+        self._next_calm = np.asarray(rp.jump_rows(False))
+        self._next_stressed = np.asarray(rp.jump_rows(True))
+        self._spell_minutes = np.asarray(rp.mean_minutes())
+        self._spell_shape = float(rp.spell_shape)
+        self._break_hazard = 1.0 / float(rp.minutes_per_step)
         r0 = rp.get_regime_index(rp.initial_regime)
-        self._regime_drift, self._regime_vol = normalised_regime_targets(
-            self._regime_cum,
-            spell_trends(rp),
-            np.asarray(rp.volatility_multipliers, dtype=float),
-            r0,
+        self._regime_drift, self._regime_vol = normalised_spell_targets(
+            rp, _OPEN_MINUTES_PER_DAY[spec.market]
         )
 
         # ---- active subset: the selected instruments and their factors ----
@@ -200,6 +203,11 @@ class MarketSimulator:
             forex_risk_direction(structure.factors) if spec.market == MarketType.FOREX else loadings
         )
         self._mixing = global_mixing(spec.factor_correlation, direction, d.global_coupling)
+        # The world's bull and bear markets move each factor along its share
+        # of the global direction, by as much as the market is coupled to it.
+        calm, bear = macro_trends(_OPEN_MINUTES_PER_DAY[spec.market])
+        along = sigma * self._mixing.covariance * d.global_coupling[0]
+        self._macro_mu = (along * calm)[fa], (along * bear)[fa]
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
@@ -242,6 +250,7 @@ class MarketSimulator:
             drift_mult=float(self._regime_drift[r0]),
             vol_mult=float(self._regime_vol[r0]),
             volume_memory=np.zeros(inst.size),
+            spell_left=float(self._spell_minutes[r0]),
         )
 
     # ---------------------------------------------------------- checkpoint
@@ -263,6 +272,7 @@ class MarketSimulator:
             "vol_mult": float(st.vol_mult),
             "volume_memory": st.volume_memory.tolist(),
             "last_timestamp": st.last_timestamp,
+            "spell_left": float(st.spell_left),
         }
 
     def restore(self, snapshot: dict[str, Any]) -> None:
@@ -282,6 +292,7 @@ class MarketSimulator:
             drift_mult=float(snapshot["drift_mult"]),
             vol_mult=float(snapshot["vol_mult"]),
             last_timestamp=snapshot["last_timestamp"],
+            spell_left=float(snapshot["spell_left"]),
             **arrays,
         )
 
@@ -339,6 +350,7 @@ class MarketSimulator:
         u_low = rng.random((MINUTES_PER_DAY, n_i))
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
         m_stress = rng.standard_normal(MINUTES_PER_DAY)
+        spell_lengths = rng.gamma(self._spell_shape, 1.0 / self._spell_shape, MINUTES_PER_DAY)
 
         stressed = macro_state(self.seed, day) == STRESSED
         world = global_shocks(self.seed, day)
@@ -348,13 +360,27 @@ class MarketSimulator:
             )
         )
 
-        regimes, drift_m, vol_m, st.regime, st.drift_mult, st.vol_mult = regime_chain(
+        (
+            regimes,
+            drift_m,
+            vol_m,
+            st.regime,
+            st.spell_left,
+            st.drift_mult,
+            st.vol_mult,
+        ) = regime_spells(
             u_regime[rows],
-            self._regime_cum,
+            spell_lengths[rows],
+            self._next_calm,
+            self._next_stressed,
+            self._spell_minutes,
+            np.full(rows.size, stressed, dtype=np.int8),
+            self._break_hazard,
             self._regime_drift,
             self._regime_vol,
             REGIME_SMOOTHING,
             st.regime,
+            st.spell_left,
             st.drift_mult,
             st.vol_mult,
         )
@@ -413,7 +439,7 @@ class MarketSimulator:
             season,
             z,
             self._sigma,
-            self._mu,
+            self._mu + self._macro_mu[int(stressed)],
             self._trend,
             gap_rows,
             gap,

@@ -7,7 +7,7 @@
 """
 Compiled per-minute recursions.
 
-The recursions (regime chain, GJR-GARCH, AR(1)) are the parts of the
+The recursions (regime spells, GJR-GARCH, AR(1)) are the parts of the
 simulation that cannot be vectorised: each step depends on the previous one.
 They are all *resumable*: they take the state left by the previous call and
 return the state to pass to the next one, so a day-by-day simulation is
@@ -53,52 +53,76 @@ else:
 
 
 @njit(cache=True, nogil=True)
-def regime_chain(
+def regime_spells(
     uniforms: np.ndarray,
-    cumulative_transitions: np.ndarray,
+    lengths: np.ndarray,
+    next_calm: np.ndarray,
+    next_stressed: np.ndarray,
+    mean_minutes: np.ndarray,
+    stressed: np.ndarray,
+    break_hazard: float,
     drift_targets: np.ndarray,
     vol_targets: np.ndarray,
     smoothing: float,
     regime: int,
+    remaining: float,
     drift_mult: float,
     vol_mult: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, float, float]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, float, float, float]:
     """
-    Advance the market regime Markov chain one step per uniform draw.
+    Advance the market's regime, spell by spell, one open minute per draw.
+
+    A semi-Markov chain: a spell of regime r lasts ``mean_minutes[r]`` times
+    a mean-1 random length (``lengths``, used at the minute a spell starts),
+    then the next regime is drawn from the embedded jump chain, whose
+    cumulative rows are ``next_calm`` or, while the macro state is stressed,
+    ``next_stressed``. While stressed, a calm spell (trend_up, trend_down,
+    range: regimes 0 to 2) also ends early with probability ``break_hazard``
+    per minute, so sell-offs start in every market at about the same time.
 
     The drift and volatility multipliers glide towards the current regime's
     targets with an exponential moving average (``smoothing`` in (0, 1]), so
     regime changes ramp in causally instead of jumping.
 
     Args:
-        uniforms: (n,) draws in [0, 1) deciding each transition.
-        cumulative_transitions: (K, K) row-wise cumulative transition matrix.
-        drift_targets, vol_targets: (K,) multipliers per regime.
-        smoothing: EMA weight of the new target at each step.
-        regime, drift_mult, vol_mult: state after the previous step.
+        uniforms: (n,) draws in [0, 1): an early end, and the next regime.
+        lengths: (n,) mean-1 positive spell lengths.
+        next_calm, next_stressed: (K, K) cumulative jump rows, zero diagonal.
+        mean_minutes: (K,) mean spell length of each regime, in open minutes.
+        stressed: (n,) 1 where the macro state is stressed.
+        regime, remaining, drift_mult, vol_mult: state after the previous
+            step; ``remaining`` open minutes are left in the current spell.
 
     Returns:
-        (regimes, drift_mults, vol_mults, regime, drift_mult, vol_mult)
+        (regimes, drift_mults, vol_mults, regime, remaining, drift_mult, vol_mult)
     """
     n = uniforms.shape[0]
-    k = cumulative_transitions.shape[0]
+    k = next_calm.shape[0]
     regimes = np.empty(n, dtype=np.int8)
     drifts = np.empty(n)
     vols = np.empty(n)
     for t in range(n):
         u = uniforms[t]
-        nxt = k - 1
-        for j in range(k):
-            if u < cumulative_transitions[regime, j]:
-                nxt = j
-                break
-        regime = nxt
+        rows = next_stressed if stressed[t] else next_calm
+        ends = remaining <= 0.0
+        if not ends and stressed[t] and regime <= 2 and u < break_hazard:
+            ends = True
+            u = u / break_hazard  # uniform again, for the next regime
+        if ends:
+            nxt = k - 1
+            for j in range(k):
+                if u < rows[regime, j]:
+                    nxt = j
+                    break
+            regime = nxt
+            remaining = mean_minutes[regime] * lengths[t]
+        remaining -= 1.0
         drift_mult += smoothing * (drift_targets[regime] - drift_mult)
         vol_mult += smoothing * (vol_targets[regime] - vol_mult)
         regimes[t] = regime
         drifts[t] = drift_mult
         vols[t] = vol_mult
-    return regimes, drifts, vols, regime, drift_mult, vol_mult
+    return regimes, drifts, vols, regime, remaining, drift_mult, vol_mult
 
 
 @njit(cache=True, nogil=True)

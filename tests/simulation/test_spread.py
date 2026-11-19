@@ -76,7 +76,7 @@ def test_forex_spreads_widen_when_the_week_opens():
 
 
 def test_spread_widens_with_turbulence():
-    bars = _run("forex", ["EURUSD"], days=30)
+    bars = _run("forex", ["EURUSD"], days=90)
     relative = bars.spread[:, 0] / bars.close[:, 0]
     calm, wild = np.isin(bars.regime, [2]), np.isin(bars.regime, [3, 4])  # range vs high vol/crash
     assert calm.any() and wild.any()

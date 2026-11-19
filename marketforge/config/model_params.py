@@ -52,12 +52,18 @@ class GARCHParams:
 @dataclass(frozen=True)
 class RegimeParams:
     """
-    Markov regime-switching parameters.
+    Regime-switching parameters: a semi-Markov chain of spells.
 
-    The transition matrix applies once per ``minutes_per_step`` open minutes;
-    the simulator runs the equivalent per-minute chain, I + (P - I) / minutes_per_step,
-    so regime *i* lasts ``minutes_per_step / (1 - P[i][i])`` open minutes on
-    average. Volatility multipliers are rescaled by the simulator so that their
+    The transition matrix applies once per ``minutes_per_step`` open minutes:
+    regime *i* lasts ``minutes_per_step / (1 - P[i][i])`` open minutes on
+    average, and leaves for *j* with probability ``P[i][j] / (1 - P[i][i])``.
+    A spell's length is that mean times a Gamma(``spell_shape``) draw of mean
+    1: a typical length rather than the memoryless one of a Markov chain
+    (shape 1), so a regime detector cannot assume every minute is as likely
+    as the last to end a spell. While the macro state is stressed, the next
+    regime is drawn with ``stressed_tilt`` weighing each destination, and a
+    calm spell ends early with a per-minute probability of 1 /
+    ``minutes_per_step``. Volatility multipliers are rescaled by the simulator so that their
     long-run mean square is 1, and trends so that their long-run mean is 0:
     regimes reshape *when* volatility and returns happen, not how much, so the
     catalog's annual volatility and drift are what you get.
@@ -94,10 +100,36 @@ class RegimeParams:
     initial_regime: RegimeType = RegimeType.RANGE
     minutes_per_step: float = 1.0
     stress: tuple[float, ...] = (0.0, 0.0, 0.0, 0.4, 0.75)
+    spell_shape: float = 2.0
+    # Weight of each next regime while the macro state is stressed: sell-offs.
+    stressed_tilt: tuple[float, ...] = (0.5, 1.5, 0.7, 3.0, 4.0)
 
     def __post_init__(self) -> None:
         if self.minutes_per_step < 1.0:
             raise ValueError(f"minutes_per_step must be >= 1, got {self.minutes_per_step}")
+        if self.spell_shape <= 0.0:
+            raise ValueError(f"spell_shape must be positive, got {self.spell_shape}")
+
+    def mean_minutes(self) -> list[float]:
+        """Mean spell length of each regime, in open minutes."""
+        p, m = self.transition_matrix, self.minutes_per_step
+        return [m / max(1.0 - p[i][i], 1e-12) for i in range(len(p))]
+
+    def jump_rows(self, stressed: bool = False) -> list[list[float]]:
+        """Cumulative rows of the next regime once a spell ends (zero diagonal)."""
+        p = self.transition_matrix
+        tilt = self.stressed_tilt if stressed else (1.0,) * len(p)
+        rows = []
+        for i in range(len(p)):
+            weights = [0.0 if j == i else p[i][j] * tilt[j] for j in range(len(p))]
+            total = sum(weights) or 1.0
+            cumulative, running = [], 0.0
+            for w in weights:
+                running += w / total
+                cumulative.append(running)
+            cumulative[-1] = 1.0
+            rows.append(cumulative)
+        return rows
 
     def per_minute_matrix(self) -> list[list[float]]:
         """Transition matrix for one open minute."""

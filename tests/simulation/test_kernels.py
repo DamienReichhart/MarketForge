@@ -12,7 +12,7 @@ from marketforge.simulation.kernels import (
     finish_bars,
     gjr_garch,
     project_signed,
-    regime_chain,
+    regime_spells,
 )
 
 
@@ -20,23 +20,51 @@ def _cum(p):
     return np.cumsum(np.asarray(p, dtype=float), axis=1)
 
 
-def test_regime_chain_matches_stationary_distribution():
-    p = np.array([[0.9, 0.1], [0.3, 0.7]])
-    rng = np.random.default_rng(0)
-    regimes, *_ = regime_chain(
-        rng.random(200_000), _cum(p), np.zeros(2), np.ones(2), 1.0, 0, 0.0, 1.0
+def _spells(n, seed=0, stressed=None, shape=2.0, hazard=0.0):
+    rng = np.random.default_rng(seed)
+    rows = np.array([[0.0, 1.0], [1.0, 1.0]])  # a spell of 0 is followed by 1, and back
+    return (
+        rng.random(n),
+        rng.gamma(shape, 1.0 / shape, n),
+        rows,
+        rows,
+        np.array([300.0, 100.0]),
+        np.zeros(n, np.int8) if stressed is None else stressed,
+        hazard,
+        np.zeros(2),
+        np.ones(2),
+        1.0,
     )
-    # Stationary distribution of p is (0.75, 0.25).
-    assert abs((regimes == 0).mean() - 0.75) < 0.01
 
 
-def test_regime_chain_is_resumable():
-    p = np.array([[0.8, 0.2], [0.4, 0.6]])
-    u = np.random.default_rng(1).random(1000)
-    args = (_cum(p), np.array([1.0, -1.0]), np.array([1.0, 3.0]), 0.1)
-    full = regime_chain(u, *args, 0, 1.0, 1.0)
-    first = regime_chain(u[:400], *args, 0, 1.0, 1.0)
-    second = regime_chain(u[400:], *args, *first[3:])
+def test_regime_spells_last_their_mean_length_with_a_typical_spread():
+    regimes, *_ = regime_spells(*_spells(400_000), 0, 300.0, 0.0, 1.0)
+    changes = np.flatnonzero(np.diff(regimes) != 0) + 1
+    lengths = np.diff(changes)
+    first = regimes[changes[:-1]] == 0
+    assert lengths[first].mean() == pytest.approx(300, rel=0.05)
+    assert lengths[~first].mean() == pytest.approx(100, rel=0.05)
+    # Gamma(2): a coefficient of variation of 1/sqrt(2), not the 1 of a Markov chain.
+    assert lengths[first].std() / lengths[first].mean() == pytest.approx(0.71, abs=0.05)
+    assert (regimes == 0).mean() == pytest.approx(0.75, abs=0.01)
+
+
+def test_regime_spells_end_early_when_the_macro_state_is_stressed():
+    n = 200_000
+    calm, *_ = regime_spells(*_spells(n, hazard=0.01), 0, 300.0, 0.0, 1.0)
+    stressed, *_ = regime_spells(
+        *_spells(n, stressed=np.ones(n, np.int8), hazard=0.01), 0, 300.0, 0.0, 1.0
+    )
+    assert (stressed == 0).mean() < (calm == 0).mean() - 0.15
+
+
+def test_regime_spells_are_resumable():
+    args = _spells(1000, seed=1)
+    full = regime_spells(*args, 0, 300.0, 1.0, 1.0)
+    head = tuple(a[:400] if isinstance(a, np.ndarray) and a.shape == (1000,) else a for a in args)
+    tail = tuple(a[400:] if isinstance(a, np.ndarray) and a.shape == (1000,) else a for a in args)
+    first = regime_spells(*head, 0, 300.0, 1.0, 1.0)
+    second = regime_spells(*tail, *first[3:])
     for a, b1, b2 in zip(full[:3], first[:3], second[:3], strict=True):
         np.testing.assert_array_equal(a, np.concatenate([b1, b2]))
 
@@ -203,8 +231,7 @@ def test_compiled_kernels_equal_their_interpreted_python_bit_for_bit():
     )  # fmt: skip
     cases = [
         (factor_paths, (*paths_args, rows, gaps, d["log_price"])),
-        (regime_chain, (rng.random(n), _cum([[0.9, 0.1], [0.2, 0.8]]), np.array([1.0, -1.0]),
-                        np.array([0.8, 2.0]), 0.1, 0, 1.0, 0.8)),
+        (regime_spells, (*_spells(n, seed=3, hazard=0.05, stressed=(np.arange(n) % 3 == 0).astype(np.int8)), 0, 10.0, 1.0, 0.8)),
         (gjr_garch, (rng.standard_normal((n, f)), 0.02, 0.05, 0.9, 0.06, np.ones(f), np.zeros(f))),
         (ar1, (rng.normal(size=(n, f)), 0.95, rng.normal(size=f))),
         (project_signed, (rng.normal(size=(n, f)), np.array([[0, -1], [1, 2]]), np.array([[1.0, 0.0], [-1.0, 1.0]]))),
@@ -277,7 +304,7 @@ if sys.argv[1] == "emscripten":
         m for m in set(sys.modules) - loaded if m.partition(".")[0] != "marketforge"
     )
     assert not leaked, f"imported under the fake platform: {leaked}"
-    assert not hasattr(kernels.regime_chain, "signatures"), "kernels were compiled"
+    assert not hasattr(kernels.regime_spells, "signatures"), "kernels were compiled"
 elif sys.argv[1] == "missing":
     sys.modules["numba"] = None
     try:

@@ -7,7 +7,7 @@ from marketforge.simulation import macro
 
 
 def test_the_macro_state_is_stressed_about_one_day_in_nine():
-    states = np.array([macro.macro_state(7, day) for day in range(0, 4 * macro.ERA_DAYS)])
+    states = np.array([macro.macro_state(7, day) for day in range(4 * macro.ERA_DAYS)])
     share = states.mean()
     expected = macro.STRESSED_DAYS / (macro.CALM_DAYS + macro.STRESSED_DAYS)
     assert share == pytest.approx(expected, abs=0.05)
@@ -77,3 +77,10 @@ def test_a_market_alone_is_the_same_as_beside_others(world):
     pd.testing.assert_frame_equal(
         alone["BTCUSD"]["H1"], world["BTCUSD"]["H1"].loc[:"2022-01-31 23:00"]
     )
+
+
+def test_the_macro_state_is_a_label_of_the_data(world):
+    labels = world.macro()
+    assert set(labels.cat.categories) == {"calm", "stressed"}
+    assert labels.index[0] == pd.Timestamp("2022-01-03", tz="UTC") and len(labels) == 544
+    assert labels.iloc[0] == ("stressed" if macro.macro_state(3, 18995) else "calm")
