@@ -31,7 +31,8 @@ explicitly.
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
 | Seed reproducibility | On Linux (x86-64 and arm64), macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test (the wheel CI built) and with the latest PyPI release, **in the same environment**, and fails on any difference unless the code under test increments `MODEL_REVISION` (`marketforge/_version.py`) and `CHANGELOG.md` has an `### Output changes` section for its version (ADR 0011). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
 | Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
-| Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
+| Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them, on `DOCS_PYTHON`; see [Documentation examples](#documentation-examples) |
+| Example scripts | Runs every script of `examples/` against the wheel CI built, on `DOCS_PYTHON` |
 | Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Then checks the licence of every runtime dependency, as the wheel resolves on Linux, macOS and Windows, against `.github/python-license-policy.toml` and writes their licence and NOTICE texts (`licenses.py`; see [Third-party licences](#third-party-licences)). Uploads the `dist`, `sbom` and `third-party-licenses` artifacts |
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.15 |
 | Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
@@ -194,6 +195,14 @@ A flag after the language opts a block out of running:
 | ` ```bash check=none ` | Not checked at all. Prefer `text` as the language for something that is not a command, such as a usage synopsis |
 
 Errors are annotated on the page's line in the pull request.
+
+Both jobs run on `DOCS_PYTHON` (`ci.yml`, mirrored in `noxfile.py`), not
+the newest Python: the Backtesting page's engines lag new Pythons (vectorbt
+and nautilus_trader declare `Requires-Python < 3.15`), and the docs group
+gives them the same cap as a marker, so a newer interpreter does not try to
+build them from source. `tests/tooling/test_docs_python.py` fails if the two
+files disagree or if a docs dependency would be left out on `DOCS_PYTHON`.
+Raise it when the engines publish wheels for the next Python.
 
 ## CD: how a release happens
 
