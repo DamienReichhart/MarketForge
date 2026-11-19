@@ -108,8 +108,8 @@ def market_charts() -> list[dict]:
             end=spec["end"],
             seed=spec["seed"],
             timeframes=[spec["timeframe"]],
-            include_regime=True,
-            include_spread=True,
+            with_regime=True,
+            with_spread=True,
         )
         rows = candles(data[spec["instrument"]][spec["timeframe"]])
         command = (
@@ -129,7 +129,7 @@ def regime_runs() -> dict[str, list]:
         end=spec["end"],
         seed=spec["seed"],
         timeframes=[spec["timeframe"]],
-        include_regime=True,
+        with_regime=True,
     )
     rows = candles(data[spec["instrument"]][spec["timeframe"]])
     best: dict[str, tuple[int, int]] = {}

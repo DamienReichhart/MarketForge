@@ -11,8 +11,8 @@ KWARGS = {"start": "2024-01-02", "end": "2024-01-05", "seed": 4, "timeframes": "
     ("fmt", "timestamps"), [("csv", "unix"), ("csv", "iso"), ("parquet", "unix")]
 )
 def test_read_returns_what_generate_returns(tmp_path, fmt, timestamps):
-    options = {"include_regime": True, "include_spread": True, **KWARGS}
-    mf.generate_to_disk(tmp_path, "EURUSD,AAPL", fmt=fmt, timestamps=timestamps, **options)
+    options = {"with_regime": True, "with_spread": True, **KWARGS}
+    mf.generate_to_disk(tmp_path, "EURUSD,AAPL", format=fmt, timestamps=timestamps, **options)
     data = mf.read(tmp_path)
     memory = mf.generate("EURUSD,AAPL", **options)
     assert data.seed == 4

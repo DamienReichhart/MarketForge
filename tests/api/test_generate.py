@@ -47,7 +47,7 @@ def test_random_seed_is_reported_and_reproduces():
 
 
 def test_regime_column():
-    df = mf.generate(["ETHUSD"], start="2024-01-01", end="2024-01-02", seed=3, include_regime=True)[
+    df = mf.generate(["ETHUSD"], start="2024-01-01", end="2024-01-02", seed=3, with_regime=True)[
         "ETHUSD"
     ]["m1"]
     assert set(df["regime"].cat.categories) == {
@@ -118,7 +118,7 @@ def test_warnings_point_at_the_callers_code():
 @pytest.mark.parametrize("fmt", ["csv", "parquet"])
 def test_generate_to_disk_matches_in_memory(tmp_path, fmt):
     kw = {"start": "2024-01-02", "end": "2024-01-04", "seed": 5, "timeframes": ["m1", "H1"]}
-    report = mf.generate_to_disk(tmp_path, ["AAPL", "BTCUSD"], fmt=fmt, jobs=2, **kw)
+    report = mf.generate_to_disk(tmp_path, ["AAPL", "BTCUSD"], format=fmt, jobs=2, **kw)
     assert report.seed == 5 and report.n_files == 4
     path = report.paths["stocks"]["AAPL"]["H1"]
     assert path == tmp_path / "stocks" / f"AAPL_H1.{fmt}"
@@ -196,7 +196,7 @@ def test_panel_puts_one_column_per_instrument_without_filling_closures():
         "BTCUSD,AAPL", start="2024-01-05", end="2024-01-09", seed=2, timeframes="H1,D1"
     )
     closes = data.panel("close", "h1")
-    assert list(closes.columns) == ["BTCUSD", "AAPL"]
+    assert list(closes.columns) == ["AAPL", "BTCUSD"]  # symbols are sorted
     # Stock hours start at :30, crypto hours at :00: the index is the union of both.
     assert len(closes) == len(data["BTCUSD"]["H1"]) + len(data["AAPL"]["H1"])
     assert closes.index.is_monotonic_increasing
@@ -206,14 +206,14 @@ def test_panel_puts_one_column_per_instrument_without_filling_closures():
     )
     with pytest.raises(ValueError, match="Choose a timeframe: H1, D1"):
         data.panel()
-    with pytest.raises(ValueError, match="Timeframe m1 was not generated"):
+    with pytest.raises(ValueError, match="Timeframe m1 is not held"):
         data.panel("volume", "m1")
 
 
 def test_spread_column_in_memory_and_on_disk(tmp_path):
     kwargs = {"start": "2024-01-02", "end": "2024-01-04", "seed": 9, "timeframes": "m1,H1"}
     plain = mf.generate("EURUSD", **kwargs)["EURUSD"]
-    data = mf.generate("EURUSD", include_spread=True, include_regime=True, **kwargs)["EURUSD"]
+    data = mf.generate("EURUSD", with_spread=True, with_regime=True, **kwargs)["EURUSD"]
     assert list(data["m1"].columns) == [
         "open",
         "high",
@@ -231,7 +231,7 @@ def test_spread_column_in_memory_and_on_disk(tmp_path):
 
     for fmt in ("csv", "parquet"):
         report = mf.generate_to_disk(
-            tmp_path / fmt, "EURUSD", include_spread=True, include_regime=True, fmt=fmt, **kwargs
+            tmp_path / fmt, "EURUSD", with_spread=True, with_regime=True, format=fmt, **kwargs
         )
         path = report.paths["forex"]["EURUSD"]["H1"]
         df = pd.read_csv(path) if fmt == "csv" else pd.read_parquet(path)
@@ -292,7 +292,7 @@ def test_iso_timestamps_in_parquet_are_refused_before_anything_is_written(tmp_pa
     out = tmp_path / "out"
     with pytest.raises(ValueError, match="ISO timestamps are for CSV"):
         mf.generate_to_disk(
-            out, "AAPL", start="2024-01-02", end="2024-01-03", fmt="parquet", timestamps="iso"
+            out, "AAPL", start="2024-01-02", end="2024-01-03", format="parquet", timestamps="iso"
         )
     assert not out.exists()
 
@@ -356,8 +356,8 @@ def test_ranges_before_1970_are_refused_with_a_clear_message():
 @pytest.mark.parametrize("fmt", ["csv", "parquet"])
 def test_regime_names_are_the_same_on_disk_as_in_memory(tmp_path, fmt):
     kwargs = {"start": "2024-01-01", "end": "2024-01-08", "seed": 3, "timeframes": "H1"}
-    mem = mf.generate("BTCUSD", include_regime=True, **kwargs)["BTCUSD"]["H1"]["regime"]
-    report = mf.generate_to_disk(tmp_path, "BTCUSD", include_regime=True, fmt=fmt, **kwargs)
+    mem = mf.generate("BTCUSD", with_regime=True, **kwargs)["BTCUSD"]["H1"]["regime"]
+    report = mf.generate_to_disk(tmp_path, "BTCUSD", with_regime=True, format=fmt, **kwargs)
     path = report.paths["crypto"]["BTCUSD"]["H1"]
     disk = pd.read_csv(path)["regime"] if fmt == "csv" else pd.read_parquet(path)["regime"]
     assert disk.tolist() == mem.tolist()  # names like "trend_up", not codes
@@ -375,7 +375,7 @@ def test_to_long_stacks_every_instrument_of_a_timeframe():
         end="2024-01-04",
         seed=1,
         timeframes="H1",
-        include_regime=True,
+        with_regime=True,
     )
     long = data.to_long()
     assert long.index.names == ["symbol", "time"]
@@ -391,15 +391,15 @@ def test_to_numpy_is_time_by_instrument_by_column_with_nan_when_closed():
         end="2024-01-04",
         seed=1,
         timeframes="H1",
-        include_regime=True,
+        with_regime=True,
     )
     array, index, symbols = data.to_numpy(columns=["close", "regime"])
-    assert symbols == ["BTCUSD", "AAPL"]
+    assert symbols == ["AAPL", "BTCUSD"]
     assert array.shape == (len(index), 2, 2) and array.dtype == np.float64
     btc = data["BTCUSD"]["H1"]
-    np.testing.assert_array_equal(array[:, 0, 0], btc["close"].reindex(index).to_numpy())
-    np.testing.assert_array_equal(array[:, 0, 1], btc["regime"].cat.codes.reindex(index).to_numpy())
-    assert np.isnan(array[:, 1, 0]).sum() == len(index) - len(data["AAPL"]["H1"])  # closed hours
+    np.testing.assert_array_equal(array[:, 1, 0], btc["close"].reindex(index).to_numpy())
+    np.testing.assert_array_equal(array[:, 1, 1], btc["regime"].cat.codes.reindex(index).to_numpy())
+    assert np.isnan(array[:, 0, 0]).sum() == len(index) - len(data["AAPL"]["H1"])  # closed hours
 
 
 def test_days_is_an_alternative_to_end():
@@ -414,7 +414,7 @@ def test_days_is_an_alternative_to_end():
 
 def test_estimate_predicts_files_rows_and_size_without_generating(tmp_path):
     kwargs = {"start": "2024-01-01", "days": 10, "timeframes": "m1,H1", "seed": 1}
-    guess = mf.estimate("BTCUSD,AAPL,EURUSD", fmt="csv", **kwargs)
+    guess = mf.estimate("BTCUSD,AAPL,EURUSD", format="csv", **kwargs)
     report = mf.generate_to_disk(tmp_path, "BTCUSD,AAPL,EURUSD", **kwargs)
     files = [p for syms in report.paths.values() for tfs in syms.values() for p in tfs.values()]
     rows = sum(len(p.read_text().splitlines()) - 1 for p in files)
@@ -438,10 +438,8 @@ def test_generate_many_yields_each_seed_as_generate_would_in_seed_order():
 
 def test_bid_and_ask_quote_the_close_around_the_mid(tmp_path):
     kwargs = {"start": "2024-01-02", "days": 2, "seed": 9, "timeframes": "m1,H1"}
-    both = mf.generate("EURUSD", include_spread=True, include_bid_ask=True, **kwargs)["EURUSD"][
-        "H1"
-    ]
-    only = mf.generate("EURUSD", include_bid_ask=True, **kwargs)["EURUSD"]["H1"]
+    both = mf.generate("EURUSD", with_spread=True, with_bid_ask=True, **kwargs)["EURUSD"]["H1"]
+    only = mf.generate("EURUSD", with_bid_ask=True, **kwargs)["EURUSD"]["H1"]
     assert list(both.columns) == ["open", "high", "low", "close", "volume", "spread", "bid", "ask"]
     assert list(only.columns) == ["open", "high", "low", "close", "volume", "bid", "ask"]
     np.testing.assert_allclose(both["ask"] - both["bid"], both["spread"], rtol=1e-9)
@@ -451,7 +449,7 @@ def test_bid_and_ask_quote_the_close_around_the_mid(tmp_path):
     mf.generate_to_disk(
         tmp_path,
         "EURUSD",
-        include_bid_ask=True,
+        with_bid_ask=True,
         end="2024-01-03",
         **{k: v for k, v in kwargs.items() if k != "days"},
     )

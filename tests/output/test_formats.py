@@ -11,13 +11,13 @@ KWARGS = {
     "end": "2024-01-04",
     "seed": 2,
     "timeframes": "m5,H1",
-    "include_regime": True,
+    "with_regime": True,
 }
 
 
 def test_feather_files_hold_the_same_candles_as_parquet(tmp_path):
-    a = mf.generate_to_disk(tmp_path / "f", "EURUSD", fmt="feather", **KWARGS)
-    b = mf.generate_to_disk(tmp_path / "p", "EURUSD", fmt="parquet", **KWARGS)
+    a = mf.generate_to_disk(tmp_path / "f", "EURUSD", format="feather", **KWARGS)
+    b = mf.generate_to_disk(tmp_path / "p", "EURUSD", format="parquet", **KWARGS)
     path = a.paths["forex"]["EURUSD"]["H1"]
     assert path.name == "EURUSD_H1.feather"
     pd.testing.assert_frame_equal(
@@ -28,7 +28,7 @@ def test_feather_files_hold_the_same_candles_as_parquet(tmp_path):
 
 @pytest.mark.parametrize("fmt", ["parquet", "feather"])
 def test_datetime_timestamps_are_a_native_utc_time_column(tmp_path, fmt):
-    report = mf.generate_to_disk(tmp_path, "EURUSD", fmt=fmt, timestamps="datetime", **KWARGS)
+    report = mf.generate_to_disk(tmp_path, "EURUSD", format=fmt, timestamps="datetime", **KWARGS)
     path = report.paths["forex"]["EURUSD"]["H1"]
     table = pq.read_table(path) if fmt == "parquet" else feather.read_table(path)
     kind = table.schema.field("timestamp").type
@@ -42,11 +42,11 @@ def test_datetime_timestamps_are_a_native_utc_time_column(tmp_path, fmt):
 @pytest.mark.parametrize("timestamps", ["unix", "datetime"])
 def test_feather_and_datetime_datasets_read_back_and_extend(tmp_path, timestamps):
     whole = mf.generate_to_disk(
-        tmp_path / "whole", "EURUSD,BTCUSD", fmt="feather", timestamps=timestamps, **KWARGS
+        tmp_path / "whole", "EURUSD,BTCUSD", format="feather", timestamps=timestamps, **KWARGS
     )
     part = dict(KWARGS, end="2024-01-03")
     mf.generate_to_disk(
-        tmp_path / "part", "EURUSD,BTCUSD", fmt="feather", timestamps=timestamps, **part
+        tmp_path / "part", "EURUSD,BTCUSD", format="feather", timestamps=timestamps, **part
     )
     mf.extend(tmp_path / "part", KWARGS["end"])
     for symbol in ("EURUSD", "BTCUSD"):
@@ -65,4 +65,4 @@ def test_feather_and_datetime_datasets_read_back_and_extend(tmp_path, timestamps
 
 def test_datetime_timestamps_are_refused_for_csv(tmp_path):
     with pytest.raises(ValueError, match="datetime timestamps are for Parquet and Feather"):
-        mf.generate_to_disk(tmp_path, "EURUSD", fmt="csv", timestamps="datetime", **KWARGS)
+        mf.generate_to_disk(tmp_path, "EURUSD", format="csv", timestamps="datetime", **KWARGS)

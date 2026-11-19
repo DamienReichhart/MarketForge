@@ -8,15 +8,11 @@
 
 from __future__ import annotations
 
-import datetime as dt
 import json
-from pathlib import Path
-from typing import Any
 
 import click
 
-from marketforge._version import MODEL_REVISION, __version__
-from marketforge.output.manifest import dataset_files, read_manifest
+from marketforge.api.inspecting import info as dataset_info
 
 
 @click.command()
@@ -24,69 +20,39 @@ from marketforge.output.manifest import dataset_files, read_manifest
 @click.option("--json", "as_json", is_flag=True, help="Print the summary as JSON.")
 def info(dataset: str, as_json: bool) -> None:
     """Summarise a dataset: how it was made, what it holds, and whether it can be extended."""
-    manifest = read_manifest(dataset)
-    files = [p for p in dataset_files(dataset) if p.name != "marketforge.json"]
-    reason = (
-        None
-        if manifest.model_revision == MODEL_REVISION
-        else f"written by model revision {manifest.model_revision}; MarketForge {__version__} "
-        f"has {MODEL_REVISION} (install marketforge=={manifest.version})"
-    )
-    doc: dict[str, Any] = {
-        "path": str(Path(dataset).resolve()),
-        "marketforge": manifest.version,
-        "model_revision": manifest.model_revision,
-        "seed": manifest.seed,
-        "start": _iso(manifest.start),
-        "end": _iso(manifest.end),
-        "format": manifest.format,
-        "timestamps": manifest.timestamps,
-        "timeframes": manifest.timeframes,
-        "instruments": manifest.instruments,
-        "columns": {
-            "spread": manifest.include_spread,
-            "bid_ask": manifest.include_bid_ask,
-            "regime": manifest.include_regime,
-        },
-        "anomalies": manifest.anomalies,
-        "overrides": sorted(manifest.overrides),
-        "files": len(files),
-        "bytes": sum(p.stat().st_size for p in files),
-        "extendable": reason is None,
-    }
+    summary = dataset_info(dataset)
+    doc = summary.to_dict()
     if as_json:
         click.echo(json.dumps(doc, indent=2))
         return
 
-    def when(seconds: int) -> str:
-        return dt.datetime.fromtimestamp(seconds, dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+    def when(iso: str) -> str:
+        return iso.replace("T", " ")[:16] + " UTC"
 
-    click.secho(f"Dataset {doc['path']}", bold=True)
+    click.secho(f"Dataset {summary.path}", bold=True)
     click.echo(
-        f"  Written by  MarketForge {manifest.version} (model revision {manifest.model_revision})"
+        f"  Written by  MarketForge {summary.version} (model revision {summary.model_revision})"
     )
-    click.echo(f"  Seed        {manifest.seed}")
-    click.echo(f"  Range       {when(manifest.start)} -> {when(manifest.end)}")
-    for market, symbols in manifest.instruments.items():
+    click.echo(f"  Seed        {summary.seed}")
+    click.echo(f"  Range       {when(summary.start)} -> {when(summary.end)}")
+    for market, symbols in summary.instruments.items():
         names = ", ".join(symbols[:6]) + (
             f" (+{len(symbols) - 6} more)" if len(symbols) > 6 else ""
         )
         click.echo(f"  {market:<11} {len(symbols)} instrument(s): {names}")
-    extra = [name for name, on in doc["columns"].items() if on]
+    extra = [name.replace("_", "/") for name, on in summary.columns.items() if on]
+    files = f"{summary.files} {summary.format} file{'' if summary.files == 1 else 's'}"
     click.echo(
-        f"  Files       {doc['files']} {manifest.format} files, {_human(doc['bytes'])}; "
-        f"timeframes {', '.join(manifest.timeframes)}"
+        f"  Files       {files}, {_human(summary.bytes)}; "
+        f"timeframes {', '.join(summary.timeframes)}"
         + (f"; with {' and '.join(extra)}" if extra else "")
     )
-    if manifest.anomalies:
-        click.echo(f"  Anomalies   {', '.join(manifest.anomalies)}")
-    if manifest.overrides:
-        click.echo(f"  Overrides   {', '.join(sorted(manifest.overrides))}")
-    click.echo(f"  Can extend  {'yes' if reason is None else 'no: ' + reason}")
-
-
-def _iso(seconds: int) -> str:
-    return dt.datetime.fromtimestamp(seconds, dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if summary.anomalies:
+        click.echo(f"  Anomalies   {', '.join(summary.anomalies)}")
+    if summary.overrides:
+        click.echo(f"  Overrides   {', '.join(summary.overrides)}")
+    because = summary.not_extendable_because
+    click.echo(f"  Can extend  {'yes' if because is None else 'no: ' + because}")
 
 
 def _human(n: float) -> str:

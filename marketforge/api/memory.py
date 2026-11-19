@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import multiprocessing
 import os
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from typing import Any
@@ -18,9 +18,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from marketforge._version import MODEL_REVISION, __version__
+from marketforge.api.data import GeneratedData, Origin
 from marketforge.api.execution import execute, warn_about_empty
 from marketforge.api.parsing import Names, TimeLike
-from marketforge.api.planning import MarketPlan, plan_request
+from marketforge.api.planning import Checkpoint, MarketPlan, Request, plan_request
+from marketforge.api.renamed import renamed_arguments
 from marketforge.config.overrides import Overrides
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
@@ -28,88 +31,7 @@ from marketforge.domain.regimes import RegimeType
 from marketforge.domain.timeframes import Timeframe
 
 
-class GeneratedData(dict):
-    """``{symbol: {timeframe: DataFrame}}`` plus the seed that produced it."""
-
-    seed: int
-
-    def panel(self, column: str = "close", timeframe: str | None = None) -> pd.DataFrame:
-        """
-        One column of every instrument side by side, for one timeframe.
-
-        Args:
-            column: ``open``, ``high``, ``low``, ``close``, ``volume`` or any other
-                column the frames have.
-            timeframe: Which timeframe; may be omitted when only one was generated.
-
-        Returns:
-            A DataFrame with one column per instrument. Its index is the union of
-            the instruments' candle times, so a value is NaN where that
-            instrument's market was closed; nothing is forward-filled.
-        """
-        name = self._timeframe(timeframe)
-        return pd.concat(
-            {symbol: frames[name][column] for symbol, frames in self.items()}, axis=1, sort=True
-        )
-
-    def to_long(self, timeframe: str | None = None) -> pd.DataFrame:
-        """
-        Every instrument of one timeframe in one frame, indexed by (symbol, time).
-
-        The long format most data and ML tooling expects; ``.loc[symbol]`` gives
-        back that instrument's frame. ``timeframe`` may be omitted when only one
-        was generated.
-        """
-        name = self._timeframe(timeframe)
-        return pd.concat(
-            {symbol: frames[name] for symbol, frames in self.items()}, names=["symbol", "time"]
-        )
-
-    def to_numpy(
-        self,
-        timeframe: str | None = None,
-        columns: Sequence[str] = ("open", "high", "low", "close", "volume"),
-    ) -> tuple[np.ndarray, pd.DatetimeIndex, list[str]]:
-        """
-        One timeframe as a (time, instrument, column) float array, for tensors.
-
-        The time axis is the union of every instrument's candle times; a value
-        is NaN where that instrument's market was closed. The regime column
-        gives its codes (0 trend_up ... 4 crash).
-
-        Returns:
-            (array, index, symbols): the array, its time axis and its instrument axis.
-        """
-        name = self._timeframe(timeframe)
-        symbols = list(self)
-        index = pd.DatetimeIndex(
-            sorted(set().union(*(self[s][name].index for s in symbols))), name="time"
-        )
-        out = np.full((len(index), len(symbols), len(columns)), np.nan)
-        for j, symbol in enumerate(symbols):
-            frame = self[symbol][name]
-            rows = index.get_indexer(frame.index)
-            for k, column in enumerate(columns):
-                values = frame[column]
-                if isinstance(values.dtype, pd.CategoricalDtype):
-                    values = values.cat.codes
-                out[rows, j, k] = values.to_numpy(dtype=float)
-        return out, index, symbols
-
-    def _timeframe(self, timeframe: str | None) -> str:
-        available = list(dict.fromkeys(tf for frames in self.values() for tf in frames))
-        if timeframe is None:
-            if len(available) != 1:
-                raise ValueError(f"Choose a timeframe: {', '.join(available)}")
-            return str(available[0])
-        name = Timeframe.from_string(timeframe).name
-        if name not in available:
-            raise ValueError(
-                f"Timeframe {name} was not generated; available: {', '.join(available)}"
-            )
-        return name
-
-
+@renamed_arguments
 def generate(
     instruments: Names | None = None,
     *,
@@ -118,11 +40,11 @@ def generate(
     days: int | None = None,
     markets: Names | None = None,
     seed: int | None = None,
-    timeframes: Names = ("m1",),
+    timeframes: Names | None = None,
     anomalies: Names = (),
-    include_regime: bool = False,
-    include_spread: bool = False,
-    include_bid_ask: bool = False,
+    with_regime: bool = False,
+    with_spread: bool = False,
+    with_bid_ask: bool = False,
     overrides: Overrides | None = None,
 ) -> GeneratedData:
     """
@@ -138,21 +60,26 @@ def generate(
         seed: Non-negative integer; the same seed returns identical candles.
             If omitted a random seed is chosen and exposed as ``result.seed``.
         timeframes: Any of m1, m2, m3, m5, m10, m15, m20, m30, H1, H2, H3, H4,
-            H6, H8, H12, D1, W1.
+            H6, H8, H12, D1, W1, or ``"all"`` of them. Default: the eight
+            standard ones, m1, m5, m15, m30, H1, H4, D1 and W1.
         anomalies: Optional ``spikes`` and/or ``flash_crash``.
-        include_regime: Add a ``regime`` column (market regime name at candle close).
-        include_spread: Add a ``spread`` column: the mean quoted bid-ask spread
+        with_regime: Add a ``regime`` column (market regime name at candle close).
+        with_spread: Add a ``spread`` column: the mean quoted bid-ask spread
             over the candle, in price units. ``open``, ``high``, ``low`` and
             ``close`` are mid prices, so bid = price - spread / 2.
-        include_bid_ask: Add ``bid`` and ``ask`` columns: the quotes around the
+        with_bid_ask: Add ``bid`` and ``ask`` columns: the quotes around the
             close, ``close -+ spread / 2``.
         overrides: Path to a TOML override file, or the same content as
             ``{SYMBOL: {key: value}}`` (custom prices, new instruments).
 
     Returns:
-        :class:`GeneratedData` mapping symbol -> timeframe -> DataFrame with a
-        UTC ``DatetimeIndex`` named ``time`` and columns open, high, low, close,
-        volume (and spread, regime).
+        :class:`GeneratedData`: symbol -> timeframe -> DataFrame with a UTC
+        ``DatetimeIndex`` named ``time`` and columns open, high, low, close,
+        volume (and spread, bid, ask, regime).
+
+    Raises:
+        ValueError: on unknown names, an invalid range, or a range in which
+            nothing can be generated.
     """
     request = plan_request(
         instruments,
@@ -163,9 +90,9 @@ def generate(
         seed=seed,
         timeframes=timeframes,
         anomalies=anomalies,
-        include_regime=include_regime,
-        include_spread=include_spread,
-        include_bid_ask=include_bid_ask,
+        include_regime=with_regime,
+        include_spread=with_spread,
+        include_bid_ask=with_bid_ask,
         overrides=overrides,
     )
     parts: dict[tuple[MarketType, Timeframe], list[Bars]] = {}
@@ -173,26 +100,49 @@ def generate(
     def collect(plan: MarketPlan, tf: Timeframe, bars: Bars) -> None:
         parts.setdefault((plan.market, tf), []).append(bars)
 
-    execute(request, collect)
-    out = GeneratedData()
-    out.seed = request.seed
+    checkpoints = execute(request, collect)
+    frames: dict[str, dict[str, pd.DataFrame]] = {}
+    owners: dict[str, str] = {}
     for plan in request.plans:
         for tf in request.timeframes:
             chunks = parts.get((plan.market, tf))
-            frames = _frames(
+            built = _frames(
                 chunks or [],
                 len(plan.selected),
                 request.include_regime,
                 request.include_spread,
                 request.include_bid_ask,
             )
-            for symbol, frame in zip(plan.selected, frames, strict=True):
-                out.setdefault(symbol, {})[tf.name] = frame
+            for symbol, frame in zip(plan.selected, built, strict=True):
+                frames.setdefault(symbol, {})[tf.name] = frame
+                owners[symbol] = plan.market.value
     warn_about_empty(
-        ((symbol, name) for symbol, frames in out.items() for name, f in frames.items() if f.empty),
-        total=sum(len(frames) for frames in out.values()),
+        ((s, tf) for s, tfs in frames.items() for tf, f in tfs.items() if f.empty),
+        total=sum(len(tfs) for tfs in frames.values()),
+        named=request.timeframes_named,
     )
-    return out
+    return GeneratedData(frames, owners, request.seed, origin_of(request, checkpoints))
+
+
+def origin_of(request: Request, checkpoints: Mapping[MarketType, Checkpoint]) -> Origin:
+    """What a generation's result records about how it was made."""
+    return Origin(
+        version=__version__,
+        model_revision=MODEL_REVISION,
+        start=request.start,
+        end=request.end,
+        anomalies=tuple(sorted(request.anomalies)),
+        overrides=request.overrides,
+        checkpoint=checkpoint_doc(checkpoints),
+    )
+
+
+def checkpoint_doc(checkpoints: Mapping[MarketType, Checkpoint]) -> dict[str, dict[str, Any]]:
+    """Checkpoints as the manifest stores them."""
+    return {
+        market.value: {"day": c.day, "state": c.state, "written": c.written}
+        for market, c in checkpoints.items()
+    }
 
 
 def generate_many(
@@ -213,8 +163,10 @@ def generate_many(
     Args:
         instruments: As for :func:`generate`.
         seeds: The seeds, one generation each.
-        jobs: Processes to use (default: the CPU count). Each process compiles
-            the kernels once (a couple of seconds on a cold cache).
+        jobs: Processes to use. Default: one, when the whole run is estimated
+            to take under ten seconds (starting processes would cost more than
+            it saves), else the CPU count. Each process compiles the kernels
+            once (a couple of seconds on a cold cache).
         **kwargs: Every other argument of :func:`generate` except ``seed``.
 
     In a script, call it under ``if __name__ == "__main__":``: worker
@@ -224,13 +176,41 @@ def generate_many(
     if "seed" in kwargs:
         raise TypeError("generate_many() takes seeds=, not seed=")
     seeds = [int(s) for s in seeds]
-    workers = max(1, min(jobs or os.cpu_count() or 1, len(seeds)))
+    if jobs is None:
+        jobs = _default_jobs(instruments, kwargs, len(seeds))
+    workers = max(1, min(jobs, len(seeds)))
     run = partial(_generate_seed, instruments, kwargs)
     if workers == 1:
         yield from map(run, seeds)
         return
     with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         yield from pool.map(run, seeds)
+
+
+# Below this estimated total, one process beats a pool: each worker spends a
+# second or more starting up and importing (or compiling) the kernels.
+_SERIAL_SECONDS = 10.0
+
+
+def _default_jobs(instruments: Names | None, kwargs: dict[str, Any], n_seeds: int) -> int:
+    from marketforge.api.estimating import estimate  # estimating imports planning only
+
+    keys = (
+        "start",
+        "end",
+        "days",
+        "markets",
+        "timeframes",
+        "with_regime",
+        "with_spread",
+        "with_bid_ask",
+        "overrides",
+        "anomalies",
+    )
+    per_seed = estimate(instruments, **{k: v for k, v in kwargs.items() if k in keys}).seconds
+    if per_seed * n_seeds < _SERIAL_SECONDS:
+        return 1
+    return os.cpu_count() or 1
 
 
 def _generate_seed(instruments: Names | None, kwargs: dict[str, Any], seed: int) -> GeneratedData:

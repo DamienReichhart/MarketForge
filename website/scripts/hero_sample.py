@@ -30,8 +30,8 @@ def main() -> None:
         end=END,
         seed=SEED,
         timeframes=["m1", TIMEFRAME],
-        include_regime=True,
-        include_spread=True,
+        with_regime=True,
+        with_spread=True,
     )
     candles = data[INSTRUMENT][TIMEFRAME]
     report = mf.validate(data[INSTRUMENT]["m1"], MARKET)

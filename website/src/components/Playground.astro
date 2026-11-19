@@ -326,9 +326,9 @@ const anomalyLabels: Record<string, string> = { spikes: 'Spikes', flash_crash: '
 			`days=${r.days}`,
 			`seed=${r.seed}`,
 			`timeframes=${list(r.timeframes)}`,
-			r.include_regime && 'include_regime=True',
-			r.include_spread && 'include_spread=True',
-			r.include_bid_ask && 'include_bid_ask=True',
+			r.include_regime && 'with_regime=True',
+			r.include_spread && 'with_spread=True',
+			r.include_bid_ask && 'with_bid_ask=True',
 			r.anomalies.length > 0 && `anomalies=${list(r.anomalies)}`,
 		].filter(Boolean);
 		return {

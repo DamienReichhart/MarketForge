@@ -39,9 +39,9 @@ def test_iid_returns_fail_long_memory():
 
 
 def test_spread_checks_flag_absurd_levels_and_spreads_that_narrow_in_turbulence():
-    frame = mf.generate(
-        "BTCUSD", start="2024-01-01", end="2024-01-15", seed=1, include_spread=True
-    )["BTCUSD"]["m1"]
+    frame = mf.generate("BTCUSD", start="2024-01-01", end="2024-01-15", seed=1, with_spread=True)[
+        "BTCUSD"
+    ]["m1"]
     good = mf.validate(frame, "crypto")
     assert good.passed and 1.0 < good.get("spread_widening").value < 1.35  # as measured
     # Crypto spread bands are anchored to measured quotes; the others are not.
