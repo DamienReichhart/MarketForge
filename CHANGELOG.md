@@ -29,6 +29,13 @@ Upgrading from 4.x? See
   BTC-AAPL is now 0.13 daily, 0.28 weekly and 0.39 monthly; crypto is
   stressed 39% of the time stocks are, against 25% otherwise. Each market's
   own correlations are unchanged. `GeneratedData.macro()` labels every day.
+- **Index CFDs follow the stock market's bull and bear spells.** SPXUSD
+  shared the stocks' shocks but not their regime trends, so it correlated
+  about 0.1 with AAPL week to week. The forex market now runs the stock
+  market's own regime chain (regime draws have a random stream of their
+  own in every market) and moves each index CFD with the stock market's
+  trend during NYSE hours: SPXUSD correlates 0.66 weekly and 0.77 monthly
+  with a basket of large caps.
 - **Stocks report earnings.** Gaps were scaled diffusion: AAPL's largest
   overnight move in two years was 3.6%, and NVDA's big gaps fell at random.
   Every stock now reports four times a year, after the close of a day of its

@@ -45,11 +45,13 @@ from typing import Any
 import numpy as np
 
 from marketforge.calendars.trading_calendar import TradingCalendar, get_calendar
+from marketforge.config.defaults import get_market_defaults
 from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.time import MINUTES_PER_DAY, SECONDS_PER_DAY
 from marketforge.simulation.annualisation import closure_variance, effective_minutes_per_year
 from marketforge.simulation.anomalies import inject_anomalies
+from marketforge.simulation.chain import ChainState, RegimeChain
 from marketforge.simulation.earnings import (
     BOOST_HORIZON,
     EARNINGS_MOVE_DAYS,
@@ -64,7 +66,6 @@ from marketforge.simulation.kernels import (
     finish_bars,
     gjr_garch,
     pull_to_pegs,
-    regime_spells,
 )
 from marketforge.simulation.macro import (
     STRESSED,
@@ -78,11 +79,10 @@ from marketforge.simulation.macro import (
 from marketforge.simulation.pegs import market_pegs, peg_factors
 from marketforge.simulation.projection import Projection, SessionShape
 from marketforge.simulation.regimes import (
-    REGIME_SMOOTHING,
     dollar_portfolio,
     forex_risk_direction,
     main_factor_loadings,
-    normalised_spell_targets,
+    stock_market_shares,
 )
 from marketforge.simulation.seasonality import get_seasonality
 from marketforge.simulation.spec import MarketSpec, tick_grid
@@ -176,14 +176,8 @@ class MarketSimulator:
         self._garch = (1.0 - g.persistence, g.alpha, g.beta, g.gamma)
 
         rp = d.regime_params
-        self._next_calm = np.asarray(rp.jump_rows(False))
-        self._next_stressed = np.asarray(rp.jump_rows(True))
-        self._spell_minutes = np.asarray(rp.mean_minutes())
-        self._spell_shape = float(rp.spell_shape)
-        self._break_hazard = 1.0 / float(rp.minutes_per_step)
-        r0 = rp.get_regime_index(rp.initial_regime)
-        self._regime_drift, self._regime_vol = normalised_spell_targets(
-            rp, _OPEN_MINUTES_PER_DAY[spec.market]
+        self._chain = RegimeChain(
+            rp, _MARKET_STREAM[spec.market], _OPEN_MINUTES_PER_DAY[spec.market], self.seed
         )
 
         # ---- active subset: the selected instruments and their factors ----
@@ -215,7 +209,35 @@ class MarketSimulator:
         # In forex the main factor is the dollar: trend_up is the dollar falling.
         portfolio = dollar_portfolio(structure.factors) if spec.market == MarketType.FOREX else None
         loadings = main_factor_loadings(spec.factor_correlation, portfolio)
-        self._trend = (sigma * loadings)[fa]
+        trends = [(sigma * loadings)[fa]]
+        # Index CFDs also follow the stock market's own trends: the forex
+        # simulator runs the stock market's regime chain, which gives the same
+        # path as the stock simulator's, and moves each index during NYSE
+        # hours as the stock market's main factor moves (ADR 0016).
+        self._stocks: RegimeChain | None = None
+        self._stocks_state: ChainState | None = None
+        if spec.market == MarketType.FOREX:
+            shares = stock_market_shares(structure.factors)[fa]
+            if shares.any():
+                stocks = get_market_defaults(MarketType.STOCKS)
+                per_stock_minute = np.sqrt(
+                    effective_minutes_per_year(
+                        MarketType.STOCKS,
+                        stocks.closure_variance_scale,
+                        stocks.closure_variance_exponent,
+                    )
+                )
+                annual = np.array([a.volatility for a in factors])[fa]
+                trends.append(shares * annual / per_stock_minute)
+                self._stocks = RegimeChain(
+                    stocks.regime_params,
+                    _MARKET_STREAM[MarketType.STOCKS],
+                    _OPEN_MINUTES_PER_DAY[MarketType.STOCKS],
+                    self.seed,
+                )
+                self._stocks_state = self._stocks.initial
+                self._stocks_calendar = get_calendar(MarketType.STOCKS)
+        self._trend = np.array(trends)  # (K, Fa): the market's trend, then the stock market's
         # Stress pulls shocks onto the same factor, with loadings stretched
         # towards 0.95 for every series: co-movement intensifies.
         self._stress = np.asarray(rp.stress, dtype=float)
@@ -283,15 +305,16 @@ class MarketSimulator:
         # Prices are published on each instrument's tick.
         self.ticks = tick_grid(spec, selected)
 
+        first = self._chain.initial
         self._state = _State(
             log_price=np.log([a.start_price for a in factors])[fa],
             garch_variance=np.ones(fa.size),
             garch_shock=np.zeros(fa.size),
-            regime=r0,
-            drift_mult=float(self._regime_drift[r0]),
-            vol_mult=float(self._regime_vol[r0]),
+            regime=first.regime,
+            drift_mult=first.drift_mult,
+            vol_mult=first.vol_mult,
             volume_memory=np.zeros(inst.size),
-            spell_left=float(self._spell_minutes[r0]),
+            spell_left=first.spell_left,
         )
 
     # ---------------------------------------------------------- checkpoint
@@ -316,11 +339,20 @@ class MarketSimulator:
             "spell_left": float(st.spell_left),
             "noise": None if st.noise is None else st.noise.tolist(),
             "slow": None if st.slow is None else st.slow.tolist(),
+            # The stock market's regime chain, which index CFDs follow (forex).
+            "stock_regime": None if self._stocks_state is None else list(self._stocks_state),
         }
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         """Continue from a state saved by :meth:`snapshot`."""
         st = self._state
+        if self._stocks_state is not None:
+            saved = snapshot.get("stock_regime")
+            if saved is None:
+                raise ValueError(
+                    "checkpoint lacks the stock market's regime, which index CFDs follow"
+                )
+            self._stocks_state = ChainState(int(saved[0]), *map(float, saved[1:]))
         arrays = {
             name: np.asarray(snapshot[name], dtype=float)
             for name in ("log_price", "garch_variance", "garch_shock", "volume_memory")
@@ -419,6 +451,25 @@ class MarketSimulator:
         st.slow = x
         return np.asarray(np.exp(x - self._slow_std**2))
 
+    def _stock_trend(self, day: int, day_ts: np.ndarray, start: int, end: int) -> np.ndarray | None:
+        """The stock market's trend multiplier at every minute of the day (0 while
+        NYSE is shut), or None when no active factor follows it.
+
+        The stock simulator's own chain, run over the same minutes: its open
+        minutes within the range.
+        """
+        if self._stocks is None or self._stocks_state is None:
+            return None
+        open_ = self._stocks_calendar.open_mask(day_ts) & (day_ts >= start) & (day_ts < end)
+        rows = np.nonzero(open_)[0]
+        stressed = macro_state(self.seed, day) == STRESSED
+        _, drift, _, self._stocks_state = self._stocks.advance(
+            day, rows, stressed, self._stocks_state
+        )
+        trend = np.zeros(MINUTES_PER_DAY)
+        trend[rows] = drift
+        return trend
+
     def _last_report(self, symbol: str, today: int) -> int | None:
         """The latest report of ``symbol`` in the days before ``today`` whose effects last."""
         year = (today - 365) // 365
@@ -447,6 +498,9 @@ class MarketSimulator:
         day_ts = day * SECONDS_PER_DAY + 60 * np.arange(MINUTES_PER_DAY, dtype=np.int64)
         session_mask = self.calendar.open_mask(day_ts)
         rows = np.nonzero(session_mask & (day_ts >= start) & (day_ts < end))[0]
+        stock_trend = self._stock_trend(
+            day, day_ts, start, end
+        )  # even on a day this market is shut
         if rows.size == 0:
             return None
         # Matrix products go through BLAS, and some BLAS builds (Accelerate on
@@ -468,12 +522,10 @@ class MarketSimulator:
         chi_all = rng.chisquare(nu, MINUTES_PER_DAY)
         z_gap = rng.standard_normal((_MAX_GAPS_PER_DAY, n_f))
         chi_gap = rng.chisquare(nu, _MAX_GAPS_PER_DAY)
-        u_regime = rng.random(MINUTES_PER_DAY)
         u_high = rng.random((MINUTES_PER_DAY, n_i))
         u_low = rng.random((MINUTES_PER_DAY, n_i))
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
         m_stress = rng.standard_normal(MINUTES_PER_DAY)
-        spell_lengths = rng.gamma(self._spell_shape, 1.0 / self._spell_shape, MINUTES_PER_DAY)
 
         stressed = macro_state(self.seed, day) == STRESSED
         world = global_shocks(self.seed, day)
@@ -483,29 +535,14 @@ class MarketSimulator:
             )
         )
 
-        (
-            regimes,
-            drift_m,
-            vol_m,
-            st.regime,
-            st.spell_left,
-            st.drift_mult,
-            st.vol_mult,
-        ) = regime_spells(
-            u_regime[rows],
-            spell_lengths[rows],
-            self._next_calm,
-            self._next_stressed,
-            self._spell_minutes,
-            np.full(rows.size, stressed, dtype=np.int8),
-            self._break_hazard,
-            self._regime_drift,
-            self._regime_vol,
-            REGIME_SMOOTHING,
-            st.regime,
-            st.spell_left,
-            st.drift_mult,
-            st.vol_mult,
+        regimes, drift_m, vol_m, after = self._chain.advance(
+            day, rows, stressed, ChainState(st.regime, st.spell_left, st.drift_mult, st.vol_mult)
+        )
+        st.regime, st.spell_left, st.drift_mult, st.vol_mult = after
+        trend_m = (
+            drift_m[:, None]
+            if stock_trend is None
+            else np.column_stack((drift_m, stock_trend[rows]))
         )
         stress = self._stress[regimes]
         if stress.any():  # a day of calm regimes needs no stress shocks at all
@@ -568,7 +605,7 @@ class MarketSimulator:
         sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
             h,
             vol_m,
-            drift_m,
+            trend_m,
             season,
             z,
             sigma,

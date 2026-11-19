@@ -33,9 +33,10 @@ In high-volatility and crash regimes a common shock is added to every instrument
 
 ## The world
 
-Two world-wide inputs, drawn from streams keyed by the seed and the day but not by the market, link the three markets. See [ADR 0016](../../adr/0016-markets-share-a-macro-state-and-a-global-shock/).
+Two world-wide inputs, drawn from streams keyed by the seed and the day but not by the market, link the three markets, and the index CFDs follow the stock market's own regime. See [ADR 0016](../../adr/0016-markets-share-a-macro-state-and-a-global-shock/).
 
 - **The global shock** is one normal per minute. Each market has a global direction: its main factor for coins and stocks, and for forex a risk loading per code (equity index CFDs most, commodity and emerging currencies up, the yen, the franc, the dollar and gold down). The shock of that direction is partly replaced by the global shock, which keeps the market's own correlations exactly and correlates it with the other markets: BTC-AAPL is about 0.13 daily, 0.3 weekly and 0.4 monthly. A market that was closed receives in its gap what the world did meanwhile.
+- **The stock market's regime chain** is run by the forex market too (regime draws have a random stream of their own in every market), so the index CFDs follow the stock market's bull and bear spells during NYSE hours, each by its risk loading relative to the S&P 500's: SPXUSD correlates about 0.66 weekly with a basket of large caps.
 - **The macro state**, calm or stressed, changes at UTC midnight: about a month stressed per eight months calm. While stressed, every market's coupling to the world rises, its next regime is tilted towards high volatility and crashes, its calm spells end early, and the world drifts down along every market's global direction by about one standard deviation of the stressed spell (calm days drift up by the share that keeps the long-run drift at the catalog's). `GeneratedData.macro()` labels every day.
 
 ## Volatility

@@ -13,7 +13,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from marketforge.config.catalog.forex.risk import RISK_LOADINGS
+from marketforge.config.catalog.forex.risk import RISK_LOADINGS, STOCK_INDICES
 from marketforge.config.factors import split_pair
 from marketforge.config.model_params import RegimeParams
 from marketforge.simulation.macro import CALM_DAYS, STRESSED_DAYS
@@ -76,6 +76,23 @@ def forex_risk_direction(anchors: Sequence[str]) -> np.ndarray:
         base, quote = split_pair(symbol)
         loads.append(RISK_LOADINGS.get(base, 0.0) - RISK_LOADINGS.get(quote, 0.0))
     return np.array(loads)
+
+
+def stock_market_shares(anchors: Sequence[str]) -> np.ndarray:
+    """How much of the stock market's trend each forex anchor follows.
+
+    An index CFD follows it by its risk loading relative to the S&P 500's
+    (1 for SPXUSD), positively when the index is the base, negatively when
+    the quote; every other anchor, 0.
+    """
+    spx = RISK_LOADINGS["SPX"]
+    shares = []
+    for symbol in anchors:
+        base, quote = split_pair(symbol)
+        share = RISK_LOADINGS[base] / spx if base in STOCK_INDICES else 0.0
+        share -= RISK_LOADINGS[quote] / spx if quote in STOCK_INDICES else 0.0
+        shares.append(share)
+    return np.array(shares)
 
 
 def normalised_spell_targets(
