@@ -144,8 +144,18 @@ def _from_reference(ref: Reference) -> Bands:
 # natural "down" (EURAUD rises when AUD sells off).
 _PROVISIONAL: dict[MarketType, Bands] = {
     # Forex closes only at the weekend: its gaps hold a sliver of the variance.
+    # Its spreads are tightest in its busiest hours (London and New York), which
+    # are most of the turbulent tenth of a calm fortnight's minutes: the ratio
+    # may sit a little below 1 without anything being wrong.
     MarketType.FOREX: Bands(
-        (1.0, 200.0), 0.02, 0.08, (1.2, 2.5), 0.01, anchored=False, gap_variance_share=(0.0, 0.1)
+        (1.0, 200.0),
+        0.02,
+        0.08,
+        (1.2, 2.5),
+        0.01,
+        anchored=False,
+        spread_widening=(0.7, None),
+        gap_variance_share=(0.0, 0.1),
     ),
     MarketType.STOCKS: Bands((1.5, 200.0), 0.02, 0.02, (1.2, 2.5), 0.01, anchored=False),
 }
