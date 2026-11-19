@@ -207,7 +207,7 @@ def terminal() -> dict[str, dict[str, str]]:
             "2024-01-01",
             "--to",
             "2025-01-01",
-            "--market",
+            "--markets",
             "all",
             "--seed",
             "42",
