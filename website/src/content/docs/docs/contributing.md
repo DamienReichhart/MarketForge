@@ -9,20 +9,23 @@ MarketForge is free software under the Apache-2.0 licence, developed on [GitHub]
 
 ```bash
 git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
-pip install -e . --group dev          # or: uv pip install -e . --group dev
+python -m pip install -U "pip>=25.1"    # --group needs pip 25.1
+pip install -e . --group dev            # or: uv pip install -e . --group dev
+pre-commit install                      # ruff on every commit
 ```
 
 Work on the `dev` branch. `main` only changes when a release is made.
 
 ## Checks
 
-The same checks CI runs:
+The same checks CI runs, with [nox](https://nox.thea.codes/):
 
 ```bash
-ruff check . && ruff format --check . && lint-imports
-mypy marketforge
-pytest --cov
+nox                     # lint, typecheck and tests
+nox -s docs examples    # this site's code blocks and examples/, against a built wheel
 ```
+
+or by hand: `ruff check . && ruff format --check . && lint-imports`, `mypy marketforge` and `pytest`.
 
 - `lint-imports` enforces the package layering: `cli` → `api` → `aggregation | output | validation` → `simulation` → `config` → `calendars` → `domain`. A package may import from the ones below it, never above.
 - CI also fails if any seed's output differs from the latest release without a `MODEL_REVISION` increment and an *Output changes* changelog section: see [Reproducibility](../reference/reproducibility/).

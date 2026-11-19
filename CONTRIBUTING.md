@@ -10,18 +10,20 @@ The forex and stocks validation bands are provisional: they are not yet measured
 
 ```bash
 git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
-pip install -e . --group dev        # pip >= 25.1, or: uv pip install -e . --group dev
+python -m pip install -U "pip>=25.1"    # --group needs pip 25.1; Debian's pip 24 fails
+pip install -e . --group dev            # or: uv pip install -e . --group dev
+pre-commit install                      # ruff on every commit
 ```
 
 ## Before you push
 
 ```bash
-ruff check . && ruff format --check . && lint-imports
-mypy marketforge
-pytest
+nox                     # lint, typecheck and tests, as CI runs them
+nox -s tests-3.13 -- tests/api -x    # one Python, some tests
+nox -s docs examples    # the documentation's code blocks and examples/, slower
 ```
 
-These are the checks CI runs.
+Without nox, the same checks are `ruff check . && ruff format --check . && lint-imports`, `mypy marketforge` and `pytest`.
 
 ## Rules that CI enforces
 
