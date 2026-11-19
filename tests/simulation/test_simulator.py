@@ -247,9 +247,10 @@ def test_instrument_selection_is_validated():
 def test_cached_regime_calibration_is_shared_but_never_mutated():
     spec = build_market_spec(load_market_config("stocks"))
     a, b = MarketSimulator(spec, 1), MarketSimulator(spec, 2)
-    np.testing.assert_array_equal(a._regime_vol, b._regime_vol)
-    a._regime_vol[0] = -1.0  # a private copy: the cache and other simulators are untouched
-    assert MarketSimulator(spec, 3)._regime_vol[0] != -1.0 and b._regime_vol[0] != -1.0
+    np.testing.assert_array_equal(a._chain.vol_targets, b._chain.vol_targets)
+    a._chain.vol_targets[0] = -1.0  # a private copy: the cache and other simulators are untouched
+    assert MarketSimulator(spec, 3)._chain.vol_targets[0] != -1.0
+    assert b._chain.vol_targets[0] != -1.0
 
 
 def test_flash_crash_dips_and_recovers():

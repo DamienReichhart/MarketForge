@@ -121,12 +121,12 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
     return {
         "h": rng.uniform(0.2, 4.0, (n, f)),
         "vol_m": rng.uniform(0.5, 2.0, n),
-        "drift_m": rng.uniform(-1.0, 2.0, n),
+        "drift_m": rng.uniform(-1.0, 2.0, (n, 2)),  # two trends: a market's and another's
         "season": rng.uniform(0.3, 2.0, n),
         "z": rng.standard_t(4, (n, f)),
         "sigma": rng.uniform(1e-5, 1e-3, f),
         "mu": rng.normal(0, 1e-7, f),
-        "trend": rng.normal(0, 1e-4, f),
+        "trend": rng.normal(0, 1e-4, (2, f)),
         "log_price": np.log(rng.uniform(0.01, 50_000, f)),
     }
 
@@ -134,7 +134,10 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
 def _reference_paths(d, gap_rows, gap_values):
     level = np.sqrt(d["h"]) * d["vol_m"][:, None]
     sigma_f = d["sigma"] * level * d["season"][:, None]
-    returns_f = d["mu"] + d["trend"] * d["drift_m"][:, None] + sigma_f * d["z"]
+    returns_f = d["mu"]
+    for j in range(d["trend"].shape[0]):  # in order, as the kernel adds them
+        returns_f = returns_f + d["trend"][j] * d["drift_m"][:, j, None]
+    returns_f = returns_f + sigma_f * d["z"]
     gap_f = np.zeros_like(returns_f)
     gap_f[gap_rows] = gap_values
     log_close = d["log_price"] + np.cumsum(gap_f + returns_f, axis=0)

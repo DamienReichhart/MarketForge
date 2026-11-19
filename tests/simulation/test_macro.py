@@ -84,3 +84,38 @@ def test_the_macro_state_is_a_label_of_the_data(world):
     assert set(labels.cat.categories) == {"calm", "stressed"}
     assert labels.index[0] == pd.Timestamp("2022-01-03", tz="UTC") and len(labels) == 363
     assert labels.iloc[0] == ("stressed" if macro.macro_state(3, 18995) else "calm")
+
+
+def test_the_forex_market_runs_the_stock_markets_own_regime_chain():
+    # Index CFDs follow the stock market's trends: the forex simulator's copy
+    # of the stock chain must stand exactly where the stock simulator's does.
+    from marketforge.config.loader import load_market_config
+    from marketforge.simulation.simulator import MarketSimulator
+    from marketforge.simulation.spec import build_market_spec
+
+    stocks = MarketSimulator(build_market_spec(load_market_config("stocks")), 4, ["AAPL"])
+    forex = MarketSimulator(build_market_spec(load_market_config("forex")), 4, ["SPXUSD"])
+    plain = MarketSimulator(build_market_spec(load_market_config("forex")), 4, ["EURUSD"])
+    start, end = 19_000 * 86_400, 19_030 * 86_400  # a Thursday, a month on
+    for day in range(19_000, 19_030):
+        for sim in (stocks, forex, plain):
+            sim.simulate_day(day, start, end)
+        theirs = stocks.snapshot()
+        assert forex.snapshot()["stock_regime"] == [
+            theirs[k] for k in ("regime", "spell_left", "drift_mult", "vol_mult")
+        ]
+    assert plain.snapshot()["stock_regime"] is None  # nothing it holds follows stocks
+
+
+def test_index_cfds_follow_the_stock_markets_trends_week_to_week():
+    stocks = "AAPL,MSFT,AMZN,JPM,XOM"
+    data = mf.generate(
+        stocks + ",SPXUSD", start="2018-01-01", end="2023-01-01", seed=2, timeframes="D1"
+    )
+    closes = pd.DataFrame(
+        {s: data[s]["D1"]["close"].set_axis(data[s]["D1"].index.floor("D")) for s in data.symbols}
+    )
+    weekly = np.log(closes.groupby(level=0).last().ffill().dropna()).resample("W-FRI").last().diff()
+    weekly = weekly.dropna()
+    market = weekly[stocks.split(",")].mean(axis=1)
+    assert weekly["SPXUSD"].corr(market) > 0.45  # 0.1 when only the shocks were shared

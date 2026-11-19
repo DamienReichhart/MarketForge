@@ -66,3 +66,8 @@ RISK_LOADINGS: dict[str, float] = {
     "JPX": 1.2,
     "AUX": 1.3,
 }
+
+# The equity index codes: their CFDs also follow the stock market's own
+# regime trends (bull and bear spells), each by its risk loading relative to
+# the S&P 500's, the stock market the catalog simulates.
+STOCK_INDICES = frozenset({"SPX", "NSX", "GRX", "FRX", "ETX", "UKX", "HKX", "JPX", "AUX"})
