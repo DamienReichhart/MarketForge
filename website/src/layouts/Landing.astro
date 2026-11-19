@@ -1,0 +1,164 @@
+---
+import '@fontsource-variable/dm-sans';
+import '@fontsource/dm-mono/400.css';
+import '@fontsource/dm-mono/500.css';
+import '../styles/theme.css';
+import '../styles/landing.css';
+import LegalLinks from '../components/LegalLinks.astro';
+import RegimeStrip from '../components/RegimeStrip.astro';
+
+interface Props {
+	title: string;
+	description: string;
+	version: string;
+}
+
+const { title, description, version } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const repo = 'https://github.com/DamienReichhart/MarketForge';
+const playground = `${base}/playground/`;
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark" data-type="software">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta name="page-type" content="software" />
+		<meta name="site-kind" content="software" />
+		<link rel="canonical" href={canonical} />
+		<link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+		<link rel="sitemap" href={`${base}/sitemap-index.xml`} />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:site_name" content="MarketForge" />
+		<meta property="og:image" content={new URL(`${base}/og-image.png`, Astro.site)} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="MarketForge: synthetic market data for training AI trading models and testing backtesters" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:image" content={new URL(`${base}/og-image.png`, Astro.site)} />
+		<meta name="theme-color" content="#12161b" />
+		<link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+		<meta name="color-scheme" content="dark light" />
+		<script is:inline>
+			// The landing page is dark unless the reader chose light, here or in the
+			// docs (the same key as the docs' theme picker, so both halves agree).
+			(() => {
+				let stored = '';
+				try {
+					stored = localStorage.getItem('starlight-theme') || '';
+				} catch {}
+				const light = stored === 'light' || (stored === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
+				document.documentElement.dataset.theme = light ? 'light' : 'dark';
+			})();
+		</script>
+	</head>
+	<body class="lp">
+		<header class="lp-nav nav">
+			<a class="lp-skip skip-link" href="#main">Skip to content</a>
+			<div class="wrap lp-wrap">
+			<nav class="lp-pill" aria-label="Main">
+				<a class="lp-brand" href={`${base}/`} aria-label="MarketForge home">
+					<img class="lp-on-dark" src={`${base}/brand/mark-dark.svg`} alt="" width="26" height="26" />
+					<img class="lp-on-light" src={`${base}/brand/mark-light.svg`} alt="" width="26" height="26" />
+					<span>MarketForge</span>
+				</a>
+				<ul class="lp-links">
+					<li class="lp-keep"><a href={`${base}/docs/`}>Docs</a></li>
+					<li><a href={`${base}/docs/use-cases/machine-learning/`}>Use cases</a></li>
+					<li><a href={`${base}/changelog/`}>Changelog</a></li>
+					<li>
+						<a href={repo} aria-label="MarketForge on GitHub">
+							<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+						</a>
+					</li>
+					<li class="lp-keep">
+						<button class="lp-theme" type="button" aria-label="Switch to the light theme" aria-pressed="false">
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 0 18V3Z"></path><circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle></svg>
+						</button>
+					</li>
+				</ul>
+				<a class="lp-btn lp-btn-primary lp-btn-sm" href={playground}>Try it in your browser</a>
+			</nav>
+			</div>
+		</header>
+
+		<main id="main">
+			<slot />
+		</main>
+
+		<footer class="lp-footer closing">
+			<div class="wrap lp-wrap">
+				<RegimeStrip />
+				<a class="lp-mast" href={`${base}/`} aria-label="MarketForge home">
+					<img class="lp-on-dark" src={`${base}/brand/lockup-dark.svg`} alt="" width="504" height="96" />
+					<img class="lp-on-light" src={`${base}/brand/lockup-light.svg`} alt="" width="504" height="96" />
+				</a>
+				<h2 class="visually-hidden">Site links</h2>
+				<div class="lp-footer-grid">
+					<p class="lp-footer-about">
+						Synthetic market data for training AI trading models and testing backtesters. Free and open source
+						under Apache-2.0. Latest release <a href={`${base}/changelog/`}>{version}</a>.
+					</p>
+					<div>
+						<h3>Start</h3>
+						<ul>
+							<li><a href={`${base}/docs/quick-start/`}>Quick start</a></li>
+							<li><a href={playground}>Playground</a></li>
+							<li><a href={`${base}/docs/reference/cli/`}>Command line</a></li>
+							<li><a href={`${base}/docs/reference/python-api/`}>Python API</a></li>
+							<li><a href={`${base}/docs/reference/model/`}>The model</a></li>
+						</ul>
+					</div>
+					<div>
+						<h3>Use cases</h3>
+						<ul>
+							<li><a href={`${base}/docs/use-cases/machine-learning/`}>Training ML models</a></li>
+							<li><a href={`${base}/docs/use-cases/backtesting/`}>Backtesting</a></li>
+							<li><a href={`${base}/docs/use-cases/stress-testing/`}>Stress testing</a></li>
+							<li><a href={`${base}/docs/limits/`}>What it is not</a></li>
+						</ul>
+					</div>
+					<div>
+						<h3>Project</h3>
+						<ul>
+							<li><a href={repo}>GitHub</a></li>
+							<li><a href="https://pypi.org/project/marketforge/">PyPI</a></li>
+							<li><a href={`${base}/changelog/`}>Changelog</a></li>
+							<li><a href={`${base}/docs/contributing/`}>Contributing</a></li>
+						</ul>
+					</div>
+				</div>
+				<p class="lp-disclaimer">
+					All data MarketForge produces is synthetic. It is not the price history of any real instrument, and
+					nothing on this site is financial advice.
+				</p>
+				<LegalLinks />
+			</div>
+		</footer>
+
+		<script>
+			const button = document.querySelector<HTMLButtonElement>('.lp-theme');
+			const sync = () => {
+				const light = document.documentElement.dataset.theme === 'light';
+				button?.setAttribute('aria-pressed', String(light));
+				button?.setAttribute('aria-label', light ? 'Switch to the dark theme' : 'Switch to the light theme');
+			};
+			sync();
+			button?.addEventListener('click', () => {
+				const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+				document.documentElement.dataset.theme = next;
+				try {
+					localStorage.setItem('starlight-theme', next);
+				} catch {}
+				sync();
+			});
+		</script>
+	</body>
+</html>

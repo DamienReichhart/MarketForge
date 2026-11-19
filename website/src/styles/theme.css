@@ -1,0 +1,417 @@
+/*
+ * MarketForge design tokens, shared by the docs (Starlight) and the landing page.
+ * Mirrors docs/brand/tokens.json, the source of truth (a test fails if they drift);
+ * the rules for using them are in docs/brand/README.md.
+ *
+ * Ink grounds, one amber accent used sparingly, and two colour families that
+ * never mix: the five regime colours (what state the market is in) and the up /
+ * down pair (which way a candle moved). Dark is the default; the light theme
+ * mirrors every token.
+ */
+
+:root {
+	--sl-font: 'DM Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--sl-font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+	/* Dark (default) */
+	--sl-color-accent-low: #2b2210;
+	--sl-color-accent: #e0a030;
+	--sl-color-accent-high: #f2ce8c;
+	--sl-color-white: #e9edf1;
+	--sl-color-gray-1: #d6dce2;
+	--sl-color-gray-2: #b2bbc4;
+	--sl-color-gray-3: #8e99a4;
+	--sl-color-gray-4: #5e6a75;
+	--sl-color-gray-5: #2e363e;
+	--sl-color-gray-6: #1d242b;
+	--sl-color-gray-7: #171c22;
+	--sl-color-black: #12161b;
+
+	--mf-bg: #12161b;
+	--mf-panel: #171c22;
+	--mf-raised: #1d242b;
+	--mf-line: #262d35;
+	--mf-line-strong: #323b44;
+	--mf-text: #e9edf1;
+	--mf-muted: #8e99a4;
+	--mf-grid: rgb(255 255 255 / 0.04);
+
+	/* Direction of a candle. Data only, never a brand or status colour. */
+	--mf-up: #2ebd85;
+	--mf-down: #e5484d;
+
+	/* Market regime. Fill for shapes, text for labels (contrast-checked). */
+	--mf-regime-trend-up: #5b8db8;
+	--mf-regime-trend-down: #3e6188;
+	--mf-regime-range: #8a978e;
+	--mf-regime-high-vol: #e0a030;
+	--mf-regime-crash: #b5373f;
+	--mf-regime-trend-up-text: #8db6e8;
+	--mf-regime-trend-down-text: #6f96c4;
+	--mf-regime-range-text: #a3afa6;
+	--mf-regime-high-vol-text: #e0a030;
+	--mf-regime-crash-text: #e5646b;
+
+	--sl-text-h1: 2.25rem;
+	--sl-text-h2: 1.6rem;
+	--sl-text-h3: 1.25rem;
+	--sl-line-height-headings: 1.2;
+	--sl-nav-height: 3.75rem;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #fbecd2;
+	--sl-color-accent: #9a5b00;
+	--sl-color-accent-high: #4d2d00;
+	--sl-color-white: #12161b;
+	--sl-color-gray-1: #1d2329;
+	--sl-color-gray-2: #353d45;
+	--sl-color-gray-3: #58626c;
+	--sl-color-gray-4: #8a939d;
+	--sl-color-gray-5: #cbd1d6;
+	--sl-color-gray-6: #e8ebed;
+	--sl-color-gray-7: #f5f7f8;
+	--sl-color-black: #ffffff;
+
+	--mf-bg: #ffffff;
+	--mf-panel: #f5f7f8;
+	--mf-raised: #eceff1;
+	--mf-line: #e1e5e8;
+	--mf-line-strong: #cbd1d6;
+	--mf-text: #12161b;
+	--mf-muted: #58626c;
+	--mf-grid: rgb(0 0 0 / 0.045);
+
+	--mf-up: #0f8a5f;
+	--mf-down: #c9363b;
+
+	--mf-regime-trend-up: #3f7099;
+	--mf-regime-trend-down: #2d4a6e;
+	--mf-regime-range: #7c8a80;
+	--mf-regime-high-vol: #d18f12;
+	--mf-regime-crash: #a12c35;
+	--mf-regime-trend-up-text: #2f6190;
+	--mf-regime-trend-down-text: #2d4a6e;
+	--mf-regime-range-text: #5c6b60;
+	--mf-regime-high-vol-text: #9a5b00;
+	--mf-regime-crash-text: #a12c35;
+}
+
+/* ---------- Docs chrome ---------- */
+
+html,
+body {
+	overflow-x: clip;
+}
+
+/* Prose at a readable measure, about 75 characters a line. */
+:root {
+	--sl-content-width: 42rem;
+}
+
+starlight-theme-select select {
+	border: 1px solid var(--mf-line-strong);
+	border-radius: 4px;
+}
+
+body {
+	background: var(--mf-bg);
+	font-feature-settings: 'cv11', 'ss01';
+}
+
+.page > header.header {
+	background: color-mix(in srgb, var(--mf-bg) 88%, transparent);
+	backdrop-filter: saturate(140%) blur(8px);
+	border-bottom: 1px solid var(--mf-line);
+}
+
+.site-title {
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	font-size: 1.05rem;
+}
+
+#starlight__sidebar,
+.sidebar-pane {
+	background: var(--mf-bg);
+	border-inline-end-color: var(--mf-line) !important;
+}
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+h1#_top {
+	letter-spacing: -0.02em;
+	font-weight: 650;
+}
+
+.sl-markdown-content h2 {
+	padding-top: 0.5rem;
+	border-top: 1px solid var(--mf-line);
+}
+
+.sl-markdown-content h2:first-child {
+	border-top: 0;
+}
+
+.sl-markdown-content code:not(pre code) {
+	background: var(--mf-panel);
+	border: 1px solid var(--mf-line);
+	border-radius: 3px;
+	padding: 0.05em 0.35em;
+	font-size: 0.875em;
+}
+
+.sl-markdown-content table {
+	font-size: var(--sl-text-sm);
+	font-variant-numeric: tabular-nums;
+}
+
+.sl-markdown-content th {
+	font-weight: 600;
+	color: var(--sl-color-gray-2);
+	font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+	border-color: var(--mf-line);
+}
+
+.sl-markdown-content a {
+	text-underline-offset: 0.2em;
+	text-decoration-thickness: 1px;
+}
+
+/* Starlight cards: flat panels with a hairline border, no glow. */
+.card {
+	border-radius: 4px !important;
+	background: var(--mf-panel) !important;
+	border-color: var(--mf-line) !important;
+	box-shadow: none !important;
+}
+
+.sl-link-card {
+	border-radius: 4px !important;
+	box-shadow: none !important;
+	border-color: var(--mf-line) !important;
+	background: var(--mf-panel);
+}
+
+.sl-link-card {
+	transition: transform 120ms ease-out, border-color 220ms ease-out;
+}
+
+.sl-link-card:hover {
+	border-color: var(--sl-color-accent) !important;
+	transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sl-link-card:hover {
+		transform: none;
+	}
+}
+
+/* Tabular numbers everywhere a number is a value. */
+.mf-num,
+.sl-markdown-content td code {
+	font-variant-numeric: tabular-nums;
+}
+
+::selection {
+	background: color-mix(in srgb, var(--sl-color-accent) 35%, transparent);
+}
+
+/* Definition lists used for key/value facts (legal notice, specs). */
+.sl-markdown-content .mf-dl {
+	display: grid;
+	grid-template-columns: minmax(7rem, max-content) 1fr;
+	gap: 0.5rem 1.5rem;
+	margin-top: 1rem;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--mf-line);
+	border-radius: 4px;
+	background: var(--mf-panel);
+}
+
+.sl-markdown-content .mf-dl dt {
+	margin: 0;
+	font-weight: 500;
+	color: var(--mf-muted);
+	font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content .mf-dl dd {
+	margin: 0;
+}
+
+@media (max-width: 40rem) {
+	.sl-markdown-content .mf-dl {
+		grid-template-columns: 1fr;
+		gap: 0.15rem;
+	}
+	.sl-markdown-content .mf-dl dd + dt {
+		margin-top: 0.6rem;
+	}
+}
+
+/* Site title in the text colour; the accent is kept for links and data. */
+.site-title {
+	color: var(--sl-color-white) !important;
+	gap: 0.6rem;
+}
+
+.site-title img {
+	height: 1.6rem;
+	width: auto;
+}
+
+/* Sidebar: group labels in the body face, sentence case; the current page marked by an amber rule. */
+.sidebar-content .large {
+	font-size: var(--sl-text-sm);
+	font-weight: 650;
+	color: var(--sl-color-white);
+}
+
+.sidebar-content .sl-badge {
+	font-family: var(--sl-font);
+	text-transform: none;
+	letter-spacing: 0;
+	background: transparent;
+	border-color: var(--mf-line-strong);
+	color: var(--mf-muted);
+}
+
+.sidebar-content a {
+	font-size: var(--sl-text-sm);
+}
+
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+	font-weight: 550;
+	color: var(--sl-color-white);
+	background-color: var(--mf-panel);
+	box-shadow: inset 2px 0 0 var(--sl-color-accent);
+	border-radius: 0 3px 3px 0;
+}
+
+/* Asides: neutral panels with a coloured rule instead of tinted slabs. */
+.starlight-aside {
+	background-color: var(--mf-panel) !important;
+	border: 1px solid var(--mf-line);
+	border-inline-start-width: 3px;
+	border-inline-start-color: var(--sl-color-asides-border);
+	border-radius: 0 4px 4px 0;
+}
+
+.starlight-aside--caution {
+	--sl-color-asides-border: var(--sl-color-accent);
+	--sl-color-asides-text-accent: var(--sl-color-accent);
+}
+
+.starlight-aside--note {
+	--sl-color-asides-border: var(--sl-color-gray-3);
+	--sl-color-asides-text-accent: var(--sl-color-white);
+}
+
+/* Brand page: show the lockup made for the current theme (the page ships both). */
+:root[data-theme='light'] .mf-on-dark,
+:root:not([data-theme='light']) .mf-on-light {
+	display: none;
+}
+
+/* ---------- Code blocks (themes and chrome in src/lib/code-theme.mjs) ---------- */
+
+/* Every block has a header: its language or title, left-aligned, in the UI face. */
+.expressive-code .frame .header {
+	justify-content: flex-start;
+	padding-inline: var(--ec-uiPadInl);
+	font-weight: 500;
+	letter-spacing: 0;
+}
+
+.expressive-code .frame.has-title:not(.is-terminal) .header {
+	padding-inline: 0;
+}
+
+.expressive-code .frame.has-title:not(.is-terminal) .title {
+	padding-inline: var(--ec-uiPadInl);
+	font-weight: 500;
+}
+
+/* A shell block's header starts with the prompt, in the one accent. */
+.expressive-code .frame.is-terminal .header .title::before {
+	content: '$';
+	margin-inline-end: 0.5rem;
+	font-family: var(--sl-font-mono);
+	color: var(--sl-color-accent);
+}
+
+/* Shell commands, file trees and other plain text never wrap: a flag broken after its
+   hyphens reads as two arguments, and a tree loses its shape. They scroll instead. */
+.expressive-code .frame.is-terminal pre.wrap .ec-line .code,
+.expressive-code pre.wrap[data-language='text'] .ec-line .code,
+.expressive-code pre.wrap[data-language='plaintext'] .ec-line .code {
+	white-space: pre;
+}
+
+/* A line that runs past the edge fades out there, until it is scrolled to its end. */
+@supports (animation-timeline: scroll()) {
+	@keyframes mf-code-overflow {
+		from {
+			mask-image: linear-gradient(to left, transparent, var(--mf-bg) 3rem);
+		}
+		to {
+			mask-image: none;
+		}
+	}
+
+	.expressive-code pre {
+		animation: mf-code-overflow linear both;
+		animation-timeline: scroll(self inline);
+	}
+}
+
+/* The copy button sits in the header, always visible. */
+.expressive-code .copy {
+	inset-block-start: calc(var(--ec-brdWd) + 0.3rem);
+}
+
+.expressive-code .copy button {
+	width: 1.9rem;
+	height: 1.9rem;
+	opacity: 0.8;
+	background: transparent;
+}
+
+.expressive-code .copy button::after {
+	margin: 0.4rem;
+}
+
+.expressive-code .copy button:hover,
+.expressive-code .copy button:focus-visible {
+	opacity: 1;
+}
+
+.expressive-code .copy button:focus-visible {
+	outline: 2px solid var(--sl-color-accent-high);
+	outline-offset: 1px;
+}
+
+@media (hover: hover) {
+	.expressive-code .frame .copy button:not(:hover):not(:focus-visible) {
+		opacity: 0.8;
+	}
+}
+
+/* Inline code: a quiet chip in the mono face. */
+.sl-markdown-content :not(pre) > code {
+	color: var(--sl-color-white);
+	background: var(--mf-panel);
+	border: 1px solid var(--mf-line);
+	border-radius: 4px;
+	padding: 0.1em 0.4em;
+	font-size: 0.85em;
+}

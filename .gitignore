@@ -16,6 +16,11 @@ __pycache__/
 *.pywp
 *.pyzw
 data/
-.venv/.coverage
+.venv/
+.coverage
 coverage.xml
 htmlcov/
+
+# Design-skill state (Hallmark, taste-skill): build logs, screenshots, browser profiles
+.hallmark/
+.taste-skill/

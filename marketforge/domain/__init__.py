@@ -1,0 +1,10 @@
+# MarketForge
+# Copyright (c) 2026 REICHHART Damien
+#
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
+
+"""Vocabulary shared by every layer: markets, regimes, anomalies, timeframes, candles.
+
+This package imports nothing from the rest of MarketForge.
+"""

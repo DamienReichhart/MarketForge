@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 """
 Stylized-fact metrics for validating synthetic market data against the
 documented statistical properties of real financial returns.
@@ -11,18 +11,93 @@ documented statistical properties of real financial returns.
 from __future__ import annotations
 
 import numpy as np
-from scipy.stats import kurtosis
-
-
-def log_returns(close: np.ndarray) -> np.ndarray:
-    """Close-to-close log returns."""
-    close = np.asarray(close, dtype=float)
-    return np.diff(np.log(close))
 
 
 def excess_kurtosis(returns: np.ndarray) -> float:
-    """Excess kurtosis (0 for a normal distribution; > 0 = fat tails)."""
-    return float(kurtosis(np.asarray(returns, dtype=float), fisher=True, bias=False))
+    """Excess kurtosis (0 for a normal distribution; > 0 = fat tails).
+
+    The bias-corrected sample estimator G2 (scipy's ``kurtosis(fisher=True,
+    bias=False)``), computed with NumPy so that scipy is not a dependency.
+    """
+    x = np.asarray(returns, dtype=float)
+    n = x.size
+    if n < 4:
+        return float("nan")
+    d = x - x.mean()
+    m2 = float(np.mean(d * d))
+    if m2 == 0.0:
+        return float("nan")
+    g2 = float(np.mean(d**4)) / (m2 * m2) - 3.0
+    return float(((n + 1) * g2 + 6.0) * (n - 1) / ((n - 2) * (n - 3)))
+
+
+# Standard errors of the statistics above, for the sampling-noise allowance of
+# the validation bands. The textbook 1/sqrt(n) (and sqrt(24/n) for kurtosis)
+# hold for independent normal data only; minute returns are heavy-tailed and
+# their volatility clusters, and on generated stock data the leverage
+# correlation scatters 2.5 times more than 1/sqrt(n) says. These use the
+# sample's own moments instead, so they widen exactly where a few large or
+# clustered minutes dominate the statistic.
+
+
+def _standardised(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    spread = x.std()
+    return (x - x.mean()) / spread if spread > 0 else np.zeros_like(x)
+
+
+def _correlation_standard_error(x: np.ndarray, y: np.ndarray, overlap: int = 0) -> float:
+    """
+    Standard error of corr(x, y), robust to heavy tails and to clustering: the
+    Newey-West variance of the mean of the standardised products. The
+    bandwidth is the usual 4 * (n / 100) ** (2 / 9), and at least ``overlap``,
+    the number of steps over which the products stay dependent. It is
+    1/sqrt(n) for independent normal data, whatever the bandwidth.
+    """
+    n = x.size
+    if n < 2:
+        return 0.0
+    product = _standardised(x) * _standardised(y)
+    product = product - product.mean()
+    lags = min(n - 1, max(overlap, int(4.0 * (n / 100.0) ** (2.0 / 9.0))))
+    variance = float(np.dot(product, product)) / n
+    for k in range(1, lags + 1):
+        weight = 1.0 - k / (lags + 1.0)
+        variance += 2.0 * weight * float(np.dot(product[:-k], product[k:])) / n
+    return float(np.sqrt(max(variance, 0.0) / n))
+
+
+def excess_kurtosis_standard_error(returns: np.ndarray) -> float:
+    """
+    Standard error of the sample kurtosis of a symmetric distribution, from the
+    sample's fourth, sixth and eighth moments (sqrt(24/n) for normal data).
+    """
+    z = _standardised(returns)
+    if z.size < 2:
+        return 0.0
+    m4, m6, m8 = (float(np.mean(z**k)) for k in (4, 6, 8))
+    variance = m8 - 4.0 * m4 * m6 + 4.0 * m4**3 - m4**2
+    return float(np.sqrt(max(variance, 24.0) / z.size))
+
+
+def leverage_standard_error(returns: np.ndarray) -> float:
+    """Standard error of :func:`leverage_correlation`."""
+    r = np.asarray(returns, dtype=float)
+    return _correlation_standard_error(r[:-1], np.abs(r[1:]))
+
+
+def abs_autocorrelation_standard_error(returns: np.ndarray, lag: int) -> float:
+    """
+    Standard error of the autocorrelation of |returns| at ``lag``.
+
+    Volatility persists for hours, so the products stay dependent far beyond
+    the lag; the bandwidth is four times the lag. On generated stocks that
+    gives 0.043 for a statistic that scatters by 0.067 from seed to seed: still
+    an underestimate, because how much volatility persists over an hour
+    depends on a handful of regime changes that no two-week sample can count.
+    """
+    a = np.abs(np.asarray(returns, dtype=float))
+    return _correlation_standard_error(a[:-lag], a[lag:], overlap=4 * lag)
 
 
 def _acf(x: np.ndarray, lag: int) -> float:
@@ -69,18 +144,23 @@ def range_efficiency(open_, high, low, close) -> float:
     return float(np.mean(h - l) / body)
 
 
-def ljung_box_pvalue(x: np.ndarray, lags: int = 20) -> float:
-    """Ljung-Box p-value (small => significant autocorrelation present)."""
-    from statsmodels.stats.diagnostic import acorr_ljungbox
-
-    res = acorr_ljungbox(np.asarray(x, dtype=float), lags=[lags], return_df=True)
-    return float(res["lb_pvalue"].iloc[-1])
+def median_spread_bps(spread: np.ndarray, close: np.ndarray) -> float:
+    """Median quoted spread, in basis points of the price."""
+    return float(1e4 * np.median(np.asarray(spread, dtype=float) / np.asarray(close, dtype=float)))
 
 
-def arch_lm_pvalue(returns: np.ndarray, lags: int = 12) -> float:
-    """ARCH-LM test p-value (small => volatility clustering / ARCH effects)."""
-    from statsmodels.stats.diagnostic import het_arch
-
-    r = np.asarray(returns, dtype=float)
-    r = r - r.mean()
-    return float(het_arch(r, nlags=lags)[1])
+def spread_widening(spread: np.ndarray, returns: np.ndarray, window: int = 30) -> float:
+    """
+    Mean spread during the most turbulent tenth of the minutes, relative to
+    the median spread. Turbulence is the mean |return| of the ``window``
+    minutes up to each one. Above 1: spreads widen when the market moves.
+    """
+    s = np.asarray(spread, dtype=float)
+    moves = np.abs(np.asarray(returns, dtype=float))
+    if s.size <= window:
+        return float("nan")
+    total = np.concatenate(([0.0], np.cumsum(moves)))
+    turbulence = total[window:] - total[:-window]
+    recent = s[window - 1 :]
+    turbulent = turbulence >= np.quantile(turbulence, 0.9)
+    return float(recent[turbulent].mean() / np.median(s))

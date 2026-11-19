@@ -1,0 +1,33 @@
+{
+  "name": "marketforge-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-content.mjs && node scripts/sync-playground.mjs && node scripts/third-party-licenses.mjs",
+    "dev": "npm run sync && astro dev --force",
+    "build": "npm run sync && astro build --force",
+    "preview": "astro preview",
+    "check": "npm run sync && astro check",
+    "check-links": "node scripts/check-links.mjs",
+    "check-external-links": "node scripts/check-external-links.mjs",
+    "test": "node --test scripts/*.test.mjs",
+    "test-playground": "node scripts/test-playground.mjs",
+    "vendor-licenses": "node scripts/vendor-licenses.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.43.1",
+    "@fontsource-variable/dm-sans": "5.3.0",
+    "@fontsource/dm-mono": "5.3.0",
+    "astro": "7.4.12",
+    "sharp": "0.35.5"
+  },
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@types/node": "26.6.6",
+    "pyodide": "314.0.8",
+    "typescript": "6.0.3"
+  }
+}

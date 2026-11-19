@@ -1,5 +1,7 @@
 # Optimise without changing a single bit
 
+> Amended by [ADR 0011](0011-realism-over-seed-stability.md): the "no output change" rule applies to optimisations, which still must not alter a seed. It no longer exists to protect seeds across versions.
+
 3.0's speed was limited by Python-level waste, not by the language (ADR 0003 still holds). The worst cases were thousands of tiny CSV writes and `np.round` calls, re-concatenating the open weekly bucket every day, recomputing the whole market after the draws when one instrument was requested, and rebuilding a multi-million-step regime calibration in every simulator. 3.1 removes that waste under one rule: **for every seed, the output must stay identical, bit for bit, to 3.0's**. The rule is what lets the change ship as a minor version (ADR 0006).
 
 What keeps a rewrite bit-identical:
@@ -11,7 +13,7 @@ What keeps a rewrite bit-identical:
 
 ## Consequences
 
-- Each fused kernel is tested against the verbatim 3.0 NumPy expression (`tests/test_kernels.py`), and subset simulation against the whole market for all three projection kinds (`tests/test_engine.py`). These tests run on every platform in CI.
+- Each fused kernel is tested against the verbatim 3.0 NumPy expression (`tests/simulation/test_kernels.py`), and subset simulation against the whole market for all three projection kinds (`tests/simulation/test_simulator.py`). These tests run on every platform in CI.
 - The release was also checked against 3.0 on 4,717 outputs (in-memory frames, CSV bytes, Parquet columns): every market, spikes and flash crashes, both DST transitions, holidays and early closes, mid-day starts, subsets, overrides and a three-anchor cross. The check passed with the newest dependencies and at the declared floors (Python 3.10, NumPy 2.2.0, Numba 0.61.2).
-- Moving `exp`/`log` into compiled code (or into Rust) would change output on some CPUs and therefore needs a major version.
+- Moving `exp`/`log` into compiled code (or into Rust) would change output on some CPUs and therefore needs a `MODEL_REVISION` increment and an *Output changes* entry (ADR 0011).
 - The whole-market random draws remain the floor of single-instrument runs (about 2.5 ms per simulated forex day); removing them would change every seed.

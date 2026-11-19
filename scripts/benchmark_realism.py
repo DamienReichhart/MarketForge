@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 
 """
 Validate every instrument of every market against the stylized-fact bands.
@@ -15,8 +15,7 @@ from __future__ import annotations
 import argparse
 
 import marketforge as mf
-from marketforge.config.settings import MarketType
-from marketforge.validation.report import validate_ohlcv
+from marketforge.domain.markets import MarketType
 
 
 def main() -> None:
@@ -29,10 +28,11 @@ def main() -> None:
     total = failed = 0
     for seed in (int(s) for s in args.seeds.split(",")):
         for market in MarketType:
-            data = mf.generate(markets=[market], start=start, end=end, seed=seed)
+            data = mf.generate(
+                markets=[market], start=start, end=end, seed=seed, include_spread=True
+            )
             for symbol, frames in data.items():
-                d = frames["m1"]
-                report = validate_ohlcv(d.open, d.high, d.low, d.close, market)
+                report = mf.validate(frames["m1"], market)
                 total += 1
                 if not report.passed:
                     failed += 1

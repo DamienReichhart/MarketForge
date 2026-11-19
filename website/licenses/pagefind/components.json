@@ -1,0 +1,935 @@
+{
+	"$comment": "Written by `npm run vendor-licenses` from the \"components\" of pagefind in license-policy.json; do not edit.",
+	"package": "pagefind",
+	"version": "1.6.0",
+	"components": [
+		{
+			"name": "@ampproject/remapping",
+			"version": "2.3.0",
+			"license": "Apache-2.0",
+			"url": "https://www.npmjs.com/package/@ampproject/remapping/v/2.3.0",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/ampproject-remapping-2.3.0/LICENSE",
+					"from": "https://registry.npmjs.org/@ampproject/remapping/-/remapping-2.3.0.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "@jridgewell/gen-mapping",
+			"version": "0.3.13",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/@jridgewell/gen-mapping/v/0.3.13",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/jridgewell-gen-mapping-0.3.13/LICENSE",
+					"from": "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "@jridgewell/resolve-uri",
+			"version": "3.1.2",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/@jridgewell/resolve-uri/v/3.1.2",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/jridgewell-resolve-uri-3.1.2/LICENSE",
+					"from": "https://registry.npmjs.org/@jridgewell/resolve-uri/-/resolve-uri-3.1.2.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "@jridgewell/sourcemap-codec",
+			"version": "1.5.5",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/@jridgewell/sourcemap-codec/v/1.5.5",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/jridgewell-sourcemap-codec-1.5.5/LICENSE",
+					"from": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.5.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "@jridgewell/trace-mapping",
+			"version": "0.3.31",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/@jridgewell/trace-mapping/v/0.3.31",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/jridgewell-trace-mapping-0.3.31/LICENSE",
+					"from": "https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "@types/estree",
+			"version": "1.0.8",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/@types/estree/v/1.0.8",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/types-estree-1.0.8/LICENSE",
+					"from": "https://registry.npmjs.org/@types/estree/-/estree-1.0.8.tgz#estree/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "acorn",
+			"version": "8.16.0",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/acorn/v/8.16.0",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/acorn-8.16.0/LICENSE",
+					"from": "https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "adequate-little-templates",
+			"version": "1.0.2",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/adequate-little-templates/v/1.0.2",
+			"via": "bundled into @pagefind/component-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/adequate-little-templates-1.0.2/LICENSE",
+					"from": "https://registry.npmjs.org/adequate-little-templates/-/adequate-little-templates-1.0.2.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "aria-query",
+			"version": "5.3.2",
+			"license": "Apache-2.0",
+			"url": "https://www.npmjs.com/package/aria-query/v/5.3.2",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/aria-query-5.3.2/LICENSE",
+					"from": "https://registry.npmjs.org/aria-query/-/aria-query-5.3.2.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "axobject-query",
+			"version": "4.1.0",
+			"license": "Apache-2.0",
+			"url": "https://www.npmjs.com/package/axobject-query/v/4.1.0",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/axobject-query-4.1.0/LICENSE",
+					"from": "https://registry.npmjs.org/axobject-query/-/axobject-query-4.1.0.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "bcp-47",
+			"version": "2.1.2",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/bcp-47/v/2.1.2",
+			"via": "bundled into @pagefind/default-ui; bundled into @pagefind/modular-ui; bundled into @pagefind/component-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/bcp-47-2.1.2/license",
+					"from": "https://registry.npmjs.org/bcp-47/-/bcp-47-2.1.2.tgz#package/license"
+				}
+			]
+		},
+		{
+			"name": "bit-set",
+			"version": "0.11.1",
+			"license": "Apache-2.0 OR MIT",
+			"url": "https://crates.io/crates/bit-set/0.11.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/bit-set-0.11.1/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/bit-set/bit-set-0.11.1.crate#bit-set-0.11.1/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/bit-set-0.11.1/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/bit-set/bit-set-0.11.1.crate#bit-set-0.11.1/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "bit-vec",
+			"version": "0.10.1",
+			"license": "Apache-2.0 OR MIT",
+			"url": "https://crates.io/crates/bit-vec/0.10.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/bit-vec-0.10.1/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/bit-vec/bit-vec-0.10.1.crate#bit-vec-0.10.1/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/bit-vec-0.10.1/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/bit-vec/bit-vec-0.10.1.crate#bit-vec-0.10.1/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "borsh",
+			"version": "1.7.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/borsh/1.7.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/borsh-1.7.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/borsh/borsh-1.7.0.crate#borsh-1.7.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/borsh-1.7.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/borsh/borsh-1.7.0.crate#borsh-1.7.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "borsh-derive",
+			"version": "1.7.0",
+			"license": "Apache-2.0",
+			"url": "https://crates.io/crates/borsh-derive/1.7.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/borsh-derive-1.7.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/borsh-derive/borsh-derive-1.7.0.crate#borsh-derive-1.7.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/borsh-derive-1.7.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/borsh-derive/borsh-derive-1.7.0.crate#borsh-derive-1.7.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "bumpalo",
+			"version": "3.20.2",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/bumpalo/3.20.2",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/bumpalo-3.20.2/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/bumpalo/bumpalo-3.20.2.crate#bumpalo-3.20.2/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/bumpalo-3.20.2/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/bumpalo/bumpalo-3.20.2.crate#bumpalo-3.20.2/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "bytes",
+			"version": "1.12.1",
+			"license": "MIT",
+			"url": "https://crates.io/crates/bytes/1.12.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/bytes-1.12.1/LICENSE",
+					"from": "https://static.crates.io/crates/bytes/bytes-1.12.1.crate#bytes-1.12.1/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "cfg_aliases",
+			"version": "0.2.1",
+			"license": "MIT",
+			"url": "https://crates.io/crates/cfg_aliases/0.2.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/cfg_aliases-0.2.1/LICENSE",
+					"from": "https://static.crates.io/crates/cfg_aliases/cfg_aliases-0.2.1.crate#cfg_aliases-0.2.1/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "cfg-if",
+			"version": "1.0.4",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/cfg-if/1.0.4",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/cfg-if-1.0.4/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.4.crate#cfg-if-1.0.4/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/cfg-if-1.0.4/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.4.crate#cfg-if-1.0.4/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "code-red",
+			"version": "1.0.4",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/code-red/v/1.0.4",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/code-red-1.0.4/LICENSE",
+					"from": "https://registry.npmjs.org/code-red/-/code-red-1.0.4.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "css-tree",
+			"version": "2.3.1",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/css-tree/v/2.3.1",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/css-tree-2.3.1/LICENSE",
+					"from": "https://registry.npmjs.org/css-tree/-/css-tree-2.3.1.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "equivalent",
+			"version": "1.0.2",
+			"license": "Apache-2.0 OR MIT",
+			"url": "https://crates.io/crates/equivalent/1.0.2",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/equivalent-1.0.2/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/equivalent/equivalent-1.0.2.crate#equivalent-1.0.2/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/equivalent-1.0.2/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/equivalent/equivalent-1.0.2.crate#equivalent-1.0.2/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "estree-walker",
+			"version": "3.0.3",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/estree-walker/v/3.0.3",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/estree-walker-3.0.3/LICENSE",
+					"from": "https://registry.npmjs.org/estree-walker/-/estree-walker-3.0.3.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "hashbrown",
+			"version": "0.17.1",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/hashbrown/0.17.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/hashbrown-0.17.1/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/hashbrown/hashbrown-0.17.1.crate#hashbrown-0.17.1/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/hashbrown-0.17.1/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/hashbrown/hashbrown-0.17.1.crate#hashbrown-0.17.1/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "hifijson",
+			"version": "0.5.0",
+			"license": "MIT",
+			"url": "https://crates.io/crates/hifijson/0.5.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/extra/hifijson-0.5.0/LICENSE-MIT",
+					"from": "https://raw.githubusercontent.com/01mf02/hifijson/91e6e0639e321f7d2d1e28c0eefb4a9fe6dbad33/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "indexmap",
+			"version": "2.14.0",
+			"license": "Apache-2.0 OR MIT",
+			"url": "https://crates.io/crates/indexmap/2.14.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/indexmap-2.14.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/indexmap/indexmap-2.14.0.crate#indexmap-2.14.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/indexmap-2.14.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/indexmap/indexmap-2.14.0.crate#indexmap-2.14.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "is-alphabetical",
+			"version": "2.0.1",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/is-alphabetical/v/2.0.1",
+			"via": "bundled into @pagefind/default-ui; bundled into @pagefind/modular-ui; bundled into @pagefind/component-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/is-alphabetical-2.0.1/license",
+					"from": "https://registry.npmjs.org/is-alphabetical/-/is-alphabetical-2.0.1.tgz#package/license"
+				}
+			]
+		},
+		{
+			"name": "is-alphanumerical",
+			"version": "2.0.1",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/is-alphanumerical/v/2.0.1",
+			"via": "bundled into @pagefind/default-ui; bundled into @pagefind/modular-ui; bundled into @pagefind/component-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/is-alphanumerical-2.0.1/license",
+					"from": "https://registry.npmjs.org/is-alphanumerical/-/is-alphanumerical-2.0.1.tgz#package/license"
+				}
+			]
+		},
+		{
+			"name": "is-decimal",
+			"version": "2.0.1",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/is-decimal/v/2.0.1",
+			"via": "bundled into @pagefind/default-ui; bundled into @pagefind/modular-ui; bundled into @pagefind/component-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/is-decimal-2.0.1/license",
+					"from": "https://registry.npmjs.org/is-decimal/-/is-decimal-2.0.1.tgz#package/license"
+				}
+			]
+		},
+		{
+			"name": "is-reference",
+			"version": "3.0.3",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/is-reference/v/3.0.3",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/extra/is-reference-3.0.3/MIT.txt",
+					"from": "https://raw.githubusercontent.com/spdx/license-list-data/v3.29.0/text/MIT.txt (reconstructed: no licence text is published; holder from its package.json)"
+				}
+			]
+		},
+		{
+			"name": "locate-character",
+			"version": "3.0.0",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/locate-character/v/3.0.0",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/extra/locate-character-3.0.0/MIT.txt",
+					"from": "https://raw.githubusercontent.com/spdx/license-list-data/v3.29.0/text/MIT.txt (reconstructed: no licence text is published; holder from its package.json)"
+				}
+			]
+		},
+		{
+			"name": "magic-string",
+			"version": "0.30.21",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/magic-string/v/0.30.21",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/magic-string-0.30.21/LICENSE",
+					"from": "https://registry.npmjs.org/magic-string/-/magic-string-0.30.21.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "mark.js",
+			"version": "8.11.1",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/mark.js/v/8.11.1",
+			"via": "bundled into @pagefind/js",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/mark.js-8.11.1/LICENSE",
+					"from": "https://registry.npmjs.org/mark.js/-/mark.js-8.11.1.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "mdn-data",
+			"version": "2.0.30",
+			"license": "CC0-1.0",
+			"url": "https://www.npmjs.com/package/mdn-data/v/2.0.30",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/mdn-data-2.0.30/LICENSE",
+					"from": "https://registry.npmjs.org/mdn-data/-/mdn-data-2.0.30.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "memchr",
+			"version": "2.8.3",
+			"license": "Unlicense OR MIT",
+			"url": "https://crates.io/crates/memchr/2.8.3",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/memchr-2.8.3/COPYING",
+					"from": "https://static.crates.io/crates/memchr/memchr-2.8.3.crate#memchr-2.8.3/COPYING"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/memchr-2.8.3/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/memchr/memchr-2.8.3.crate#memchr-2.8.3/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "minicbor",
+			"version": "2.3.1",
+			"license": "BlueOak-1.0.0",
+			"url": "https://crates.io/crates/minicbor/2.3.1",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/minicbor-2.3.1/LICENSE.md",
+					"from": "https://static.crates.io/crates/minicbor/minicbor-2.3.1.crate#minicbor-2.3.1/LICENSE.md"
+				}
+			]
+		},
+		{
+			"name": "once_cell",
+			"version": "1.21.4",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/once_cell/1.21.4",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/once_cell-1.21.4/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/once_cell/once_cell-1.21.4.crate#once_cell-1.21.4/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/once_cell-1.21.4/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/once_cell/once_cell-1.21.4.crate#once_cell-1.21.4/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "pagefind_stem",
+			"version": "1.0.0",
+			"license": "MIT",
+			"url": "https://crates.io/crates/pagefind_stem/1.0.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/extra/pagefind-stem-1.0.0/LICENSE",
+					"from": "https://raw.githubusercontent.com/Pagefind/pagefind/eb1a6711c45c78d9b536fad167650a79f9a97a5c/LICENSE"
+				},
+				{
+					"file": "licenses/pagefind/components/extra/pagefind-stem-1.0.0/LICENSE",
+					"from": "https://raw.githubusercontent.com/CurrySoftware/rust-stemmers/1fde09dfa08fb0fb07fbd6570aba8ecc98174edb/LICENSE"
+				},
+				{
+					"file": "licenses/pagefind/components/extra/pagefind-stem-1.0.0/COPYING",
+					"from": "https://raw.githubusercontent.com/snowballstem/snowball/v3.0.0/COPYING"
+				}
+			]
+		},
+		{
+			"name": "periscopic",
+			"version": "3.1.0",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/periscopic/v/3.1.0",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/periscopic-3.1.0/LICENSE",
+					"from": "https://registry.npmjs.org/periscopic/-/periscopic-3.1.0.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "proc-macro-crate",
+			"version": "3.5.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/proc-macro-crate/3.5.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/proc-macro-crate-3.5.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/proc-macro-crate/proc-macro-crate-3.5.0.crate#proc-macro-crate-3.5.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/proc-macro-crate-3.5.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/proc-macro-crate/proc-macro-crate-3.5.0.crate#proc-macro-crate-3.5.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "proc-macro2",
+			"version": "1.0.106",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/proc-macro2/1.0.106",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/proc-macro2-1.0.106/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/proc-macro2/proc-macro2-1.0.106.crate#proc-macro2-1.0.106/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/proc-macro2-1.0.106/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/proc-macro2/proc-macro2-1.0.106.crate#proc-macro2-1.0.106/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "quote",
+			"version": "1.0.45",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/quote/1.0.45",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/quote-1.0.45/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/quote/quote-1.0.45.crate#quote-1.0.45/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/quote-1.0.45/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/quote/quote-1.0.45.crate#quote-1.0.45/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "Rust standard library",
+			"version": "1.91.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://github.com/rust-lang/rust/tree/1.91.0/library",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/rust-standard-library/LICENSE-MIT",
+					"from": "https://raw.githubusercontent.com/rust-lang/rust/1.91.0/LICENSE-MIT"
+				},
+				{
+					"file": "licenses/pagefind/components/rust-standard-library/LICENSE-APACHE",
+					"from": "https://raw.githubusercontent.com/rust-lang/rust/1.91.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/rust-standard-library/COPYRIGHT",
+					"from": "https://raw.githubusercontent.com/rust-lang/rust/1.91.0/COPYRIGHT"
+				}
+			]
+		},
+		{
+			"name": "rustversion",
+			"version": "1.0.22",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/rustversion/1.0.22",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/rustversion-1.0.22/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/rustversion/rustversion-1.0.22.crate#rustversion-1.0.22/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/rustversion-1.0.22/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/rustversion/rustversion-1.0.22.crate#rustversion-1.0.22/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "serde",
+			"version": "1.0.228",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/serde/1.0.228",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/serde-1.0.228/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/serde/serde-1.0.228.crate#serde-1.0.228/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/serde-1.0.228/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/serde/serde-1.0.228.crate#serde-1.0.228/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "serde_core",
+			"version": "1.0.228",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/serde_core/1.0.228",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/serde_core-1.0.228/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/serde_core/serde_core-1.0.228.crate#serde_core-1.0.228/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/serde_core-1.0.228/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/serde_core/serde_core-1.0.228.crate#serde_core-1.0.228/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "serde_derive",
+			"version": "1.0.228",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/serde_derive/1.0.228",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/serde_derive-1.0.228/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/serde_derive/serde_derive-1.0.228.crate#serde_derive-1.0.228/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/serde_derive-1.0.228/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/serde_derive/serde_derive-1.0.228.crate#serde_derive-1.0.228/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "source-map-js",
+			"version": "1.2.2",
+			"license": "BSD-3-Clause",
+			"url": "https://www.npmjs.com/package/source-map-js/v/1.2.2",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/source-map-js-1.2.2/LICENSE",
+					"from": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.2.tgz#package/LICENSE"
+				}
+			]
+		},
+		{
+			"name": "svelte",
+			"version": "4.2.20",
+			"license": "MIT",
+			"url": "https://www.npmjs.com/package/svelte/v/4.2.20",
+			"via": "bundled into @pagefind/default-ui",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/npm/svelte-4.2.20/LICENSE.md",
+					"from": "https://registry.npmjs.org/svelte/-/svelte-4.2.20.tgz#package/LICENSE.md"
+				}
+			]
+		},
+		{
+			"name": "syn",
+			"version": "2.0.117",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/syn/2.0.117",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/syn-2.0.117/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/syn/syn-2.0.117.crate#syn-2.0.117/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/syn-2.0.117/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/syn/syn-2.0.117.crate#syn-2.0.117/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "syn",
+			"version": "3.0.5",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/syn/3.0.5",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/syn-3.0.5/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/syn/syn-3.0.5.crate#syn-3.0.5/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/syn-3.0.5/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/syn/syn-3.0.5.crate#syn-3.0.5/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "toml_datetime",
+			"version": "1.1.1+spec-1.1.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/toml_datetime/1.1.1+spec-1.1.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/toml_datetime-1.1.1+spec-1.1.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/toml_datetime/toml_datetime-1.1.1+spec-1.1.0.crate#toml_datetime-1.1.1+spec-1.1.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/toml_datetime-1.1.1+spec-1.1.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/toml_datetime/toml_datetime-1.1.1+spec-1.1.0.crate#toml_datetime-1.1.1+spec-1.1.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "toml_edit",
+			"version": "0.25.12+spec-1.1.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/toml_edit/0.25.12+spec-1.1.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/toml_edit-0.25.12+spec-1.1.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/toml_edit/toml_edit-0.25.12+spec-1.1.0.crate#toml_edit-0.25.12+spec-1.1.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/toml_edit-0.25.12+spec-1.1.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/toml_edit/toml_edit-0.25.12+spec-1.1.0.crate#toml_edit-0.25.12+spec-1.1.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "toml_parser",
+			"version": "1.1.2+spec-1.1.0",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/toml_parser/1.1.2+spec-1.1.0",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/toml_parser-1.1.2+spec-1.1.0/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/toml_parser/toml_parser-1.1.2+spec-1.1.0.crate#toml_parser-1.1.2+spec-1.1.0/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/toml_parser-1.1.2+spec-1.1.0/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/toml_parser/toml_parser-1.1.2+spec-1.1.0.crate#toml_parser-1.1.2+spec-1.1.0/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "unicode-ident",
+			"version": "1.0.24",
+			"license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+			"url": "https://crates.io/crates/unicode-ident/1.0.24",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/unicode-ident-1.0.24/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/unicode-ident/unicode-ident-1.0.24.crate#unicode-ident-1.0.24/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/unicode-ident-1.0.24/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/unicode-ident/unicode-ident-1.0.24.crate#unicode-ident-1.0.24/LICENSE-MIT"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/unicode-ident-1.0.24/LICENSE-UNICODE",
+					"from": "https://static.crates.io/crates/unicode-ident/unicode-ident-1.0.24.crate#unicode-ident-1.0.24/LICENSE-UNICODE"
+				}
+			]
+		},
+		{
+			"name": "wasm-bindgen",
+			"version": "0.2.129",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/wasm-bindgen/0.2.129",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-0.2.129/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/wasm-bindgen/wasm-bindgen-0.2.129.crate#wasm-bindgen-0.2.129/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-0.2.129/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/wasm-bindgen/wasm-bindgen-0.2.129.crate#wasm-bindgen-0.2.129/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "wasm-bindgen-macro",
+			"version": "0.2.129",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/wasm-bindgen-macro/0.2.129",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-macro-0.2.129/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/wasm-bindgen-macro/wasm-bindgen-macro-0.2.129.crate#wasm-bindgen-macro-0.2.129/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-macro-0.2.129/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/wasm-bindgen-macro/wasm-bindgen-macro-0.2.129.crate#wasm-bindgen-macro-0.2.129/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "wasm-bindgen-macro-support",
+			"version": "0.2.129",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/wasm-bindgen-macro-support/0.2.129",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-macro-support-0.2.129/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/wasm-bindgen-macro-support/wasm-bindgen-macro-support-0.2.129.crate#wasm-bindgen-macro-support-0.2.129/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-macro-support-0.2.129/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/wasm-bindgen-macro-support/wasm-bindgen-macro-support-0.2.129.crate#wasm-bindgen-macro-support-0.2.129/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "wasm-bindgen-shared",
+			"version": "0.2.129",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/wasm-bindgen-shared/0.2.129",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-shared-0.2.129/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/wasm-bindgen-shared/wasm-bindgen-shared-0.2.129.crate#wasm-bindgen-shared-0.2.129/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/wasm-bindgen-shared-0.2.129/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/wasm-bindgen-shared/wasm-bindgen-shared-0.2.129.crate#wasm-bindgen-shared-0.2.129/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "winnow",
+			"version": "1.0.3",
+			"license": "MIT",
+			"url": "https://crates.io/crates/winnow/1.0.3",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/winnow-1.0.3/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/winnow/winnow-1.0.3.crate#winnow-1.0.3/LICENSE-MIT"
+				}
+			]
+		},
+		{
+			"name": "write-json",
+			"version": "0.1.4",
+			"license": "MIT OR Apache-2.0",
+			"url": "https://crates.io/crates/write-json/0.1.4",
+			"via": "Cargo.lock of pagefind_web",
+			"texts": [
+				{
+					"file": "licenses/pagefind/components/crates/write-json-0.1.4/LICENSE-APACHE",
+					"from": "https://static.crates.io/crates/write-json/write-json-0.1.4.crate#write-json-0.1.4/LICENSE-APACHE"
+				},
+				{
+					"file": "licenses/pagefind/components/crates/write-json-0.1.4/LICENSE-MIT",
+					"from": "https://static.crates.io/crates/write-json/write-json-0.1.4.crate#write-json-0.1.4/LICENSE-MIT"
+				}
+			]
+		}
+	]
+}

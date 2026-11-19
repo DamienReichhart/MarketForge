@@ -5,7 +5,8 @@ name: CD
 #
 #   guard ─┐
 #   ci ────┴─► publish (PyPI) ─► github-release
-#                             └► verify (Linux, macOS, Windows)
+#      │                      └► verify (Linux, macOS, Windows)
+#      └─────► pages (website on GitHub Pages)
 #
 # The guard decides whether there is anything to release. A version that is
 # already tagged means "nothing to release": CI still runs (this workflow is
@@ -17,7 +18,10 @@ name: CD
 # those failures are caught before the merge.
 #
 # The distributions published are the ones CI built and tested in this run
-# (the `dist` artifact), not a rebuild.
+# (the `dist` artifact), not a rebuild. Likewise, the website deployed is
+# the `github-pages` artifact CI built and link-checked. It is deployed on
+# every push to main whether or not there is a version to release, so a
+# documentation fix on main goes live without a release.
 
 on:
   push:
@@ -68,7 +72,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: "3.13"
+          python-version: "3.15"
           activate-environment: "true"
           enable-cache: "false"
       - name: Install release tools
@@ -137,6 +141,25 @@ jobs:
         with:
           print-hash: true
 
+  pages:
+    name: Deploy the website
+    needs: [ci]
+    if: ${{ github.ref == 'refs/heads/main' && !inputs.dry-run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Settings > Pages > Source must be "GitHub Actions". The environment's
+    # deployment branch policy should allow main only.
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      pages: write # deploy to GitHub Pages
+      id-token: write # prove the deployment comes from this workflow
+    steps:
+      - name: Deploy the site CI built
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
   github-release:
     name: Tag & GitHub release
     needs: [guard, publish]
@@ -156,6 +179,10 @@ jobs:
         with:
           name: sbom
           path: sbom
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: third-party-licenses
+          path: third-party-licenses
       - name: Release notes from CHANGELOG.md
         env:
           VERSION: ${{ needs.guard.outputs.version }}
@@ -180,7 +207,7 @@ jobs:
           fi
           flags=(--latest)
           if [ "$PRERELEASE" = "true" ]; then flags=(--prerelease --latest=false); fi
-          gh release create "$TAG" dist/* sbom/* \
+          gh release create "$TAG" dist/* sbom/* third-party-licenses/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "MarketForge ${VERSION}" \
@@ -201,9 +228,10 @@ jobs:
         # platform, at both ends of the supported Python range.
         include:
           - { os: ubuntu-24.04, python-version: "3.12" }
-          - { os: ubuntu-24.04, python-version: "3.14" }
-          - { os: macos-15, python-version: "3.14" }
-          - { os: windows-2025, python-version: "3.14" }
+          - { os: ubuntu-24.04, python-version: "3.15" }
+          - { os: ubuntu-24.04-arm, python-version: "3.15" }
+          - { os: macos-15, python-version: "3.15" }
+          - { os: windows-2025, python-version: "3.15" }
     defaults:
       run:
         shell: bash

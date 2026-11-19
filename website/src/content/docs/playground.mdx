@@ -1,0 +1,24 @@
+---
+title: Playground
+description: "Generate MarketForge candles in your browser, with nothing to install: pick instruments, a range and a seed, see the regimes, download CSV or Parquet, and copy the command."
+tableOfContents: false
+---
+
+import Playground from '../../components/Playground.astro';
+import PlaygroundLimits from '../../components/PlaygroundLimits.astro';
+
+Try MarketForge before you install it. Pick a market, instruments, a date range and a seed, and the page simulates them minute by minute, in your browser, with the same code `pip install marketforge` installs. The chart shades each candle with the hidden regime that produced it.
+
+<PlaygroundLimits summary />
+
+<Playground />
+
+## Web version vs installed version
+
+The playground runs the real package, so it produces the same kind of data from the same model. What changes is the machine it runs on: a browser tab, without the compiler that makes MarketForge fast and with the memory of a web page.
+
+<PlaygroundLimits />
+
+## Next steps
+
+When the data looks like what you need, generate it for real: copy the command under the form, then follow the [Installation](../docs/installation/) and [Quick start](../docs/quick-start/) pages. [What it is not](../docs/limits/) covers what synthetic data cannot do, wherever it is generated.

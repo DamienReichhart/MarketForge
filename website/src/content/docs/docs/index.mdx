@@ -1,0 +1,59 @@
+---
+title: MarketForge documentation
+description: "Synthetic OHLCV market data for training AI trading models and testing backtesters: install, generate, label, validate, reproduce."
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import RegimeTable from '../../../components/RegimeTable.astro';
+
+MarketForge simulates **208 crypto, forex and US stock instruments minute by minute**, each market on its real trading calendar, and writes candles from `m1` to `W1` as CSV, Parquet, Feather or pandas DataFrames. Every candle can carry the **hidden market regime** that produced it and a **bid-ask spread**, and every dataset comes back bit for bit from its seed and version.
+
+## Pick your way in
+
+<CardGrid>
+	<LinkCard title="I train models" description="Ground-truth regime labels, leak-free splits from disjoint seeds, tensors in one call." href="use-cases/machine-learning/" />
+	<LinkCard title="I build or test a backtester" description="NYSE sessions, the forex week, gaps, spreads and panels that do not trade at the same times." href="use-cases/backtesting/" />
+	<LinkCard title="I stress-test strategies" description="Hundreds of alternative histories, crashes and flash crashes included, instead of one equity curve." href="use-cases/stress-testing/" />
+	<LinkCard title="I want to see it first" description="Generate candles in your browser with the real package. Nothing to install." href="../playground/" />
+</CardGrid>
+
+## Your first dataset
+
+```bash
+pip install marketforge
+marketforge generate -o ./data --from 2024-01-01 --days 90 --market crypto --with-regime --seed 42
+```
+
+That is 90 days of all 53 crypto instruments, every default timeframe from `m1` to `W1`, with the regime of every candle, the same on every run with seed 42. The same from Python:
+
+```python
+import marketforge as mf
+
+data = mf.generate("BTCUSD,ETHUSD", start="2024-01-01", days=30, seed=42, timeframes=["H1"], include_regime=True)
+candles = data["BTCUSD"]["H1"]  # a pandas DataFrame: open, high, low, close, volume, regime
+```
+
+The [quick start](quick-start/) goes from here to loading, validating and extending a dataset, and [core concepts](concepts/) explains the ideas behind every option in ten minutes.
+
+## The five regimes
+
+A market is always in one hidden state, shared by every instrument in it. With `--with-regime` (or `include_regime=True`) it is written next to each candle, in the `regime` column. The five colours of the MarketForge mark are these five regimes, in this order.
+
+<RegimeTable />
+
+How regimes drive drift, volatility and correlation is in [the model](reference/model/#regimes).
+
+## What is in these docs
+
+| Section | Read it to | Pages |
+| --- | --- | --- |
+| **Start here** | Get from nothing to a dataset you understand. | [Installation](installation/), [quick start](quick-start/), [core concepts](concepts/) |
+| **Use cases** | See how MarketForge fits your job, with recipes. | [ML](use-cases/machine-learning/), [backtesting](use-cases/backtesting/), [stress testing](use-cases/stress-testing/), [what it is not](limits/) |
+| **Guides** | Do one task well. | [Working with the data](guides/working-with-data/), [custom instruments](guides/custom-instruments/), [extending and verifying](guides/extend/), [validation](guides/validation/), [performance and scale](guides/performance/) |
+| **Reference** | Look up an exact option, type or rule. | [Command line](reference/cli/), [Python API](reference/python-api/), [output format](reference/output/), [markets](reference/markets/), [the model](reference/model/), [spread](reference/spread/), [reproducibility](reference/reproducibility/), [glossary](reference/glossary/) |
+| **Help** | Fix an error or answer a common question. | [FAQ and troubleshooting](faq/) |
+| **Project** | Follow changes and contribute. | [Changelog](../changelog/), [migrating to 4.0](migrating-to-4/), [design decisions](adr/0001-simulate-whole-market-day-by-day/), [contributing](contributing/) |
+
+:::caution[Read this before you train anything]
+Synthetic data teaches a model the generator, not the market. MarketForge has **no alpha to find**: it has the statistics of real markets and no edge that carries over to them. Use it to build, debug, pre-train and stress-test, and real data to decide whether anything earns money. See [What it is not](limits/).
+:::

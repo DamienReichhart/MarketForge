@@ -84,8 +84,20 @@ The standardized random innovation that drives one minute of one anchor series.
 _Avoid_: noise, innovation (in user-facing text), epsilon
 
 **Regime**:
-The market-wide hidden state (trend up, trend down, range, high volatility, crash) that scales drift and volatility for every instrument of a market at once.
+The market-wide hidden state (trend up, trend down, range, high volatility, crash) that sets the trend and scales the volatility of every instrument of a market at once. A trend moves the market's main factor: all coins, all stocks, or the dollar.
 _Avoid_: phase, mode, state
+
+**Trend strength**:
+A regime's expected log return over an average spell of the regime, in units of that spell's volatility, along the market's main factor.
+_Avoid_: drift multiplier (the 3.x mechanism it replaced)
+
+**Stress**:
+The weight of a common shock added to every instrument's shock in high-volatility and crash regimes, which makes correlations intensify.
+_Avoid_: contagion, correlation breakdown
+
+**Model revision**:
+The integer that names a generation of the model's output (`marketforge.MODEL_REVISION`). It is incremented in any release that changes what a seed produces; `extend` only continues a dataset written with the same one.
+_Avoid_: model version, output version
 
 **Anomaly**:
 An optional, deliberately unrealistic event layered on top of the base simulation: a spike or a flash crash.
@@ -95,6 +107,10 @@ _Avoid_: event, glitch, gap (gaps are not anomalies)
 The market's current volatility level relative to normal (GARCH multiplier times regime multiplier, excluding intraday seasonality); volume rises with it.
 _Avoid_: stress, heat
 
+**Spread**:
+The quoted bid-ask difference around a candle's mid price, in price units; candle prices are mid prices.
+_Avoid_: commission, slippage, cost
+
 **Validation band**:
 The range a stylized-fact statistic of generated data must fall in for a market, anchored to the same statistic measured on real data.
 _Avoid_: threshold, target, KPI
@@ -102,3 +118,17 @@ _Avoid_: threshold, target, KPI
 **Stylized fact**:
 A statistical property documented for real returns (heavy tails, volatility clustering, leverage effect, realistic range) that generated data is validated against.
 _Avoid_: realism metric, KPI
+
+### Datasets
+
+**Dataset**:
+The directory of candle files one generation produces, together with its manifest.
+_Avoid_: output directory (in prose), dump, export
+
+**Manifest**:
+The record kept inside a dataset of how it was produced: version, seed, range, instruments, timeframes, format and overrides.
+_Avoid_: metadata, run log, config
+
+**Extension**:
+Continuing a dataset forward in time so that it equals the dataset a single longer generation would have produced.
+_Avoid_: append, resume, update

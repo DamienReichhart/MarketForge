@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 
 """
 TOML override files: change catalog instruments or add new ones without
@@ -24,7 +24,8 @@ editing the package.
 Keys: market (required for new instruments), start_price, volatility
 (annualised), drift (annualised log drift), volume_base (mean volume per
 minute: coins for crypto, ticks for forex, shares for stocks),
-volume_volatility, correlations (to instruments of the same market;
+volume_volatility, spread_bps (typical quoted spread in basis points of the
+price; default: the market's rule), correlations (to instruments of the same market;
 unspecified pairs of a new instrument default to 0).
 """
 
@@ -33,16 +34,19 @@ from __future__ import annotations
 import os
 import tomllib
 import warnings
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from marketforge.config.catalog.base import AssetParams, MarketConfig, ensure_positive_semidefinite
-from marketforge.config.settings import MarketType
+from marketforge.config.catalog.correlation import nearest_correlation
+from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
+from marketforge.config.factors import FactorStructure, forex_structure
+from marketforge.domain.markets import MarketType
 
-_FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility")
+_FIELDS = ("start_price", "volatility", "drift", "volume_base", "volume_volatility", "spread_bps")
 _KEYS = set(_FIELDS) | {"market", "correlations"}
 
 
@@ -50,8 +54,21 @@ class OverrideError(ValueError):
     """An override file is malformed or inconsistent with the catalog."""
 
 
-def read_overrides(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
-    """Parse an override file into {SYMBOL: {key: value}}."""
+# What users may pass as overrides: an override file, or the content of its
+# [instruments] table as a mapping {SYMBOL: {key: value}}.
+Overrides = str | os.PathLike[str] | Mapping[str, Mapping[str, Any]]
+
+
+def resolve_overrides(overrides: Overrides | None) -> dict[str, dict[str, Any]]:
+    """Checked overrides as {SYMBOL: {key: value}}, from a file or a mapping; {} for None."""
+    if overrides is None:
+        return {}
+    if isinstance(overrides, Mapping):
+        return _checked(overrides, "overrides")
+    return _read(overrides)
+
+
+def _read(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
     p = Path(path)
     try:
         with open(p, "rb") as fh:
@@ -65,18 +82,42 @@ def read_overrides(path: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
         raise OverrideError(
             f"{p}: unknown top-level table(s) {sorted(unknown_top)}; expected [instruments.SYMBOL]"
         )
-    entries = doc.get("instruments", {})
+    return _checked(doc.get("instruments", {}), str(p))
+
+
+def _checked(entries: Mapping[str, Any], where: str) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for symbol, body in entries.items():
-        if not isinstance(body, dict):
-            raise OverrideError(f"{p}: [instruments.{symbol}] must be a table")
+        if not isinstance(body, Mapping):
+            raise OverrideError(f"{where}: [instruments.{symbol}] must be a table")
         bad = set(body) - _KEYS
         if bad:
             raise OverrideError(
-                f"{p}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; valid: {sorted(_KEYS)}"
+                f"{where}: [instruments.{symbol}] has unknown key(s) {sorted(bad)}; "
+                f"valid: {sorted(_KEYS)}"
             )
-        out[symbol.upper()] = body
+        name = f"{where}: [instruments.{symbol}]"
+        for key in _FIELDS:
+            if key in body and not _is_number(body[key]):
+                raise OverrideError(f"{name}.{key} must be a number, got {body[key]!r}")
+        if "correlations" in body:
+            correlations = body["correlations"]
+            if not isinstance(correlations, Mapping):
+                raise OverrideError(
+                    f"{name}.correlations must be a table like {{ BTCUSD = 0.6 }}, "
+                    f"got {correlations!r}"
+                )
+            for other, rho in correlations.items():
+                if not _is_number(rho):
+                    raise OverrideError(
+                        f"{name}.correlations.{other} must be a number, got {rho!r}"
+                    )
+        out[str(symbol).upper()] = dict(body)
     return out
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def _imply_new_correlations(
@@ -110,7 +151,7 @@ def apply_overrides(
 ) -> dict[MarketType, MarketConfig]:
     """Return a new catalog with the overrides applied (the input is not modified)."""
     owner = {s: m for m, cfg in catalog.items() for s in cfg.symbols}
-    assets = {m: dict(cfg.assets) for m, cfg in catalog.items()}
+    instruments = {m: dict(cfg.instruments) for m, cfg in catalog.items()}
     order = {m: list(cfg.symbols) for m, cfg in catalog.items()}
     corr_edits: dict[MarketType, list[tuple[str, str, float]]] = {m: [] for m in catalog}
 
@@ -132,13 +173,13 @@ def apply_overrides(
             )
         values: dict[str, Any] = {k: float(body[k]) for k in _FIELDS if k in body}
         try:
-            if symbol in assets[market]:
-                assets[market][symbol] = replace(assets[market][symbol], **values)
+            if symbol in instruments[market]:
+                instruments[market][symbol] = replace(instruments[market][symbol], **values)
             else:
                 missing = [k for k in ("start_price", "volatility") if k not in values]
                 if missing:
                     raise OverrideError(f"New instrument {symbol} needs {', '.join(missing)}")
-                assets[market][symbol] = AssetParams(symbol=symbol, **values)
+                instruments[market][symbol] = InstrumentParams(symbol=symbol, **values)
                 order[market].append(symbol)
                 owner[symbol] = market
         except ValueError as e:
@@ -149,7 +190,11 @@ def apply_overrides(
     out: dict[MarketType, MarketConfig] = {}
     for market, cfg in catalog.items():
         syms = order[market]
-        if syms == list(cfg.symbols) and not corr_edits[market] and assets[market] == cfg.assets:
+        if (
+            syms == list(cfg.symbols)
+            and not corr_edits[market]
+            and instruments[market] == cfg.instruments
+        ):
             out[market] = cfg
             continue
         n = len(syms)
@@ -170,17 +215,39 @@ def apply_overrides(
         for a, b, rho in corr_edits[market]:
             i, j = syms.index(a), syms.index(b)
             mat[i, j] = mat[j, i] = rho
-        if float(np.min(np.linalg.eigvalsh(mat))) < 1e-8:
+        # Only the simulated series need a valid matrix: forex crosses are
+        # derived from their anchors (ADR 0002), so the full forex matrix is
+        # singular by construction.
+        structure = (
+            forex_structure(syms) if market == MarketType.FOREX else FactorStructure.identity(syms)
+        )
+        idx = np.array([syms.index(s) for s in structure.factors])
+        block = mat[np.ix_(idx, idx)]
+        if float(np.min(np.linalg.eigvalsh(block))) < 1e-8:
+            # The user's own pairs hold if they can; the rest of the market gives way.
+            position = {s: k for k, s in enumerate(structure.factors)}
+            edited = np.zeros(block.shape, dtype=bool)
+            for a, b, _ in corr_edits[market]:
+                if a in position and b in position:
+                    edited[position[a], position[b]] = edited[position[b], position[a]] = True
+            repaired, kept = nearest_correlation(block, edited)
+            moved = float(np.max(np.abs(repaired - block)[edited], initial=0.0))
             warnings.warn(
-                f"{market.value}: overridden correlations are not jointly consistent; "
-                "adjusted to the nearest valid correlation matrix",
+                f"{market.value}: overridden correlations are not consistent with the rest "
+                "of the market; "
+                + (
+                    "the others were moved to the nearest valid correlation matrix"
+                    if kept
+                    else f"your values cannot all hold; moved by up to {moved:.2f} to the "
+                    "nearest valid correlation matrix"
+                ),
                 stacklevel=2,
             )
-            mat = ensure_positive_semidefinite(mat)
+            mat[np.ix_(idx, idx)] = repaired
         out[market] = MarketConfig(
             market_type=market,
-            assets={s: assets[market][s] for s in syms},
+            instruments={s: instruments[market][s] for s in syms},
             correlation_matrix=mat,
-            asset_order=syms,
+            symbol_order=syms,
         )
     return out

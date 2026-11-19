@@ -1,7 +1,8 @@
 name: Scheduled run alerts
 
 # The scheduled runs exist to catch upstream breakage (a new dependency
-# release, a new advisory, a new CodeQL query) without waiting for a commit.
+# release, a new advisory, a new CodeQL query, a removed external page)
+# without waiting for a commit.
 # But GitHub notifies only whoever last edited the cron line, so a failure
 # could sit unseen. This opens one issue per workflow when its scheduled run
 # fails, comments on it while it keeps failing, and closes it when a later
@@ -13,7 +14,7 @@ on:
   # Safe: this job only reads the triggering run's metadata. It never checks
   # out, downloads or executes anything from that run.
   workflow_run: # zizmor: ignore[dangerous-triggers]
-    workflows: [CI, CodeQL, Scorecard]
+    workflows: [CI, CodeQL, Scorecard, External links]
     types: [completed]
 
 permissions: {}
@@ -54,7 +55,7 @@ jobs:
 
           body="The scheduled **${WORKFLOW}** run on \`${HEAD_SHA}\` ended in \`${CONCLUSION}\`: ${RUN_URL}
 
-          Nothing in this repository changed to cause it: look for a new dependency release, a new advisory or a new analysis query. This issue closes itself when a scheduled run passes again."
+          Nothing in this repository changed to cause it: look for a new dependency release, a new advisory, a new analysis query or, for External links, a page another site moved or removed. This issue closes itself when a scheduled run passes again."
           if [ -n "$issue" ]; then
             gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"
             echo "Commented on #${issue}" >> "$GITHUB_STEP_SUMMARY"

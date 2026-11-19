@@ -1,15 +1,15 @@
 {
-    "permissions": {
-      "allow": [
-        "Bash(*)",
-        "Read",
-        "Edit",
-        "Write"
-      ],
-      "deny": [
-        "Bash(rm -rf *)",
-        "Bash(sudo *)"
-      ],
-      "ask": []
-    }
-  }  
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "bypassPermissions"
+  }
+}

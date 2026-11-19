@@ -1,0 +1,87 @@
+---
+title: Quick start
+description: "Generate, load, validate and extend your first synthetic dataset in five minutes."
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Steps>
+
+1. **Install.**
+
+   ```bash
+   pip install marketforge
+   ```
+
+2. **Generate a dataset.** Ninety days of three coins, every timeframe from `m1` to `W1`, with the regime label and the bid-ask spread:
+
+   ```bash
+   marketforge generate -o ./data --from 2024-01-01 --days 90 \
+       --instruments BTCUSD,ETHUSD,SOLUSD --with-regime --with-spread --seed 42
+   ```
+
+   ```text title="The dataset"
+   data/
+   ├── marketforge.json          # the manifest: how this dataset was made
+   └── crypto/
+       ├── BTCUSD_m1.csv  BTCUSD_m5.csv  ...  BTCUSD_W1.csv
+       ├── ETHUSD_m1.csv  ...
+       └── SOLUSD_m1.csv  ...
+   ```
+
+   Not sure how big a run will be? Add `--dry-run` to print the files, rows, disk size and time it would take, without writing anything.
+
+3. **Load it.**
+
+   <Tabs>
+   <TabItem label="pandas">
+   ```python
+   import pandas as pd
+
+   df = pd.read_csv("data/crypto/BTCUSD_H1.csv")
+   df["time"] = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+   # The regime is a name: trend_up, trend_down, range, high_volatility or crash
+   print(df[["time", "close", "spread", "regime"]].tail())
+   ```
+   </TabItem>
+   <TabItem label="MarketForge API">
+   ```python
+   import marketforge as mf
+
+   data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", end="2024-03-31",
+                      seed=42, timeframes=["H1"], include_regime=True, include_spread=True)
+   btc = data["BTCUSD"]["H1"]          # same candles as the CSV, as a DataFrame
+   closes = data.panel("close", "H1")  # one column per instrument
+
+   # Or load the dataset you wrote, with the right types:
+   # data = mf.read("data", timeframes="H1")
+   ```
+   </TabItem>
+   </Tabs>
+
+   The same seed gives the same candles, whether you write them to disk or keep them in memory.
+
+4. **Check that it looks like a real market.**
+
+   ```bash
+   marketforge validate --input ./data/crypto/BTCUSD_m1.csv
+   ```
+
+   The validator measures heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread, and exits with code 1 if any of them falls outside the band measured on real data. See [Validation](../guides/validation/).
+
+5. **Extend it later.** Thirty more days, with exactly the same settings:
+
+   ```bash
+   marketforge extend ./data --days 30
+   ```
+
+   The result is byte-identical to having generated 120 days in the first place. See [Extending a dataset](../guides/extend/).
+
+</Steps>
+
+## Next steps
+
+- [Core concepts](../concepts/): markets, regimes, seeds and the manifest, in ten minutes.
+- [Working with the data](../guides/working-with-data/): pandas, polars, DuckDB, tensors, and lining up markets that keep different hours.
+- [Training ML models](../use-cases/machine-learning/), [backtesting](../use-cases/backtesting/) or [stress testing](../use-cases/stress-testing/): recipes for your job.
+- [Command line](../reference/cli/) and [Python API](../reference/python-api/): every option.

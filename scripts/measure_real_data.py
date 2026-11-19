@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 
 """
 Measure stylized facts on real m1 data, as reference for the validation bands.
@@ -18,10 +18,16 @@ Only derived statistics are kept in the repository
 Inputs (one instrument per invocation, files concatenated in time order):
 - Binance kline archives from https://data.binance.vision (.zip or .csv,
   no header, millisecond timestamps), e.g. spot/daily/klines/BTCUSDT/1m/
-- any CSV/Parquet with columns timestamp (Unix s), open, high, low, close, volume
+- Binance best bid/ask archives (bookTicker .zip, with a header, from
+  futures/um/daily/bookTicker/BTCUSDT/): reduced to m1 candles of the mid
+  price with the mean quoted spread of each minute, which adds the spread
+  statistics
+- any CSV/Parquet with columns timestamp (Unix s), open, high, low, close and
+  optionally volume and spread
 
 Usage:
     python scripts/measure_real_data.py --name BTCUSDT data/BTCUSDT-1m-2024-02-*.zip
+    python scripts/measure_real_data.py --name BTCUSDT data/BTCUSDT-bookTicker-2024-02-*.zip
 """
 
 from __future__ import annotations
@@ -33,6 +39,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.csv as pacsv
 
 from marketforge.validation import stylized_facts as sf
 
@@ -52,11 +59,66 @@ _BINANCE_COLS = [
 ]
 
 
+def load_quotes(path: Path) -> pd.DataFrame:
+    """
+    Reduce a Binance bookTicker archive (every change of the best bid and ask)
+    to m1 candles of the mid price, with the mean spread quoted in each minute.
+    A day holds tens of millions of quotes, so the file is read in batches.
+    """
+    columns = ["best_bid_price", "best_ask_price", "transaction_time"]
+    parts = []
+    with zipfile.ZipFile(path) as z, z.open(z.namelist()[0]) as fh:
+        reader = pacsv.open_csv(fh, convert_options=pacsv.ConvertOptions(include_columns=columns))
+        for batch in reader:
+            q = batch.to_pandas()
+            q = pd.DataFrame(
+                {
+                    "minute": q["transaction_time"] // 60_000,
+                    "mid": 0.5 * (q["best_bid_price"] + q["best_ask_price"]),
+                    "spread": q["best_ask_price"] - q["best_bid_price"],
+                }
+            )
+            g = q.groupby("minute")
+            parts.append(
+                pd.DataFrame(
+                    {
+                        "open": g["mid"].first(),
+                        "high": g["mid"].max(),
+                        "low": g["mid"].min(),
+                        "close": g["mid"].last(),
+                        "spread_sum": g["spread"].sum(),
+                        "quotes": g["spread"].count(),
+                    }
+                )
+            )
+    m1 = (
+        pd.concat(parts)
+        .groupby(level=0)
+        .agg(
+            {
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "spread_sum": "sum",
+                "quotes": "sum",
+            }
+        )
+    )
+    m1["spread"] = m1["spread_sum"] / m1["quotes"]
+    m1["timestamp"] = m1.index * 60
+    return m1.reset_index(drop=True)[["timestamp", "open", "high", "low", "close", "spread"]]
+
+
 def load(path: Path) -> pd.DataFrame:
-    """Load one file into timestamp/open/high/low/close/volume[/trades]."""
+    """Load one file into timestamp/open/high/low/close[/volume/trades/spread]."""
     if path.suffix == ".parquet":
         df = pd.read_parquet(path)
     elif path.suffix == ".zip":
+        with zipfile.ZipFile(path) as z, z.open(z.namelist()[0]) as fh:
+            is_quotes = fh.read(9) == b"update_id"
+        if is_quotes:
+            return load_quotes(path)
         with zipfile.ZipFile(path) as z, z.open(z.namelist()[0]) as fh:
             df = pd.read_csv(fh, header=None, names=_BINANCE_COLS)
     else:
@@ -71,7 +133,7 @@ def load(path: Path) -> pd.DataFrame:
         df["timestamp"] = np.where(ts > 1e14, ts // 1_000_000, ts // 1000)  # us or ms
     keep = [
         c
-        for c in ("timestamp", "open", "high", "low", "close", "volume", "trades")
+        for c in ("timestamp", "open", "high", "low", "close", "volume", "trades", "spread")
         if c in df.columns
     ]
     return df[keep]
@@ -91,9 +153,18 @@ def window_stats(df: pd.DataFrame) -> dict[str, float]:
     for lag in (15, 60, 240, 1440):
         if a.size > lag * 4:
             out[f"abs_acf_{lag}"] = sf._acf(a, lag)
-    v = df["volume"].to_numpy(float)
+    if "spread" in df.columns:
+        s = df["spread"].to_numpy(float)
+        out.update(
+            {
+                "spread_bps": sf.median_spread_bps(s, c),
+                "spread_widening": sf.spread_widening(s, r),
+                "spread_p99_over_median": float(np.quantile(s, 0.99) / np.median(s)),
+            }
+        )
+    v = df["volume"].to_numpy(float) if "volume" in df.columns else np.zeros(0)
     pos = v > 0
-    if pos.mean() > 0.95:
+    if pos.size and pos.mean() > 0.95:
         lv = np.log(v[pos])
         out.update(
             {

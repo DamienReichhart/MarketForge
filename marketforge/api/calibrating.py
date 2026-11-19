@@ -1,0 +1,138 @@
+# MarketForge
+# Copyright (c) 2026 REICHHART Damien
+#
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
+
+"""Instrument parameters fitted to real m1 candles, as an override file."""
+
+from __future__ import annotations
+
+import os
+from functools import cache
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from marketforge.api.catalog import instruments
+from marketforge.domain.markets import MarketType
+
+_SECONDS_PER_YEAR = 365.25 * 86_400
+_TIME_COLUMNS = ("timestamp", "time", "datetime", "date")
+
+
+def calibrate(
+    files: list[str | os.PathLike[str]], market: str | MarketType
+) -> dict[str, dict[str, Any]]:
+    """
+    Fit instrument parameters to m1 candle files: an override for each one.
+
+    For each file (``SYMBOL_m1.csv`` / ``.parquet`` / ``.feather``, or any
+    name: the symbol is the part before the first ``_``):
+
+    - ``start_price``: the last close, so a generation continues from there;
+    - ``volatility``: the annualised volatility of its log returns, overnight
+      and weekend gaps included, as the catalog defines it;
+    - ``volume_base``: the mean volume per minute;
+    - ``correlations``: the correlation of hourly returns with every file
+      before it, on the hours both trade.
+
+    Drift is not estimated: below several years of data it is noise. The
+    result is the ``[instruments]`` table of an override file (see
+    :func:`write_overrides`) and can be passed as ``overrides=``.
+    """
+    market = MarketType(str(market).lower())
+    out: dict[str, dict[str, Any]] = {}
+    hourly: dict[str, pd.Series] = {}
+    for file in files:
+        path = Path(file)
+        symbol = path.stem.split("_")[0].upper()
+        candles = _read_candles(path)
+        if len(candles) < 1000:
+            raise ValueError(f"{path} has {len(candles)} candles; calibration needs at least 1000")
+        log_close = np.log(candles["close"].to_numpy(dtype=float))
+        returns = np.diff(log_close)
+        stamps = pd.DatetimeIndex(candles.index).as_unit("s").asi8
+        span = float(stamps[-1] - stamps[0]) + 60.0
+        volatility = float(np.sqrt(np.sum(returns**2) * _SECONDS_PER_YEAR / span))
+        body: dict[str, Any] = {
+            "market": market.value,
+            "start_price": float(candles["close"].iloc[-1]),
+            "volatility": round(volatility, 6),
+        }
+        if "volume" in candles.columns and candles["volume"].sum() > 0:
+            observed = float(candles["volume"].mean())
+            body["volume_base"] = round(observed / _volume_scale(market), 4)
+        series = pd.Series(log_close, index=candles.index).resample("1h").last().diff().dropna()
+        correlations = {}
+        for other, theirs in hourly.items():
+            both = pd.concat([series, theirs], axis=1, join="inner").dropna()
+            if len(both) >= 100:
+                correlations[other] = round(float(both.corr().iloc[0, 1]), 4)
+        if correlations:
+            body["correlations"] = correlations
+        hourly[symbol] = series
+        out[symbol] = body
+    return out
+
+
+@cache
+def _volume_scale(market: MarketType) -> float:
+    """Mean generated volume per unit of ``volume_base`` in a market, measured once.
+
+    Turbulence, seasonality and the regimes all scale volume, so a catalog
+    ``volume_base`` is not the mean volume it produces; dividing an observed
+    mean by this gives the ``volume_base`` that reproduces it.
+    """
+    from marketforge.api.memory import generate  # the simulator, only when calibrating
+
+    catalog = instruments(market.value)
+    symbol = str(catalog.index[0])
+    frame = generate(symbol, start="2023-01-02", days=90, seed=0)[symbol]["m1"]
+    return float(frame["volume"].mean()) / float(catalog.loc[symbol, "volume_base"])
+
+
+def write_overrides(overrides: dict[str, dict[str, Any]], path: str | os.PathLike[str]) -> Path:
+    """Write the ``[instruments]`` tables of an override file."""
+    lines = [
+        "# Fitted by `marketforge calibrate`: pass with --config or overrides=.",
+        "# Drift is not estimated (it is noise below several years of data).",
+        "",
+    ]
+    for symbol, body in overrides.items():
+        lines.append(f"[instruments.{symbol}]")
+        for key, value in body.items():
+            if key == "correlations":
+                pairs = ", ".join(f"{k} = {v!r}" for k, v in value.items())
+                lines.append(f"correlations = {{ {pairs} }}")
+            elif isinstance(value, str):
+                lines.append(f'{key} = "{value}"')
+            else:
+                lines.append(f"{key} = {value!r}")
+        lines.append("")
+    target = Path(path)
+    target.write_text("\n".join(lines), encoding="utf-8")
+    return target
+
+
+def _read_candles(path: Path) -> pd.DataFrame:
+    if path.suffix == ".parquet":
+        raw = pd.read_parquet(path)
+    elif path.suffix in (".feather", ".arrow"):
+        raw = pd.read_feather(path)
+    else:
+        raw = pd.read_csv(path)
+    raw.columns = [str(c).lower() for c in raw.columns]
+    time = next((c for c in _TIME_COLUMNS if c in raw.columns), None)
+    if time is None or "close" not in raw.columns:
+        raise ValueError(f"{path} needs a close column and one of {', '.join(_TIME_COLUMNS)}")
+    stamps = raw[time]
+    if pd.api.types.is_numeric_dtype(stamps):
+        index = pd.to_datetime(stamps.to_numpy(), unit="s", utc=True)
+    else:
+        index = pd.to_datetime(stamps.to_numpy(), utc=True)
+    frame = raw.drop(columns=time)
+    frame.index = pd.DatetimeIndex(index, name="time")
+    return frame.sort_index()

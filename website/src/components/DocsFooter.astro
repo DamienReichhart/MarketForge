@@ -1,0 +1,19 @@
+---
+import Default from '@astrojs/starlight/components/Footer.astro';
+import LegalLinks from './LegalLinks.astro';
+import RegimeStrip from './RegimeStrip.astro';
+---
+
+<Default />
+<div class="mf-docs-legal">
+	<RegimeStrip />
+	<LegalLinks />
+</div>
+
+<style>
+	.mf-docs-legal {
+		display: grid;
+		gap: 1.25rem;
+		margin-top: 3rem;
+	}
+</style>

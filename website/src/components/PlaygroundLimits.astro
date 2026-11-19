@@ -1,0 +1,119 @@
+---
+/**
+ * What the playground cannot do that an installed MarketForge can: a short
+ * caution shown above the form (`summary`), or the full comparison table.
+ * The numbers come from src/playground/limits.json, which the playground also
+ * enforces, and from the manifest scripts/sync-playground.mjs wrote, so the
+ * page never states a cap or a size the playground does not have.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { Aside } from '@astrojs/starlight/components';
+import limits from '../playground/limits.json';
+
+interface Props {
+	summary?: boolean;
+}
+const { summary = false } = Astro.props;
+const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public', 'playground', 'manifest.json'), 'utf8')) as {
+	marketforge: string;
+	pyodide: string;
+	downloadMB: number;
+};
+const download = Math.round(manifest.downloadMB);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+{
+	summary ? (
+		<Aside type="caution" title="The web version has limits the installed version does not">
+			<p>
+				This page runs the real MarketForge {manifest.marketforge} in your browser, but it is a preview. It is
+				<strong> 10 to 100 times slower</strong> than <code>pip install marketforge</code>, it refuses requests that
+				would take more than about {limits.maxSeconds} seconds or {limits.maxMemoryMB} MB here (a year of m1, or a
+				whole market for weeks), and <strong>its candles are not bit-identical</strong> to an installed
+				MarketForge's for the same seed. The first run downloads about {download} MB. Nothing you generate leaves
+				your browser. <a href="#web-version-vs-installed-version">All the differences</a>.
+			</p>
+		</Aside>
+	) : (
+		<table>
+			<thead>
+				<tr>
+					<th />
+					<th>This page</th>
+					<th>Installed package</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<th>Speed</th>
+					<td>
+						10 to 100 times slower: Python compiled to WebAssembly, without the Numba compiler, on one thread.
+						The first request for each market also calibrates its regimes, which takes{' '}
+						{Math.min(...Object.values(limits.calibrationSeconds))} to{' '}
+						{Math.max(...Object.values(limits.calibrationSeconds))} s here, once per visit.
+					</td>
+					<td>Numba-compiled kernels, with markets simulated in parallel (<code>--jobs</code>).</td>
+				</tr>
+				<tr>
+					<th>Size</th>
+					<td>
+						Capped at about {limits.maxSeconds} s of simulation, {limits.maxRows.toLocaleString('en-US')} candles
+						and {limits.maxMemoryMB} MB of memory, and {limits.maxDays} days. Fewer instruments or coarser
+						timeframes fit a longer range.
+					</td>
+					<td>Years of m1 for all 208 instruments, written to disk as it goes.</td>
+				</tr>
+				<tr>
+					<th>Reproducibility</th>
+					<td>
+						A seed gives the same candles every time on this page, but <strong>not the same bits</strong> as an
+						installed MarketForge: numpy's <code>exp</code> and <code>log</code> round the last digit differently
+						in WebAssembly, so about a third of the values differ, in the 12th significant digit or beyond. Do not mix
+						the two in one dataset.
+					</td>
+					<td>
+						Bit-identical for the same seed, version and platform (<a href={`${base}/docs/adr/0011-realism-over-seed-stability/`}>ADR 0011</a>).
+					</td>
+				</tr>
+				<tr>
+					<th>Output</th>
+					<td>One CSV or Parquet file per timeframe, every instrument in it (long format, ISO times in CSV).</td>
+					<td>
+						CSV, Parquet or Feather, one file per instrument and timeframe, with a <code>marketforge.json</code>
+						manifest, a choice of timestamp formats, and pandas or NumPy in Python.
+					</td>
+				</tr>
+				<tr>
+					<th>Features</th>
+					<td>Generating, with regimes, spread, bid and ask, and anomalies.</td>
+					<td>
+						Also extending and verifying datasets, validation, calibration to your own data, override files,{' '}
+						<code>generate_many</code>, <code>resample</code> and <code>estimate</code>.
+					</td>
+				</tr>
+				<tr>
+					<th>First load</th>
+					<td>
+						About {download} MB (Python, numpy, pandas, pyarrow and MarketForge), then cached by your browser.
+						Phones with little memory may stop the page.
+					</td>
+					<td>A one-off install.</td>
+				</tr>
+				<tr>
+					<th>Version</th>
+					<td>
+						MarketForge {manifest.marketforge}, the version this site was built from, on Pyodide {manifest.pyodide}.
+					</td>
+					<td>Any version you install.</td>
+				</tr>
+				<tr>
+					<th>Privacy</th>
+					<td>Runs entirely in your browser, from files this site serves. Nothing is uploaded.</td>
+					<td>Runs on your machine.</td>
+				</tr>
+			</tbody>
+		</table>
+	)
+}

@@ -1,32 +1,44 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 
 """
 MarketForge
 
 A professional-grade synthetic OHLCV data generator for backtesting,
-stress testing, and development purposes. Supports multi-asset generation
+stress testing, and development purposes. Supports multi-instrument generation
 with correlations, realistic market behavior, and multiple timeframes.
 """
 
-from importlib import metadata as _metadata
+from marketforge._version import MODEL_REVISION, __version__
+from marketforge.api.calibrating import calibrate
+from marketforge.api.catalog import instruments
+from marketforge.api.disk import extend, generate_to_disk
+from marketforge.api.estimating import Estimate, estimate
+from marketforge.api.memory import GeneratedData, generate, generate_many
+from marketforge.api.parsing import parse_time
+from marketforge.api.reading import read
+from marketforge.api.resampling import resample
+from marketforge.api.validating import validate
 
-from marketforge.api import GeneratedData, generate, generate_to_disk, parse_time
-
-try:
-    # pyproject.toml is the single source of truth for the version.
-    __version__ = _metadata.version("marketforge")
-except _metadata.PackageNotFoundError:  # pragma: no cover - uninstalled checkout
-    __version__ = "0.0.0+unknown"
 __author__ = "REICHHART Damien"
 
 __all__ = [
+    "MODEL_REVISION",
+    "Estimate",
     "GeneratedData",
     "__version__",
+    "calibrate",
+    "estimate",
+    "extend",
     "generate",
+    "generate_many",
     "generate_to_disk",
+    "instruments",
     "parse_time",
+    "read",
+    "resample",
+    "validate",
 ]

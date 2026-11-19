@@ -1,8 +1,8 @@
 # MarketForge
 # Copyright (c) 2026 REICHHART Damien
 #
-# Licensed under the MIT License. See the LICENSE file in the project
-# root for full license information.
+# Licensed under the Apache License, Version 2.0.
+# See the LICENSE file in the project root for full license information.
 
 """
 Streaming, calendar-aligned candle aggregation.
@@ -18,45 +18,15 @@ requested range.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 
-from marketforge.aggregation.timeframes import Timeframe
-from marketforge.trading_calendar import MINUTES_PER_DAY, TradingCalendar
+from marketforge.calendars.trading_calendar import TradingCalendar
+from marketforge.domain.bars import Bars
+from marketforge.domain.time import MINUTES_PER_DAY
+from marketforge.domain.timeframes import Timeframe
 
-SUPPORTED_TIMEFRAMES = (
-    Timeframe.m1,
-    Timeframe.m5,
-    Timeframe.m15,
-    Timeframe.m30,
-    Timeframe.H1,
-    Timeframe.H4,
-    Timeframe.D1,
-    Timeframe.W1,
-)
-
-
-@dataclass
-class Bars:
-    """Candles of one timeframe for every instrument of a market."""
-
-    timestamps: np.ndarray  # (k,) bucket start, UTC seconds
-    open: np.ndarray  # (k, I)
-    high: np.ndarray
-    low: np.ndarray
-    close: np.ndarray
-    volume: np.ndarray
-    regime: np.ndarray  # (k,) regime at the candle's last minute
-
-    def __len__(self) -> int:
-        return int(self.timestamps.size)
-
-    @classmethod
-    def concat(cls, parts: list[Bars]) -> Bars:
-        return cls(
-            *(np.concatenate([getattr(p, f) for p in parts]) for f in cls.__dataclass_fields__)
-        )
+# Every timeframe: each divides a day (aligned to the market's anchor) or is W1.
+SUPPORTED_TIMEFRAMES = tuple(Timeframe)
 
 
 def bucket_keys(
@@ -134,13 +104,13 @@ class BarAggregator:
         if self._carry:
             # The open bucket ends at the first row with another key.
             split = int(np.searchsorted(keys, self._carry_key, side="right"))
-            rows = Bars.concat([*self._carry, _slice(minutes, slice(0, split))])
+            rows = Bars.concat([*self._carry, minutes.rows(slice(0, split))])
             pieces.append((rows, np.full(len(rows), self._carry_key, dtype=keys.dtype)))
         else:
             split = 0
         if last_start > split:
-            pieces.append((_slice(minutes, slice(split, last_start)), keys[split:last_start]))
-        self._carry = [_slice(minutes, slice(last_start, None))]
+            pieces.append((minutes.rows(slice(split, last_start)), keys[split:last_start]))
+        self._carry = [minutes.rows(slice(last_start, None))]
         self._carry_key = last_key
         return self._emit(pieces) if pieces else None
 
@@ -176,7 +146,7 @@ class BarAggregator:
             hi = n - 1
         if hi <= lo:
             return None
-        return out if (lo, hi) == (0, n) else _slice(out, slice(lo, hi))
+        return out if (lo, hi) == (0, n) else out.rows(slice(lo, hi))
 
     def _reduce(self, data: Bars, keys: np.ndarray) -> tuple[Bars, int]:
         """One candle per bucket of contiguous rows; returns it and the first key."""
@@ -196,11 +166,10 @@ class BarAggregator:
             close=data.close[ends - 1],
             volume=np.add.reduceat(data.volume, starts, axis=0),
             regime=data.regime[ends - 1],
+            spread=(
+                None
+                if data.spread is None
+                else np.add.reduceat(data.spread, starts, axis=0) / (ends - starts)[:, None]
+            ),
         )
         return bars, int(bucket[0])
-
-
-def _slice(b: Bars, s: slice) -> Bars:
-    return Bars(
-        b.timestamps[s], b.open[s], b.high[s], b.low[s], b.close[s], b.volume[s], b.regime[s]
-    )

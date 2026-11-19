@@ -1,0 +1,241 @@
+/*
+ * The candlestick chart (src/lib/candle-chart.ts). Global rather than scoped
+ * to a component, so that charts the playground creates in the browser are
+ * styled too; every rule is under .mf-chart except the regime tags, which
+ * the landing page's table uses as well.
+ */
+.mf-chart {
+	margin: 0;
+	border: 1px solid var(--mf-line-strong);
+	border-radius: 6px;
+	background: var(--mf-panel);
+	overflow: hidden;
+}
+.mf-chart .mf-chart-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.5rem;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.7rem 1rem;
+	border-bottom: 1px solid var(--mf-line);
+	font-family: var(--sl-font-mono);
+	font-size: 0.75rem;
+}
+.mf-chart .mf-chart-symbol {
+	font-weight: 700;
+	color: var(--mf-text);
+	margin-right: 0.6rem;
+}
+.mf-chart .mf-chart-meta {
+	color: var(--mf-muted);
+}
+.mf-chart .mf-chart-readout {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1rem;
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+}
+.mf-chart .mf-chart-readout div {
+	display: flex;
+	gap: 0.35rem;
+}
+.mf-chart .mf-chart-readout dt {
+	color: var(--mf-muted);
+}
+.mf-chart .mf-chart-readout dd {
+	margin: 0;
+	color: var(--mf-text);
+}
+.mf-chart .mf-chart-plot {
+	position: relative;
+	padding-right: 4.5rem;
+	padding-bottom: 1.6rem;
+}
+.mf-chart svg {
+	display: block;
+	width: 100%;
+	height: clamp(15rem, 34vw, 27rem);
+	touch-action: pan-y;
+	cursor: crosshair;
+}
+/* Each regime band is its brand colour, tinted so candles stay readable. */
+.mf-chart .band {
+	fill: transparent;
+}
+.mf-chart .band.r-trend_up {
+	fill: color-mix(in srgb, var(--mf-regime-trend-up) 14%, transparent);
+}
+.mf-chart .band.r-trend_down {
+	fill: color-mix(in srgb, var(--mf-regime-trend-down) 22%, transparent);
+}
+.mf-chart .band.r-range {
+	fill: color-mix(in srgb, var(--mf-regime-range) 10%, transparent);
+}
+.mf-chart .band.r-high_volatility {
+	fill: color-mix(in srgb, var(--mf-regime-high-vol) 14%, transparent);
+}
+.mf-chart .band.r-crash {
+	fill: color-mix(in srgb, var(--mf-regime-crash) 24%, transparent);
+}
+.mf-chart .grid {
+	stroke: var(--mf-line);
+	stroke-width: 1;
+	vector-effect: non-scaling-stroke;
+}
+.mf-chart .wick {
+	stroke-width: 1;
+	vector-effect: non-scaling-stroke;
+}
+.mf-chart .up .wick {
+	stroke: var(--mf-up);
+}
+.mf-chart .down .wick {
+	stroke: var(--mf-down);
+}
+.mf-chart .up .body {
+	fill: var(--mf-up);
+}
+.mf-chart .down .body {
+	fill: var(--mf-down);
+}
+.mf-chart .vol {
+	opacity: 0.32;
+}
+.mf-chart .up .vol {
+	fill: var(--mf-up);
+}
+.mf-chart .down .vol {
+	fill: var(--mf-down);
+}
+.mf-chart .cursor {
+	stroke: var(--mf-muted);
+	stroke-dasharray: 3 3;
+	vector-effect: non-scaling-stroke;
+	opacity: 0;
+}
+.mf-chart .cursor.on {
+	opacity: 1;
+}
+.mf-chart .mf-axis-y {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 4.5rem;
+	bottom: 1.6rem;
+	font-family: var(--sl-font-mono);
+	font-size: 0.6875rem;
+	color: var(--mf-muted);
+	font-variant-numeric: tabular-nums;
+}
+.mf-chart .mf-axis-y span {
+	position: absolute;
+	left: 0.6rem;
+	transform: translateY(-50%);
+}
+.mf-chart .mf-axis-x {
+	position: absolute;
+	left: 0;
+	right: 4.5rem;
+	bottom: 0;
+	height: 1.6rem;
+	font-family: var(--sl-font-mono);
+	font-size: 0.6875rem;
+	color: var(--mf-muted);
+}
+.mf-chart .mf-axis-x span {
+	position: absolute;
+	top: 0.35rem;
+	transform: translateX(-50%);
+	white-space: nowrap;
+}
+.mf-chart .mf-axis-x span:first-child {
+	transform: none;
+}
+.mf-chart .mf-chart-foot {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.5rem;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.7rem 1rem;
+	border-top: 1px solid var(--mf-line);
+	font-size: 0.75rem;
+}
+.mf-chart .mf-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1rem;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	color: var(--mf-muted);
+}
+.mf-chart .mf-legend li {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+.mf-chart .mf-legend i {
+	display: inline-block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 1px solid var(--mf-line-strong);
+	border-radius: 2px;
+}
+.mf-chart .mf-legend i.r-trend_up {
+	background: var(--mf-regime-trend-up);
+}
+.mf-chart .mf-legend i.r-trend_down {
+	background: var(--mf-regime-trend-down);
+}
+.mf-chart .mf-legend i.r-range {
+	background: var(--mf-regime-range);
+}
+.mf-chart .mf-legend i.r-high_volatility {
+	background: var(--mf-regime-high-vol);
+}
+.mf-chart .mf-legend i.r-crash {
+	background: var(--mf-regime-crash);
+}
+.mf-chart .mf-chart-cmd {
+	font-family: var(--sl-font-mono);
+	color: var(--mf-muted);
+	font-size: 0.6875rem;
+	overflow-x: auto;
+	white-space: nowrap;
+	max-width: 100%;
+}
+.mf-regime-tag {
+	font-weight: 600;
+}
+.mf-regime-tag.r-trend_up {
+	color: var(--mf-regime-trend-up-text);
+}
+.mf-regime-tag.r-trend_down {
+	color: var(--mf-regime-trend-down-text);
+}
+.mf-regime-tag.r-range {
+	color: var(--mf-regime-range-text);
+}
+.mf-regime-tag.r-high_volatility {
+	color: var(--mf-regime-high-vol-text);
+}
+.mf-regime-tag.r-crash {
+	color: var(--mf-regime-crash-text);
+}
+@media (max-width: 40rem) {
+	.mf-chart .mf-hide-sm {
+		display: none;
+	}
+	.mf-chart .mf-chart-plot {
+		padding-right: 3.6rem;
+	}
+	.mf-chart .mf-axis-y {
+		width: 3.6rem;
+	}
+	.mf-chart .mf-axis-x {
+		right: 3.6rem;
+	}
+}

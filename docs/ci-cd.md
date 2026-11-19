@@ -5,13 +5,14 @@ These workflows live in `.github/workflows/`:
 | Workflow | Runs on | Purpose |
 | --- | --- | --- |
 | `ci.yml` (**CI**) | every PR, push to `dev`, merge queue, weekly schedule, manual; on `main` it runs inside CD | Quality gate |
-| `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, and release to PyPI and GitHub when the version is new |
+| `cd.yml` (**CD**) | push to `main`, manual dry run | `main`'s CI, release to PyPI and GitHub when the version is new, and deployment of the website to GitHub Pages |
 | `codeql.yml` (**CodeQL**) | PR, push to `dev`/`main`, weekly | Static security analysis of the Python code and the workflows |
 | `scorecard.yml` (**Scorecard**) | push to `main`, weekly, branch-protection changes | OpenSSF Scorecard: grades supply-chain practices; findings go to code scanning, results feed the public badge |
-| `scheduled-alerts.yml` | a scheduled CI, CodeQL or Scorecard run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
+| `links.yml` (**External links**) | weekly, manual | Builds the website and checks every link to another site: fails on a page that is gone (404, 410) or a host that no longer resolves, and lists sites that refuse robots, err or time out as warnings. Not run on pull requests: a remote site's state says nothing about a change, and an outage elsewhere must never block a merge |
+| `scheduled-alerts.yml` | a scheduled CI, CodeQL, Scorecard or External links run completes | Opens an issue (label `scheduled-failure`) when a scheduled run fails, comments while it keeps failing, closes it when one passes. GitHub alone notifies only whoever last edited the cron line. Runs from `main` only |
 
 All third-party actions are pinned to a commit SHA, and runner images to a
-version (`ubuntu-24.04`, `macos-15`, `windows-2025`), not `-latest`: the
+version (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `windows-2025`), not `-latest`: the
 distributions are built on these images, so moving to a new OS is a
 deliberate PR with a green CI run, never GitHub's migration schedule.
 Dependabot does not bump runner labels; review them yearly. Dependabot
@@ -23,16 +24,20 @@ explicitly.
 
 | Job | What it checks |
 | --- | --- |
-| Lint & format | `ruff check` and `ruff format --check` |
-| Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.14 with the newest numpy (numpy's type stubs differ between releases) |
-| Test | `pytest` on Linux for Python 3.12 to 3.14, and on macOS and Windows for 3.12 and 3.14. The Linux 3.13 leg measures branch coverage (90% minimum) and uploads `coverage.xml` |
-| Test (py3.15 preview, non-blocking) | `pytest` on the next CPython (3.15, in beta) with binary wheels only. **Not** part of CI OK: an early warning, never a merge blocker. Promote it into the test matrix once 3.15 is final |
+| Lint & format | `ruff check`, `ruff format --check`, and `lint-imports`, which fails when a package imports from a layer above it (the contract is in `pyproject.toml`) |
+| Type-check | `mypy marketforge` on Python 3.12 with numpy pinned to the declared floor (2.2) and on Python 3.15 with the newest numpy (numpy's type stubs differ between releases) |
+| Test | `pytest` against **the wheel the build job made** (the file CD publishes), not an editable install: the source package is deleted from the checkout first, so nothing can import it instead. On Linux (x86-64) for Python 3.12 to 3.15, and on Linux arm64, macOS (arm64) and Windows for 3.12 and 3.15. A file missing from the wheel or a platform where it does not work fails here, before PyPI, not in CD's **verify** after the upload |
+| Test coverage | `pytest --cov` on an editable install (coverage maps lines to the source tree), Linux, Python 3.15: 90% branch coverage minimum; uploads `coverage.xml` |
 | Test (lowest supported dependencies) | `pytest` with every dependency at the floor declared in `pyproject.toml` (`uv --resolution lowest-direct`). A floor that does not really work fails here |
-| Seed reproducibility | On Linux, macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test and with the latest PyPI release, **in the same environment**, and fails on any difference unless the major version was bumped (ADR 0006). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
-| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Uploads the `dist` and `sbom` artifacts |
-| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.14 |
+| Seed reproducibility | On Linux (x86-64 and arm64), macOS and Windows: fingerprints (SHA-256) 786 outputs of fixed-seed scenarios (every instrument, CSV bytes and in-memory frames, all timeframes, anomalies, regime labels, both DST transitions, a leap day) with the code under test (the wheel CI built) and with the latest PyPI release, **in the same environment**, and fails on any difference unless the code under test increments `MODEL_REVISION` (`marketforge/_version.py`) and `CHANGELOG.md` has an `### Output changes` section for its version (ADR 0011). Same dependencies and CPU on both sides, so a difference is the code's. `BASELINE_VERSION` overrides the release compared against |
+| Performance | Times fixed workloads (each market, forex crosses, anomalies, every timeframe, the CSV writer, and a cold start: a fresh interpreter's import and first generation) with the code under test and with the latest PyPI release, on **one runner with the same dependencies**, interleaving the two versions' runs and keeping each one's fastest time, so the runner's speed cancels out. Fails if any workload is more than **15% slower** than the release (ADRs 0003, 0007). For an intended slowdown, see [Performance gate](#performance-gate). The timings are uploaded as the `performance` artifact |
+| Documentation examples | Checks every `python`, `bash` and `toml` block of `README.md` and the website's pages against the wheel CI built, and runs them; see [Documentation examples](#documentation-examples) |
+| Build & verify distributions | Validates `pyproject.toml`, builds the sdist and then the wheel *from the sdist* with reproducible timestamps, runs `twine check --strict` and `check-wheel-contents`, installs the wheel in a clean environment and runs the CLI and a small generation, then writes a CycloneDX SBOM of that environment and checks it (`release.py check-sbom`: the format `actions/attest` requires, this release as the root component, every runtime dependency listed). Then checks the licence of every runtime dependency, as the wheel resolves on Linux, macOS and Windows, against `.github/python-license-policy.toml` and writes their licence and NOTICE texts (`licenses.py`; see [Third-party licences](#third-party-licences)). Uploads the `dist`, `sbom` and `third-party-licenses` artifacts |
+| Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.15 |
+| Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
-| Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability |
+| Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability. One advisory is exempted until upstream fixes it: GHSA-fc5q-39xc-vjpf, a picomatch ReDoS that only the website's build runs, on the repository's own globs ([#26](https://github.com/DamienReichhart/MarketForge/issues/26)) |
+| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), tests the site's build scripts (`npm test`), runs the built [playground](https://damienreichhart.github.io/MarketForge/playground/) in Pyodide under Node (`npm run test-playground`: it loads the site's own Pyodide, wheels and MarketForge wheel, generates, exports CSV and Parquet, and refuses an over-budget request), and uploads the built site as the `github-pages` artifact that CD deploys. It needs the build job: the playground serves the wheel CI built, and the Pyodide wheels it downloads at build time must match the hashes in Pyodide's lock file (ADR 0015) |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
@@ -40,15 +45,155 @@ The weekly scheduled run tests against the newest releases of every
 dependency, so an upstream break or a new advisory shows up without waiting
 for a commit.
 
+When a new CPython reaches beta (3.16 in May 2027), add a non-blocking job
+for it, left out of **CI OK**, that runs `pytest` with binary wheels only
+(`uv pip install -e . --group test --only-binary ":all:"`): a missing wheel
+or a break then shows up months before users hit it. Once it is final, move
+it into the test matrix (and the newest-Python entries of the type-check,
+audit and CD verify jobs), point `DEFAULT_PYTHON` at it, add its classifier
+to `pyproject.toml`, and remove the preview job.
+
 ### Running the checks locally
 
 ```bash
 pip install -e . --group dev          # or: uv pip install -e . --group dev
-ruff check . && ruff format --check .
+ruff check . && ruff format --check . && lint-imports
 mypy marketforge
 pytest --cov
 uv pip install -e . --group test --resolution lowest-direct && pytest   # floors, in a fresh venv
+pip install . --group docs && python -I .github/scripts/doc_examples.py   # in a fresh venv
 ```
+
+### Third-party licences
+
+Wherever MarketForge ships someone else's code, it ships their licence and
+NOTICE texts too, generated in the run that builds what is shipped, so they
+cannot be missing or out of date:
+
+| What ships | Third-party code in it | Where its licences are |
+| --- | --- | --- |
+| Wheel and sdist (PyPI) | None: dependencies are installed by pip from their own packages, with their own licence files | `LICENSE` and `NOTICE` (MarketForge's own) |
+| GitHub release | The same files, plus the SBOM | `marketforge-<version>.third-party-licenses.txt`: the texts of every runtime dependency, written by the **build** job (`.github/scripts/licenses.py`) |
+| Website | Astro, Starlight, Expressive Code, Pagefind, the DM Sans and DM Mono fonts; the playground's Pyodide (with CPython and Emscripten) and the Python wheels it serves | `/third-party-licenses.txt`, written by `website/scripts/third-party-licenses.mjs` before every dev, check and build (after `sync-playground.mjs`), from every installed package of the lockfile (dev ones too: Pyodide is one) and every wheel under `public/`; linked from every page's footer, so the link check fails if it is missing |
+
+Both generators enforce a licence policy and fail the build when a package
+(direct or transitive) is under a licence the policy does not allow, states a
+licence that is not an SPDX expression, ships no licence text, or states a
+different licence from the one its policy entry was reviewed for. Only
+permissive licences are allowed for every package; a copyleft one (tqdm's
+MPL-2.0, libvips' LGPL in the site's build) is a decision about one package,
+recorded with its reason in `.github/python-license-policy.toml` (the
+release's dependencies) or `website/license-policy.json` (the website's npm
+packages, and under `python` the wheels the playground serves). When a check
+fails, the error says which entry to add or update.
+
+Some of what the site serves ships without the texts its licence requires, so
+the site adds them, for the exact version it serves, from immutable upstream
+sources: release tags, commits, and PyPI releases. All of them are saved in
+`website/licenses/`, each with the URL it came from:
+
+- **Packages without licence files** (Pagefind's and Pyodide's npm packages):
+  `texts` in the policy.
+- **Python wheels that lack texts their release has** (Pyodide's builds of
+  pyarrow, without its NOTICE, and pandas, without the licences of what it
+  bundles): `textsFrom: "pypi"` takes every licence file of the PyPI release
+  at the served version, those its wheel declares and those of its sdist
+  (top level and `LICENSES/`), so a new bundled licence is picked up.
+- **What upstream compiles into a served binary** (`components`): recipes
+  that read upstream's own build files and lockfiles at the served version.
+  For Pyodide's WebAssembly: CPython, libffi, hiwire, xz, Zstandard, SQLite
+  (versions read from Pyodide's `cpython/Makefile`), zlib and bzip2
+  (Emscripten's ports), libc++, compiler-rt, musl and Emscripten. For
+  Pagefind's: the crates of `pagefind_web`'s `Cargo.lock` (licences from
+  crates.io), Rust's standard library, and the npm packages its scripts bundle
+  (Svelte, mark.js, bcp-47, from its UIs' lockfiles). Every download a
+  lockfile or PyPI gives a hash for is checked against it.
+- **A component whose release ships no licence file**: `componentTexts`, by
+  `name@version`. Either the file from an immutable commit (hifijson 0.5.0,
+  whose author added its licence in the commit after the release, changing
+  nothing else), or, when no text exists upstream at all (is-reference and
+  locate-character, which Svelte uses), `spdx:MIT`: the SPDX standard text,
+  with the holder the package's `package.json` names, marked as reconstructed.
+
+Two checks make these lists complete rather than hopeful:
+
+- **Every symbol Pyodide's WebAssembly exports** (about 8,500; it is a main
+  module that exports everything) must belong to a component's `symbols`
+  pattern, to Pyodide's own code, or to the reviewed list of C runtime symbols
+  (`website/licenses/pyodide/runtime-symbols.txt`: musl, compiler-rt,
+  Emscripten). A library linked in without its licence therefore fails the
+  build, naming its symbols, and so does a component no longer linked in.
+  Libraries whose symbols are hidden inside CPython (expat, libmpdec, HACL*,
+  mimalloc) are covered by CPython's `Doc/license.rst`, which is one of its
+  texts.
+- **`notServed` is verified**: `website/scripts/served-packages.mjs`, an Astro
+  integration, fails the build if a module of a `notServed` package is
+  bundled for the browser, or if a style, font, image or WebAssembly file of
+  one is emitted, or if any file of the built site is a byte-for-byte copy of
+  one of its files. The build log lists the npm packages that do reach the
+  site.
+
+When a package with saved texts or components changes version (a Dependabot
+bump of Pyodide or Pagefind), the website build fails until
+`npm run vendor-licenses` (in `website/`) fetches them for the new version and
+records it. Review the diff, which is where a licence change, a new component
+or a new bundled licence shows, then commit it. That command is the only part
+that uses the network; the build only reads what it saved. If it reports a
+component without a licence file, find the text at the commit of that version
+and add it to `componentTexts`. If the build reports unclaimed symbols, find
+the library in upstream's build files and add a recipe for it; add symbols to
+the runtime list only when they are C runtime.
+
+The weekly scheduled run resolves the newest dependency releases, so a
+dependency that changes its licence fails it before the next release does.
+
+### Performance gate
+
+`.github/scripts/perf.py` compares the code under test with the latest
+release (`perf.py run` times both, `perf.py compare` judges). Workloads are
+warmed up first, so Numba compilation is not timed, except by the cold-start
+workload, which is meant to catch a slow import or a lost `cache=True`.
+
+A slowdown can be the price of a fix. Then say so in a commit message, with
+a trailer, and the gate allows up to that much on every workload until the
+next release becomes the baseline:
+
+```
+fix(simulation): sum returns exactly
+
+Accept-Slowdown: 25%
+```
+
+To measure locally, make two virtual environments with the same dependencies
+(one with the wheel, one with the release) as the CI job does, then run
+`perf.py run perf.json --head HEAD_VENV/bin/python --base BASE_VENV/bin/python`
+and `perf.py compare perf.json`.
+
+### Documentation examples
+
+`.github/scripts/doc_examples.py` reads the fenced code blocks of `README.md`
+and of the website's pages (`website/src/content/docs/`) and, page by page in
+an empty directory, so an example can write `./data` and a later one read it:
+
+- **python**: every `mf.NAME(...)` must be in the public API and bind to its
+  real signature; then the block runs. The blocks of a page share one
+  namespace where `import marketforge as mf` is done.
+- **bash**: only `marketforge` commands count (`pip`, `git`, `npm` are not
+  run). `generate` is planned with `--dry-run`, which checks instruments,
+  dates and override files without simulating; the other commands go through
+  the real command-line parser. Then the commands run.
+- **toml**: loaded as an override file. A block whose first line is
+  `# NAME.toml` is also saved as `NAME.toml` for the page's next examples.
+
+A flag after the language opts a block out of running:
+
+| Fence | Use it for |
+| --- | --- |
+| ` ```python check=static ` | Too long to run in CI (years of data, dozens of seeds), or it uses data or functions the reader provides. Still checked against the API and the command-line parser |
+| ` ```python check=signature ` | A displayed signature, `mf.NAME(...) -> TYPE`: it must match the real one exactly |
+| ` ```bash check=none ` | Not checked at all. Prefer `text` as the language for something that is not a command, such as a usage synopsis |
+
+Errors are annotated on the page's line in the pull request.
 
 ## CD: how a release happens
 
@@ -60,7 +205,8 @@ uv pip install -e . --group test --resolution lowest-direct && pytest   # floors
 ```
 guard ─┐
 ci ────┴─► publish (PyPI) ──► github-release (tag + release)
-                         └──► verify (pip install from PyPI on Linux, macOS, Windows)
+   │                     └──► verify (pip install from PyPI on Linux, macOS, Windows)
+   └─────► pages (website on GitHub Pages)
 ```
 
 1. **guard** reads the version. If a tag for it already exists, in any
@@ -74,7 +220,12 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    - a commit since the latest tag is marked breaking (`feat!:`,
      `refactor(api)!:`, or a `BREAKING CHANGE:` footer) and the version is not
      a major bump (a minor bump below 1.0). The `!` is a promise to users:
-     either bump the major version or reword the commit.
+     either bump the major version or reword the commit. It marks breaks of
+     the public API; a change to what seeds produce is not one (ADR 0011)
+     and goes under *Output changes* instead. Only commit types that can
+     change the API count: a `docs!`, `ci!`, `test!`, `style!` or `chore!`
+     commit never requires a major bump, while `build!` does (a dropped
+     Python version or dependency breaks users).
 2. **ci** runs the full CI workflow on the commit, in parallel with the
    guard. This is `main`'s only CI run (`ci.yml` has no push trigger for
    `main`). Nothing is published unless all of it passes.
@@ -85,14 +236,20 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
 4. **github-release** creates the tag `v<version>` on the released commit and a
    GitHub release with the CHANGELOG section as notes and the distributions
-   and the SBOM (`marketforge-<version>.cdx.json`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
+   the SBOM (`marketforge-<version>.cdx.json`) and the third-party licences
+   (`marketforge-<version>.third-party-licenses.txt`) attached. Versions with a pre-release segment (`rc`, `b`, `a`, `dev`) are
    marked as pre-releases.
 5. **verify** installs the version from PyPI in clean environments on Linux
-   (Python 3.12 and 3.14), macOS and Windows (3.14), retrying while the CDN
+   (Python 3.12 and 3.15), Linux arm64, macOS and Windows (3.15), retrying while the CDN
    catches up, and runs the CLI and a generation across all three markets.
+6. **pages** deploys the website CI built and link-checked in this run (the
+   `github-pages` artifact) to GitHub Pages, at
+   <https://damienreichhart.github.io/MarketForge/>. It needs only **ci**, so
+   it runs on every push to `main`, whether or not there is a version to
+   release, and a failed PyPI release does not hold the site back.
 
 A push to `main` that does not bump the version (a docs fix, say) is a green
-no-op release. PRs into `main` are stricter: their **Release readiness** job
+no-op release that still redeploys the website. PRs into `main` are stricter: their **Release readiness** job
 runs the guard without the "nothing to release" escape, so a PR that forgets
 the bump cannot merge. Merge to `main` to release; integrate on `dev`.
 
@@ -101,7 +258,8 @@ Releases never run concurrently, and a running release is never cancelled.
 ### Dry run
 
 *Actions → CD → Run workflow* with **dry run** checked (the default) runs the
-guard, the full CI and the build on any branch, and publishes nothing. Use it
+guard, the full CI and the build (the website included) on any branch, and
+publishes and deploys nothing. Use it
 to check a release before merging. A non-dry run is refused outside `main`.
 
 ### When a release fails half-way
@@ -136,5 +294,11 @@ These are GitHub and PyPI settings; the workflows cannot apply them.
    conflicts with `codeql.yml`.
 6. **Private vulnerability reporting.** Enable it in *Settings → Code
    security*; `SECURITY.md` sends reporters there.
-7. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
+7. **GitHub Pages.** In *Settings → Pages*, set *Source* to **GitHub
+   Actions**. In *Settings → Environments → github-pages* (created by that
+   switch), limit deployment branches to `main`. To serve the site from a
+   custom domain, set `site` in `website/astro.config.mjs` to it, remove
+   `base`, add `website/public/CNAME`, and configure the domain in the Pages
+   settings.
+8. **Blame.** Run `git config blame.ignoreRevsFile .git-blame-ignore-revs`
    locally to hide the bulk reformat commit from `git blame`.
