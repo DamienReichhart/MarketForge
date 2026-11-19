@@ -83,8 +83,8 @@ def daily_correlation(
 
 def fit_minute(
     market: MarketType, daily: np.ndarray, iterations: int, seeds: int, years: int
-) -> tuple[np.ndarray, tuple[float, float]]:
-    """The minute matrix whose simulated daily correlations are ``daily``, and the line between them."""
+) -> np.ndarray:
+    """The minute matrix whose simulated daily correlations are ``daily``."""
     off = ~np.eye(len(daily), dtype=bool)
     minute = daily.copy()
     best, best_error = minute, np.inf
@@ -100,8 +100,7 @@ def fit_minute(
         if size < best_error:
             best, best_error = minute, size
         minute, _ = nearest_correlation(minute - error)
-    slope, intercept = np.polyfit(best[off], daily[off], 1)
-    return best, (float(slope), float(intercept))
+    return best
 
 
 def main() -> None:
@@ -130,9 +129,10 @@ def main() -> None:
             print(f"  crosses: implied / stated volatility {ratio.min():.2f} to {ratio.max():.2f}")
         path = CATALOG / market.value / FILE_NAME
         path.write_text(document(market, c), encoding="utf-8")  # loadable while the minute fit runs
-        minute, line = fit_minute(market, c, args.iterations, args.seeds, args.years)
-        print(f"  daily = {line[0]:.3f} x minute {line[1]:+.3f}", flush=True)
-        path.write_text(document(market, c, minute, line), encoding="utf-8")
+        minute = fit_minute(market, c, args.iterations, args.seeds, args.years)
+        off = ~np.eye(len(c), dtype=bool)
+        print(f"  minute correlations {np.mean(minute[off] - c[off]):+.3f} on average", flush=True)
+        path.write_text(document(market, c, minute), encoding="utf-8")
 
 
 if __name__ == "__main__":
