@@ -270,6 +270,8 @@ spells = data.spells("crypto")       # one row per regime spell
 | `data[symbol, timeframe]`, `frame(symbol, timeframe)` | One instrument and timeframe as a DataFrame. |
 | `regime(market, timeframe)` | The regime of a market at every candle, as a categorical Series. Needs `with_regime=True`. |
 | `spells(market)` | The market's [regime spells](../../concepts/#regimes-are-the-hidden-state) as its candles show them, from the shortest timeframe held: `start`, `end`, `regime`, `candles` and `duration`, one row per spell. |
+| `macro()` | The [macro state](../model/#the-world) of every UTC day of the range, `calm` or `stressed`, as a categorical Series: the world-wide state every market's regimes answer to. |
+| `earnings()` | The stocks' [earnings events](../model/#earnings) in the range: `symbol`, `reported` (the New York date after whose close it came) and `opens` (the first candle after it). |
 
 | Narrowing (each returns a new `GeneratedData`) | |
 | --- | --- |
