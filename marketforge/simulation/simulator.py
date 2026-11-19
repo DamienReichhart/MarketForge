@@ -211,12 +211,14 @@ class MarketSimulator:
         portfolio = dollar_portfolio(structure.factors) if spec.market == MarketType.FOREX else None
         loadings = main_factor_loadings(spec.factor_correlation, portfolio)
         trends = [(sigma * loadings)[fa]]
-        # Index CFDs also follow the stock market's own trends: the forex
+        # Index CFDs also follow the stock market's own regime: the forex
         # simulator runs the stock market's regime chain, which gives the same
-        # path as the stock simulator's, and moves each index during NYSE
-        # hours as the stock market's main factor moves (ADR 0016).
+        # path as the stock simulator's, and during NYSE hours each index
+        # trends as the stock market's main factor does and is as volatile as
+        # the stocks are (ADR 0016).
         self._stocks: RegimeChain | None = None
         self._stocks_state: ChainState | None = None
+        self._vol_of = np.zeros(fa.size, dtype=np.int64)  # every factor: the market's regime
         if spec.market == MarketType.FOREX:
             shares = stock_market_shares(structure.factors)[fa]
             if shares.any():
@@ -230,6 +232,14 @@ class MarketSimulator:
                 )
                 annual = np.array([a.volatility for a in factors])[fa]
                 trends.append(shares * annual / per_stock_minute)
+                self._vol_of = (shares != 0).astype(np.int64)  # and the stock regime's volatility
+                self._index_factors = np.flatnonzero(shares)
+                self._stocks_stress = np.asarray(stocks.regime_params.stress, dtype=float)
+                # Loaded on the stress shock as the stocks most exposed to it are.
+                held = shares[self._index_factors]
+                self._index_stress_loading = (
+                    STRESS_LOADING * np.sign(held) * np.abs(held) ** STRESS_COMPRESSION
+                )
                 self._stocks = RegimeChain(
                     stocks.regime_params,
                     _MARKET_STREAM[MarketType.STOCKS],
@@ -457,9 +467,12 @@ class MarketSimulator:
         st.slow = x
         return np.asarray(np.exp(x - self._slow_std**2))
 
-    def _stock_trend(self, day: int, day_ts: np.ndarray, start: int, end: int) -> np.ndarray | None:
-        """The stock market's trend multiplier at every minute of the day (0 while
-        NYSE is shut), or None when no active factor follows it.
+    def _stock_regime(
+        self, day: int, day_ts: np.ndarray, start: int, end: int
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
+        """The stock market's trend and volatility multipliers at every minute of
+        the day, whether NYSE is open then, and the stocks' stress share, or
+        None when no active factor follows it.
 
         The stock simulator's own chain, run over the same minutes: its open
         minutes within the range.
@@ -469,12 +482,13 @@ class MarketSimulator:
         open_ = self._stocks_calendar.open_mask(day_ts) & (day_ts >= start) & (day_ts < end)
         rows = np.nonzero(open_)[0]
         stressed = macro_state(self.seed, day) == STRESSED
-        _, drift, _, self._stocks_state = self._stocks.advance(
+        regimes, drift, vol, self._stocks_state = self._stocks.advance(
             day, rows, stressed, self._stocks_state
         )
-        trend = np.zeros(MINUTES_PER_DAY)
-        trend[rows] = drift
-        return trend
+        trend, level = np.zeros(MINUTES_PER_DAY), np.ones(MINUTES_PER_DAY)
+        share = np.zeros(MINUTES_PER_DAY)
+        trend[rows], level[rows], share[rows] = drift, vol, self._stocks_stress[regimes]
+        return trend, level, open_, share
 
     def _last_report(self, symbol: str, today: int) -> int | None:
         """The latest report of ``symbol`` in the days before ``today`` whose effects last."""
@@ -504,9 +518,7 @@ class MarketSimulator:
         day_ts = day * SECONDS_PER_DAY + 60 * np.arange(MINUTES_PER_DAY, dtype=np.int64)
         session_mask = self.calendar.open_mask(day_ts)
         rows = np.nonzero(session_mask & (day_ts >= start) & (day_ts < end))[0]
-        stock_trend = self._stock_trend(
-            day, day_ts, start, end
-        )  # even on a day this market is shut
+        stock = self._stock_regime(day, day_ts, start, end)  # even on a day this market is shut
         if rows.size == 0:
             return None
         # Matrix products go through BLAS, and some BLAS builds (Accelerate on
@@ -545,13 +557,17 @@ class MarketSimulator:
             day, rows, stressed, ChainState(st.regime, st.spell_left, st.drift_mult, st.vol_mult)
         )
         st.regime, st.spell_left, st.drift_mult, st.vol_mult = after
-        trend_m = (
-            drift_m[:, None]
-            if stock_trend is None
-            else np.column_stack((drift_m, stock_trend[rows]))
-        )
+        if stock is None:
+            trend_m, level_m = drift_m[:, None], vol_m[:, None]
+        else:
+            stock_trend, stock_level, nyse, _ = stock
+            trend_m = np.column_stack((drift_m, stock_trend[rows]))
+            level_m = np.column_stack((vol_m, np.where(nyse[rows], stock_level[rows], vol_m)))
         stress = self._stress[regimes]
-        if stress.any():  # a day of calm regimes needs no stress shocks at all
+        nyse_rows = None if stock is None else stock[2][rows]
+        index_stress = None if stock is None else np.where(stock[2][rows], stock[3][rows], 0.0)
+        if stress.any() or (index_stress is not None and index_stress.any()):
+            # A day of calm regimes needs no stress shocks at all.
             scale = (
                 np.sqrt((nu - 2.0) / nu) / np.sqrt(chi_all[rows] / nu)
                 if self._nu is not None
@@ -562,7 +578,20 @@ class MarketSimulator:
             c = self._mixing.coupling[STRESSED if stressed else 0]
             shared = global_stress_shocks(self.seed, day)[rows]
             common = c * shared + np.sqrt(1.0 - c * c) * m_stress[rows]
+            calm = z
             z = stressed_shocks(z, stress, scale, common, self._stress_loading)
+            if nyse_rows is not None and index_stress is not None and index_stress.any():
+                # During NYSE hours an index CFD is stressed when the stocks
+                # are, onto the world's stress shock, as theirs are.
+                nyse = np.nonzero(nyse_rows)[0]
+                idx = self._index_factors
+                z[np.ix_(nyse, idx)] = stressed_shocks(
+                    calm[np.ix_(nyse, idx)],
+                    index_stress[nyse],
+                    scale[nyse],
+                    shared[nyse],
+                    self._index_stress_loading,
+                )
         h, st.garch_variance, st.garch_shock = gjr_garch(
             z, *self._garch, st.garch_variance, st.garch_shock
         )
@@ -610,7 +639,8 @@ class MarketSimulator:
         # Factor paths, then instruments.
         sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
             h,
-            vol_m,
+            level_m,
+            self._vol_of,
             trend_m,
             season,
             z,

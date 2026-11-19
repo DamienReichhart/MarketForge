@@ -120,7 +120,8 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
     rng = np.random.default_rng(seed)
     return {
         "h": rng.uniform(0.2, 4.0, (n, f)),
-        "vol_m": rng.uniform(0.5, 2.0, n),
+        "vol_m": rng.uniform(0.5, 2.0, (n, 2)),  # two regimes' volatility: a market's and another's
+        "vol_of": rng.integers(0, 2, f),
         "drift_m": rng.uniform(-1.0, 2.0, (n, 2)),  # two trends: a market's and another's
         "season": rng.uniform(0.3, 2.0, n),
         "z": rng.standard_t(4, (n, f)),
@@ -132,7 +133,7 @@ def _random_day(seed: int, n: int = 1440, f: int = 7):
 
 
 def _reference_paths(d, gap_rows, gap_values):
-    level = np.sqrt(d["h"]) * d["vol_m"][:, None]
+    level = np.sqrt(d["h"]) * d["vol_m"][:, d["vol_of"]]
     sigma_f = d["sigma"] * level * d["season"][:, None]
     returns_f = d["mu"]
     for j in range(d["trend"].shape[0]):  # in order, as the kernel adds them
@@ -151,7 +152,7 @@ def test_factor_paths_equal_the_numpy_expressions_bit_for_bit(gap_rows):
     rows = np.asarray(gap_rows, dtype=np.int64)
     gaps = np.random.default_rng(12).normal(0, 1e-3, (rows.size, d["z"].shape[1]))
     got = factor_paths(
-        d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
+        d["h"], d["vol_m"], d["vol_of"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
         rows, gaps, d["log_price"],
     )  # fmt: skip
     for a, b in zip(got, _reference_paths(d, rows, gaps), strict=True):
@@ -231,7 +232,7 @@ def test_compiled_kernels_equal_their_interpreted_python_bit_for_bit():
     d = _random_day(4, n=n, f=f)
     rows, gaps = np.array([0, 17], dtype=np.int64), rng.normal(0, 1e-3, (2, f))
     paths_args = (
-        d["h"], d["vol_m"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
+        d["h"], d["vol_m"], d["vol_of"], d["drift_m"], d["season"], d["z"], d["sigma"], d["mu"], d["trend"],
     )  # fmt: skip
     cases = [
         (factor_paths, (*paths_args, rows, gaps, d["log_price"])),
