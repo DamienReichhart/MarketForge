@@ -70,6 +70,7 @@ export default defineConfig({
 						{ label: 'Installation', slug: 'docs/installation' },
 						{ label: 'Quick start', slug: 'docs/quick-start' },
 						{ label: 'Core concepts', slug: 'docs/concepts' },
+						{ label: 'Migrating to 5.0', slug: 'docs/migrating-to-5', badge: { text: 'New', variant: 'tip' } },
 					],
 				},
 				{

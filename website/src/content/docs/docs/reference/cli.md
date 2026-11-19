@@ -90,7 +90,7 @@ marketforge generate --from 2015-01-01 --to 2025-01-01 --markets all --dry-run
 
 ## extend
 
-```bash check=static
+```bash
 marketforge extend ./eurusd --to 2025-03-01
 marketforge extend ./eurusd --days 30
 ```
@@ -110,7 +110,7 @@ A dataset written by another model revision is refused, with the version that ca
 
 ## info
 
-```bash check=static
+```bash
 marketforge info ./eurusd
 marketforge info ./eurusd --json
 ```
@@ -134,7 +134,7 @@ Summarises a dataset from its manifest, without reading the candle files: the ve
 
 ## verify
 
-```bash check=static
+```bash
 marketforge verify ./eurusd
 marketforge verify ./eurusd --checksums   # fast: no regeneration
 ```
@@ -151,10 +151,10 @@ Verifying takes as long as generating the dataset did, and needs as much free sp
 
 ## validate
 
-```bash check=static
+```bash
 marketforge validate ./eurusd/forex/EURUSD_m1.csv
 marketforge validate ./eurusd                    # every m1 file of a dataset
-marketforge validate ./my_eurusd_m1.csv --market forex
+marketforge validate ./eurusd/forex/EURUSD_m1.csv --market forex --json
 ```
 
 Measures heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread, and compares each with the band measured on real markets. It prints a report (one line per file for a dataset) and exits with **1** if any statistic is outside its band. In a dataset, a file that cannot be validated (an empty file of a holiday week, one too short) is listed as skipped and the others are still checked; a single file that cannot be validated is an error. It works on any file with those columns, including your own real data. See [Validation](../../guides/validation/).

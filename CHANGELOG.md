@@ -103,6 +103,85 @@ Upgrading from 4.x? See
 - **The manifest spells its flags `with_regime`, `with_spread` and
   `with_bid_ask`**, and records the layout and every file's checksum.
 
+### GeneratedData, a complete object
+- **Getters and metadata**: `seed`, `start`, `end`, `version`,
+  `model_revision`, `symbols`, `markets`, `timeframes`, `columns`,
+  `market_of()`, `instrument()`, `frame()`, and `data["BTCUSD", "H1"]`.
+  Symbols and timeframes ignore letter case, and an unknown one suggests
+  the closest match.
+- **Labels**: `regime(market, timeframe)`, `spells(market)` (one row per
+  regime spell), `macro()` (calm or stressed, per day) and `earnings()`.
+- **Narrowing**: `select()`, `between()` and `copy()`; `summary()`.
+- **`save()`** writes the data as a dataset with a manifest, the files
+  `generate_to_disk()` writes, so it extends and verifies: `read()` then
+  `save(format="parquet")` converts a dataset.
+- **A repr that fits on a screen**, instead of every DataFrame.
+
+### Machine learning
+- **`windows()`** cuts each instrument's candles into float32 windows for a
+  sequence model, with features from the columns or computed (`return`,
+  `log_volume`, `range`) and a target at or after each window's end.
+- **`to_numpy(dtype=)`**, and a time axis built from integers: it was as
+  slow as the simulation (5.6 s for a year of ten instruments).
+- **`to_arrow()` and `to_polars()`** (`pip install 'marketforge[polars]'`).
+- **`mf.concat()`** stacks `generate_many()` results into one frame indexed
+  by seed, symbol and time.
+- **`generate_many()` stays in one process** when the whole run is
+  estimated under ten seconds: a process pool made small runs 40x slower.
+
+### Datasets
+- **The long layout** (`--layout long`, Parquet and Feather): one file per
+  market and timeframe with `symbol` and `market` columns, so one glob reads
+  a whole timeframe.
+- **Every file says what it holds**: version, model revision, seed, market,
+  timeframe and symbol in Parquet and Feather metadata.
+- **Checksums**: the manifest records each file's rows, size and SHA-256,
+  and `verify --checksums` checks them in seconds without regenerating.
+- **`verify` compares Parquet and Feather by value**: an extended file keeps
+  its row groups, so every extended Parquet dataset used to fail it. It
+  regenerates beside the dataset, not in the system temp directory.
+- **`read(start=, end=)`** filters while reading.
+- **`mf.info()` and `mf.verify()`** do from Python what the commands do.
+
+### Python API and command line
+- **`extend(days=)`**, as on the command line; `generate_to_disk()` runs one
+  market per core by default, as the command line does; `estimate()` takes
+  every argument `generate_to_disk()` does.
+- **`list-instruments --search TEXT`**, a volume column, and `--markets` as a
+  list. Formats, layouts and markets take any letter case.
+- **Warnings are one line on the command line**, without Python's file and
+  line, and point at your code from Python. The progress bar draws only on
+  a terminal, so CI logs stay clean.
+- **Exported types**: `DiskReport`, `DatasetInfo`, `VerifyReport`,
+  `InstrumentData`, `Windows`, `ValidationReport`, `MetricResult` and
+  `OverrideError`, which the documentation already named.
+
+### Fixes
+- **An interrupted `extend` no longer deletes your files.** Recovering it
+  removed or renamed every `*.tmp` file anywhere under the dataset; it now
+  touches only the candle files it wrote.
+- **`calibrate` writes override files that `generate` accepts**: a
+  correlation of 1.0, a forex symbol that is not six characters, or a file
+  not named `SYMBOL_m1` used to fail only at generation.
+- **The same instrument in two letter cases** (`eurusd,EURUSD`) is
+  generated once, instead of passing `--dry-run` and failing the run.
+- **`resample()` refuses candles it cannot aggregate exactly**: not m1, out
+  of order, or in the wrong market's closed minutes; it drops the candles
+  around missing minutes, with a warning, and keeps bid and ask.
+- **`--overwrite` removes the market folders** the old dataset leaves empty.
+
+### Documentation and tooling
+- [Migrating to 5.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-5/),
+  and tested recipes for backtrader, backtesting.py, vectorbt, Nautilus
+  Trader and freqtrade on the
+  [Backtesting](https://damienreichhart.github.io/MarketForge/docs/use-cases/backtesting/)
+  page.
+- The README's Python example guards `generate_many()` with
+  `if __name__ == "__main__":`, as scripts that start processes must, and
+  states the headline command's disk size.
+- `nox` runs CI's checks locally, `pre-commit` runs ruff before each
+  commit, and the `examples/` scripts run in CI.
+
 ## 4.0.0
 
 The most realistic MarketForge yet, and the easiest to build on:
