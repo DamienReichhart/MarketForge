@@ -238,7 +238,7 @@ class CandleWriter:
         writer = self._binary.get(path)
         target = path.with_name(path.name + REWRITE_SUFFIX) if self._extend else path
         if writer is None and self.fmt == OutputFormat.FEATHER:
-            # Uncompressed, so a memory-mapped read is zero-copy (ADR 0016).
+            # Uncompressed, so a memory-mapped read is zero-copy.
             writer = pa.ipc.new_file(str(target), schema)
             self._binary[path] = writer
             if self._extend:

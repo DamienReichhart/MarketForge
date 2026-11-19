@@ -13,6 +13,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from marketforge.config.catalog.forex.risk import RISK_LOADINGS
 from marketforge.config.factors import split_pair
 from marketforge.config.model_params import RegimeParams
 from marketforge.simulation.kernels import regime_chain
@@ -66,6 +67,15 @@ def dollar_portfolio(anchors: Sequence[str]) -> np.ndarray:
         base, quote = split_pair(symbol)
         weights.append(1.0 if base == "USD" else -1.0 if quote == "USD" else 0.0)
     return np.array(weights)
+
+
+def forex_risk_direction(anchors: Sequence[str]) -> np.ndarray:
+    """Each forex anchor's loading on global risk: its base code's minus its quote code's."""
+    loads = []
+    for symbol in anchors:
+        base, quote = split_pair(symbol)
+        loads.append(RISK_LOADINGS.get(base, 0.0) - RISK_LOADINGS.get(quote, 0.0))
+    return np.array(loads)
 
 
 def normalised_regime_targets(
