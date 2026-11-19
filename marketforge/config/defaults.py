@@ -76,6 +76,9 @@ class MarketDefaults:
     intrabar_body_share: float = 0.4
     # Volume is a count (forex tick volume): emit whole numbers, at least 1.
     integer_volume: bool = False
+    # Coupling of the market's global direction to the global shock, calm and
+    # stressed (ADR 0016): the share of its main factor the world drives.
+    global_coupling: tuple[float, float] = (0.0, 0.0)
 
 
 CRYPTO_DEFAULTS = MarketDefaults(
@@ -96,6 +99,9 @@ CRYPTO_DEFAULTS = MarketDefaults(
         # days and crashes ~13 h, reproducing |r| autocorrelation out to a day.
         minutes_per_step=480,
     ),
+    # Coins move with stocks, more in sell-offs: BTC-S&P daily correlation
+    # ~0.2-0.3 in calm years, ~0.4-0.5 in 2022.
+    global_coupling=(0.45, 0.65),
     anomaly_config=AnomalyConfig(
         spike_probability=0.001,
         spike_magnitude_range=(0.03, 0.15),
@@ -131,6 +137,9 @@ CRYPTO_DEFAULTS = MarketDefaults(
 
 FOREX_DEFAULTS = MarketDefaults(
     market_type=MarketType.FOREX,
+    # The index CFDs are the stock market: nearly all of their common move
+    # is the world's; the commodity currencies and havens follow.
+    global_coupling=(0.97, 0.99),
     garch_params=GARCHParams(alpha=0.03, beta=0.91, gamma=0.08),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -176,6 +185,8 @@ FOREX_DEFAULTS = MarketDefaults(
 
 STOCKS_DEFAULTS = MarketDefaults(
     market_type=MarketType.STOCKS,
+    # US large caps' market factor is most of what the world calls risk.
+    global_coupling=(0.95, 0.98),
     # v2 used alpha=0.04, gamma=0.16: on minute data a run of negative
     # Student-t shocks compounded variance to ~260x its mean (37-sigma
     # minutes, excess kurtosis in the hundreds). gamma=0.08 keeps a clearly

@@ -57,10 +57,19 @@ from marketforge.simulation.kernels import (
     gjr_garch,
     regime_chain,
 )
+from marketforge.simulation.macro import (
+    STRESSED,
+    closure_shock,
+    global_mixing,
+    global_shocks,
+    global_stress_shocks,
+    macro_state,
+)
 from marketforge.simulation.projection import Projection, SessionShape
 from marketforge.simulation.regimes import (
     REGIME_SMOOTHING,
     dollar_portfolio,
+    forex_risk_direction,
     main_factor_loadings,
     normalised_regime_targets,
     spell_trends,
@@ -185,6 +194,12 @@ class MarketSimulator:
         self._stress_loading = (
             STRESS_LOADING * np.sign(relative) * np.abs(relative) ** STRESS_COMPRESSION
         )[fa]
+        # The world: the market's global direction tied to the global shock
+        # (ADR 0016), its main factor for coins and stocks, risk for forex.
+        direction = (
+            forex_risk_direction(structure.factors) if spec.market == MarketType.FOREX else loadings
+        )
+        self._mixing = global_mixing(spec.factor_correlation, direction, d.global_coupling)
         # Unconditional per-minute sigma of each selected instrument.
         self._sigma_ref = self._projection.sigma(self._sigma[None, :])[0]
 
@@ -271,9 +286,15 @@ class MarketSimulator:
         )
 
     # ------------------------------------------------------------- helpers
-    def _correlated(self, z: np.ndarray, chi2: np.ndarray) -> np.ndarray:
-        """Correlated shocks of the active factors (always computed market-wide)."""
+    def _correlated(
+        self, z: np.ndarray, chi2: np.ndarray, world: np.ndarray, stressed: bool
+    ) -> np.ndarray:
+        """Correlated shocks of the active factors, tied to the global shock ``world``.
+
+        Always computed market-wide, then the active factors are taken.
+        """
         full = correlated_shocks(z, chi2, self._cholesky, self._nu)
+        full = self._mixing.apply(full, world, np.full(world.shape, stressed))
         return full if self._all_factors else np.ascontiguousarray(full[:, self._factors])
 
     def _select(self, draws: np.ndarray, rows: np.ndarray) -> np.ndarray:
@@ -319,7 +340,13 @@ class MarketSimulator:
         e_volume = rng.standard_normal((MINUTES_PER_DAY, n_i))
         m_stress = rng.standard_normal(MINUTES_PER_DAY)
 
-        z = session.rows_of(self._correlated(z_all[session.rows], chi_all[session.rows]))
+        stressed = macro_state(self.seed, day) == STRESSED
+        world = global_shocks(self.seed, day)
+        z = session.rows_of(
+            self._correlated(
+                z_all[session.rows], chi_all[session.rows], world[session.rows], stressed
+            )
+        )
 
         regimes, drift_m, vol_m, st.regime, st.drift_mult, st.vol_mult = regime_chain(
             u_regime[rows],
@@ -338,7 +365,12 @@ class MarketSimulator:
                 if self._nu is not None
                 else np.ones(rows.size)
             )
-            z = stressed_shocks(z, stress, scale, m_stress[rows], self._stress_loading)
+            # The stress shock is the world's as much as the market's own: in
+            # a sell-off, every market's common move is partly the same move.
+            c = self._mixing.coupling[STRESSED if stressed else 0]
+            shared = global_stress_shocks(self.seed, day)[rows]
+            common = c * shared + np.sqrt(1.0 - c * c) * m_stress[rows]
+            z = stressed_shocks(z, stress, scale, common, self._stress_loading)
         h, st.garch_variance, st.garch_shock = gjr_garch(
             z, *self._garch, st.garch_variance, st.garch_shock
         )
@@ -358,7 +390,14 @@ class MarketSimulator:
                 raise RuntimeError("calendar produced more session opens in a day than supported")
             if gap_rows.size:
                 k = gap_rows.size
-                zg = self._correlated(z_gap[:k], chi_gap[:k])
+                # What the world did while the market was shut reaches its gap.
+                closed_world = np.array(
+                    [
+                        closure_shock(self.seed, int(p // 60) + 1, int(t // 60) - 1)
+                        for p, t in zip(prev[gap_rows], ts[gap_rows], strict=True)
+                    ]
+                )
+                zg = self._correlated(z_gap[:k], chi_gap[:k], closed_world, stressed)
                 var_units = closure_variance(closed[gap_rows], self.spec.defaults)
                 level = np.sqrt(h[gap_rows]) * vol_m[gap_rows, None]
                 gap = (
