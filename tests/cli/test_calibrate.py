@@ -43,3 +43,31 @@ def test_calibrate_names_new_instruments_by_their_file(real, tmp_path):
     doc = tomllib.loads(out.read_text())["instruments"]
     assert doc["MYCOIN"]["market"] == "crypto"
     mf.generate("MYCOIN", start="2024-06-01", days=1, seed=1, overrides=out)
+
+
+def test_calibrating_identical_series_writes_a_correlation_generation_accepts(real, tmp_path):
+    source = (real / "crypto" / "BTCUSD_m1.csv").read_bytes()
+    files = [tmp_path / "COINA_m1.csv", tmp_path / "COINB_m1.csv"]
+    for path in files:
+        path.write_bytes(source)
+    overrides = mf.calibrate(files, "crypto")
+    assert overrides["COINB"]["correlations"]["COINA"] == 0.99
+    mf.generate("COINA,COINB", start="2024-06-01", days=1, seed=1, overrides=overrides)
+
+
+def test_calibrate_refuses_files_not_named_by_their_symbol(real, tmp_path):
+    path = tmp_path / "data.csv"
+    path.write_bytes((real / "crypto" / "BTCUSD_m1.csv").read_bytes())
+    with pytest.raises(ValueError, match="SYMBOL_m1"):
+        mf.calibrate([path], "crypto")
+
+
+def test_calibrate_refuses_instruments_the_market_would_reject(real, tmp_path):
+    path = tmp_path / "MYFX_m1.csv"
+    path.write_bytes((real / "crypto" / "BTCUSD_m1.csv").read_bytes())
+    with pytest.raises(ValueError, match="six"):
+        mf.calibrate([path], "forex")
+    res = CliRunner().invoke(cli, ["calibrate", str(path), "--market", "forex"])
+    assert res.exit_code != 0
+    assert "six" in res.output
+    assert "Traceback" not in res.output
