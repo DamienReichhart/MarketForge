@@ -31,7 +31,7 @@ def dataset(seeds: range) -> pd.DataFrame:
             start="2023-01-01",
             days=180,
             timeframes="H1",
-            include_regime=True,
+            with_regime=True,
         )
     ]
     return pd.concat(frames)

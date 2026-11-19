@@ -50,7 +50,7 @@ DISK_SCENARIOS: dict[str, dict[str, Any]] = {
         "seed": 11,
         "timeframes": ["m1", "H1", "D1"],
         "anomalies": ["spikes", "flash_crash"],
-        "include_regime": True,
+        "with_regime": True,
     },
 }
 MEMORY_SCENARIOS: dict[str, dict[str, Any]] = {
@@ -68,9 +68,28 @@ MEMORY_SCENARIOS: dict[str, dict[str, Any]] = {
         "seed": 0,
         "timeframes": ["m1", "W1"],
         "anomalies": ["flash_crash"],
-        "include_regime": True,
+        "with_regime": True,
     },
 }
+
+
+# 5.0 renamed these keyword arguments; a release before it takes the old names.
+# Drop this once the baseline release is 5.0 or newer.
+_BEFORE_5 = {
+    "format": "fmt",
+    "with_regime": "include_regime",
+    "with_spread": "include_spread",
+    "with_bid_ask": "include_bid_ask",
+}
+
+
+def _for_version(function: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """``kwargs`` in the spelling ``function`` takes (old names before 5.0)."""
+    parameters = signature(function).parameters
+    return {
+        (_BEFORE_5[k] if k not in parameters and k in _BEFORE_5 else k): v
+        for k, v in kwargs.items()
+    }
 
 
 def _sha256(data: bytes) -> str:
@@ -104,7 +123,9 @@ def capture(out: Path) -> None:
     digests: dict[str, str] = {}
     for name, kwargs in DISK_SCENARIOS.items():
         with tempfile.TemporaryDirectory() as tmp:
-            mf.generate_to_disk(tmp, fmt="csv", jobs=1, **kwargs)
+            mf.generate_to_disk(
+                tmp, **_for_version(mf.generate_to_disk, {"format": "csv", "jobs": 1, **kwargs})
+            )
             # Candle files only: the manifest names the version that wrote it.
             files = sorted(p for p in Path(tmp).rglob("*.csv") if p.is_file())
             if not files:
@@ -117,7 +138,7 @@ def capture(out: Path) -> None:
         # once the baseline release is 4.0 or newer.
         if "instruments" in kwargs and "instruments" not in signature(mf.generate).parameters:
             kwargs["assets"] = kwargs.pop("instruments")
-        data = mf.generate(**kwargs)
+        data = mf.generate(**_for_version(mf.generate, kwargs))
         for symbol in sorted(data):
             for timeframe in sorted(data[symbol]):
                 frame = data[symbol][timeframe]

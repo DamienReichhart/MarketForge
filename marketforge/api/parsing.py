@@ -17,7 +17,8 @@ import numpy as np
 from marketforge.aggregation.streaming import SUPPORTED_TIMEFRAMES
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
-from marketforge.domain.timeframes import Timeframe
+from marketforge.domain.timeframes import STANDARD_TIMEFRAMES, Timeframe
+from marketforge.output.formats import OutputFormat, TimestampFormat
 
 TimeLike = int | float | str | dt.datetime | dt.date
 # Unix seconds past this (the year 5138) are milliseconds or microseconds
@@ -94,9 +95,14 @@ def parse_seed(seed: int | None) -> int:
     return int(seed)
 
 
-def parse_timeframes(values: Names) -> list[Timeframe]:
+def parse_timeframes(values: Names | None) -> list[Timeframe]:
+    """The timeframes named: the standard eight when ``None``, all of them for ``all``."""
+    if values is None:
+        return list(STANDARD_TIMEFRAMES)
     out: list[Timeframe] = []
     for v in as_names(values):
+        if v.lower() == "all":
+            return list(SUPPORTED_TIMEFRAMES)
         tf = Timeframe.from_string(v)
         if tf not in SUPPORTED_TIMEFRAMES:
             raise ValueError(
@@ -138,6 +144,27 @@ def parse_anomalies(values: Names) -> frozenset[AnomalyType]:
                 f"Unknown anomaly {v!r}; choose from {', '.join(a.value for a in AnomalyType)}"
             ) from None
     return frozenset(out)
+
+
+def parse_format(value: str | OutputFormat) -> OutputFormat:
+    """A file format by name, in any letter case."""
+    try:
+        return OutputFormat(str(value).strip().lower())
+    except ValueError:
+        raise ValueError(
+            f"Unknown format {value!r}; choose from {', '.join(f.value for f in OutputFormat)}"
+        ) from None
+
+
+def parse_timestamps(value: str | TimestampFormat) -> TimestampFormat:
+    """A way of writing time by name, in any letter case."""
+    try:
+        return TimestampFormat(str(value).strip().lower())
+    except ValueError:
+        raise ValueError(
+            f"Unknown timestamps {value!r}; choose from "
+            f"{', '.join(f.value for f in TimestampFormat)}"
+        ) from None
 
 
 def range_end(start: int, end: TimeLike | None, days: int | None) -> int:

@@ -24,7 +24,7 @@ CASES = {
 @pytest.mark.parametrize("market", list(CASES))
 def test_generated_data_matches_stylized_facts(market, seed):
     data = mf.generate(
-        CASES[market], start="2024-01-01", end="2024-01-15", seed=seed, include_spread=True
+        CASES[market], start="2024-01-01", end="2024-01-15", seed=seed, with_spread=True
     )
     for symbol in CASES[market]:
         report = mf.validate(data[symbol]["m1"], market)

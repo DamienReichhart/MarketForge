@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -110,6 +111,7 @@ def test_baseline_can_be_pinned(monkeypatch):
     [*repro.DISK_SCENARIOS.values(), *repro.MEMORY_SCENARIOS.values()],
 )
 def test_scenarios_are_valid_requests(kwargs):
-    from marketforge.api.planning import plan_request
+    import marketforge as mf
 
-    assert plan_request(**kwargs).seed == kwargs["seed"]
+    call = mf.generate_to_disk if kwargs in repro.DISK_SCENARIOS.values() else mf.generate
+    assert set(repro._for_version(call, kwargs)) <= set(inspect.signature(call).parameters)

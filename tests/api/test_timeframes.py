@@ -24,8 +24,8 @@ def test_resample_matches_generating_the_timeframe(market, symbol, timeframe):
         "start": "2024-01-08",
         "days": 5,
         "seed": 2,
-        "include_regime": True,
-        "include_spread": True,
+        "with_regime": True,
+        "with_spread": True,
     }
     data = mf.generate(symbol, timeframes=f"m1,{timeframe}", **kwargs)[symbol]
     got = mf.resample(data["m1"], timeframe, market)
@@ -49,7 +49,7 @@ def test_resample_drops_the_partial_candles_at_the_edges():
 @pytest.fixture(scope="module")
 def aapl():
     return mf.generate(
-        "AAPL", start="2024-01-08", days=5, seed=4, timeframes="m1,H1,D1", include_bid_ask=True
+        "AAPL", start="2024-01-08", days=5, seed=4, timeframes="m1,H1,D1", with_bid_ask=True
     )["AAPL"]
 
 
@@ -59,7 +59,7 @@ def test_resample_refuses_candles_that_are_not_m1(aapl):
 
 
 def test_resample_refuses_candles_of_another_market(aapl):
-    with pytest.raises(ValueError, match="1440 candle.s. fall in minutes when stocks is closed"):
+    with pytest.raises(ValueError, match=r"1440 candle\(s\) fall in minutes when stocks is closed"):
         mf.resample(
             mf.generate("BTCUSD", start="2024-01-06", days=1, seed=1)["BTCUSD"]["m1"],
             "H1",

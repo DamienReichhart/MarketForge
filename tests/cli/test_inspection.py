@@ -57,10 +57,10 @@ def test_list_instruments_as_json():
 
 def test_validate_a_whole_dataset(tmp_path):
     _dataset(tmp_path)
-    res = _run("validate", "--input", str(tmp_path))
+    res = _run("validate", str(tmp_path))
     assert res.exit_code == 0, res.output
     assert "2/2 files pass" in res.output
-    doc = json.loads(_run("validate", "--input", str(tmp_path), "--json").output)
+    doc = json.loads(_run("validate", str(tmp_path), "--json").output)
     assert sorted(doc) == ["crypto/BTCUSD_m1.csv", "forex/EURUSD_m1.csv"]
     assert doc["forex/EURUSD_m1.csv"]["passed"] is True
     assert "kurtosis" in " ".join(doc["forex/EURUSD_m1.csv"]["metrics"])
@@ -71,7 +71,7 @@ def test_one_unusable_file_does_not_stop_the_others(tmp_path):
     mf.generate_to_disk(
         tmp_path, "AAPL,BTCUSD", start="2024-01-13", end="2024-01-20", seed=7, timeframes="m1"
     )
-    res = _run("validate", "--input", str(tmp_path))
+    res = _run("validate", str(tmp_path))
     assert res.exit_code == 0, res.output
     assert "ok   crypto/BTCUSD_m1.csv" in res.output
     assert "skip stocks/AAPL_m1.csv" in res.output and "1,560 candle(s)" in res.output
@@ -82,14 +82,14 @@ def test_validating_a_file_too_short_to_mean_anything_is_an_error(tmp_path):
     mf.generate_to_disk(
         tmp_path, "BTCUSD", start="2024-01-02", end="2024-01-02T00:30", seed=1, timeframes="m1"
     )
-    res = _run("validate", "--input", str(tmp_path / "crypto" / "BTCUSD_m1.csv"))
+    res = _run("validate", str(tmp_path / "crypto" / "BTCUSD_m1.csv"))
     assert res.exit_code == 1
     assert "needs at least 1,950 m1 candles" in res.output and "Usage" not in res.output
 
 
 def test_validating_a_dataset_without_m1_says_so(tmp_path):
     _dataset(tmp_path, timeframes="H1")
-    res = _run("validate", "--input", str(tmp_path))
+    res = _run("validate", str(tmp_path))
     assert res.exit_code == 2
     assert "has no m1 files" in res.output and "-t m1" in res.output
 
@@ -104,7 +104,7 @@ def test_quiet_prints_nothing_on_success(tmp_path):
 
 
 def test_verify_regenerates_a_dataset_and_compares_every_file(tmp_path):
-    _dataset(tmp_path, include_spread=True)
+    _dataset(tmp_path, with_spread=True)
     res = _run("verify", str(tmp_path))
     assert res.exit_code == 0, res.output
     assert "4/4 files identical" in res.output
@@ -113,3 +113,26 @@ def test_verify_regenerates_a_dataset_and_compares_every_file(tmp_path):
     res = _run("verify", str(tmp_path))
     assert res.exit_code == 1
     assert "differs: forex/EURUSD_H1.csv" in res.output and "3/4 files identical" in res.output
+
+
+def test_list_instruments_searches_symbols():
+    res = _run("list-instruments", "--search", "jpy", "-m", "forex")
+    assert res.exit_code == 0, res.output
+    assert "EURJPY" in res.output and "EURUSD" not in res.output and "VOLUME" in res.output
+    res = _run("list-instruments", "-m", "crypto,stocks", "--json")
+    assert {r["market"] for r in json.loads(res.output)} == {"crypto", "stocks"}
+
+
+def test_info_and_verify_are_python_functions_too(tmp_path):
+    _dataset(tmp_path)
+    summary = mf.info(tmp_path)
+    assert summary.seed == 7 and summary.files == 4 and summary.extendable
+    assert summary.to_dict()["marketforge"] == mf.__version__
+    report = mf.verify(tmp_path)
+    assert report.passed and len(report.identical) == 4
+
+
+def test_extend_takes_days_in_python(tmp_path):
+    _dataset(tmp_path)
+    mf.extend(tmp_path, days=2)
+    assert mf.info(tmp_path).end == "2024-01-18T00:00:00Z"

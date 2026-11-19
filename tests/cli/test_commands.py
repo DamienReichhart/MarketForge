@@ -48,7 +48,7 @@ def test_dry_run_writes_nothing(tmp_path):
         "2024-01-01",
         "--to",
         "2025-01-01",
-        "--market",
+        "--markets",
         "stocks",
         "--dry-run",
     )
@@ -88,7 +88,7 @@ def test_errors_are_one_line_unless_debug(tmp_path):
 
 
 def test_list_instruments_marks_forex_crosses():
-    res = _run("list-instruments", "--market", "forex")
+    res = _run("list-instruments", "--markets", "forex")
     assert res.exit_code == 0
     line = next(l for l in res.output.splitlines() if l.strip().startswith("EURJPY"))
     assert "cross" in line
@@ -114,7 +114,7 @@ def test_validate_generated_parquet(tmp_path):
         "--no-progress",
     )
     assert gen.exit_code == 0, gen.output
-    res = _run("validate", "--input", str(tmp_path / "crypto" / "BTCUSD_m1.parquet"))
+    res = _run("validate", str(tmp_path / "crypto" / "BTCUSD_m1.parquet"))
     assert "Validation report (crypto)" in res.output
     assert res.exit_code == 0, res.output
 
@@ -151,7 +151,7 @@ def test_warnings_are_one_line_without_python_internals(tmp_path):
         "1",
         "-i",
         "BTCUSD,AAPL",
-        "--market",
+        "--markets",
         "crypto",
         "-t",
         "m1",

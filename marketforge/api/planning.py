@@ -37,9 +37,6 @@ from marketforge.domain.time import SECONDS_PER_DAY
 from marketforge.domain.timeframes import Timeframe
 from marketforge.simulation.spec import MarketSpec, build_market_spec
 
-DEFAULT_TIMEFRAMES = ("m1", "m5", "m15", "m30", "H1", "H4", "D1", "W1")
-
-
 # A candle that is still open when a dataset ends started less than this many
 # UTC days before the dataset's last day (the longest candle is a week), so an
 # extension that resumes this far back rebuilds every open candle from its
@@ -84,6 +81,9 @@ class Request:
     include_spread: bool = False
     extends_from: int | None = None  # the end of the dataset this request extends
     include_bid_ask: bool = False
+    # Whether the caller named the timeframes. An empty W1 of a two-day range
+    # is worth a warning only when W1 was asked for, not when it is a default.
+    timeframes_named: bool = True
 
     @property
     def simulates_spread(self) -> bool:
@@ -112,7 +112,7 @@ def plan_request(
     start: TimeLike,
     end: TimeLike | None = None,
     seed: int | None = None,
-    timeframes: Names = DEFAULT_TIMEFRAMES,
+    timeframes: Names | None = None,
     anomalies: Names = (),
     include_regime: bool = False,
     include_spread: bool = False,
@@ -202,6 +202,7 @@ def plan_request(
         resolved,
         include_spread,
         include_bid_ask=include_bid_ask,
+        timeframes_named=timeframes is not None,
     )
 
 

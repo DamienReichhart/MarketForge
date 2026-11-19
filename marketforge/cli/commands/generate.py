@@ -13,6 +13,7 @@ import click
 from marketforge.api.parsing import parse_time
 from marketforge.api.planning import plan_request
 from marketforge.cli.plan_summary import print_plan
+from marketforge.cli.renamed import renamed_option
 from marketforge.cli.running import (
     days_option,
     end_of_range,
@@ -47,12 +48,13 @@ from marketforge.output.manifest import dataset_files
     help="Comma-separated instruments, e.g. EURUSD,AAPL,BTCUSD. Markets are inferred.",
 )
 @click.option(
-    "--market",
+    "--markets",
     "-m",
     "markets",
     metavar="LIST",
     help="Comma-separated markets: crypto, forex, stocks, or all (default when --instruments is not given).",
 )
+@renamed_option("--market", "--markets")
 @click.option(
     "--seed",
     "-s",
@@ -62,10 +64,10 @@ from marketforge.output.manifest import dataset_files
 @click.option(
     "--timeframes",
     "-t",
-    default="m1,m5,m15,m30,H1,H4,D1,W1",
-    show_default=True,
-    help="Comma-separated, in any letter case. Any of m1,m2,m3,m5,m10,m15,m20,m30,"
-    "H1,H2,H3,H4,H6,H8,H12,D1,W1; the default is the eight shown.",
+    metavar="LIST",
+    help="Comma-separated, in any letter case, from m1,m2,m3,m5,m10,m15,m20,m30,"
+    "H1,H2,H3,H4,H6,H8,H12,D1,W1, or all. Default: the standard eight, "
+    "m1,m5,m15,m30,H1,H4,D1,W1.",
 )
 @click.option(
     "--anomalies", metavar="LIST", help="Optional unrealistic events: spikes, flash_crash."
@@ -73,25 +75,26 @@ from marketforge.output.manifest import dataset_files
 @click.option(
     "--format",
     "fmt",
-    type=click.Choice(["csv", "parquet", "feather"]),
+    type=click.Choice(["csv", "parquet", "feather"], case_sensitive=False),
     default="csv",
     show_default=True,
     help="Output file format. Feather (Arrow IPC) loads fastest; Parquet is smallest.",
 )
 @click.option(
     "--timestamps",
-    type=click.Choice(["unix", "iso", "datetime"]),
+    type=click.Choice(["unix", "iso", "datetime"], case_sensitive=False),
     default="unix",
     show_default=True,
     help="How time is written: Unix seconds; ISO 8601 like 2024-01-02T14:30:00Z (CSV); "
     "or a native UTC time column (Parquet, Feather).",
 )
 @click.option(
-    "--config",
+    "--overrides",
     "overrides",
     type=click.Path(exists=True, dir_okay=False),
-    help="TOML override file to change or add instruments.",
+    help="Override file (TOML) that changes catalog instruments or adds new ones.",
 )
+@renamed_option("--config", "--overrides")
 @click.option(
     "--with-spread",
     is_flag=True,
@@ -128,7 +131,7 @@ def generate(
     instruments: str | None,
     markets: str | None,
     seed: int | None,
-    timeframes: str,
+    timeframes: str | None,
     anomalies: str | None,
     fmt: str,
     timestamps: str,
@@ -139,10 +142,11 @@ def generate(
     jobs: int | None,
     dry_run: bool,
     overwrite: bool,
-    progress: bool,
+    progress: bool | None,
     quiet: bool,
 ) -> None:
     """Generate a dataset: candle files and the manifest that records how they were made."""
+    fmt, timestamps = fmt.lower(), timestamps.lower()
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
     if fmt != "csv" and timestamps == "iso":

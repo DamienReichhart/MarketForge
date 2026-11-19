@@ -95,7 +95,7 @@ def crypto_year():
         end="2024-01-01",
         seed=2,
         timeframes="H1",
-        include_regime=True,
+        with_regime=True,
     )
 
 
@@ -121,7 +121,7 @@ def test_forex_trends_move_pairs_with_their_correlation():
         end="2024-01-01",
         seed=4,
         timeframes="H1",
-        include_regime=True,
+        with_regime=True,
     )
     up = {s: _spell_returns(data[s]["H1"]).query("regime == 'trend_up'")["ret"] for s in data}
     assert np.sign(up["EURUSD"].mean()) == -np.sign(up["USDCHF"].mean())
@@ -136,7 +136,7 @@ def test_crashes_are_the_most_volatile_regime(symbol, seed):
         end="2024-01-01",
         seed=seed,
         timeframes="m5",
-        include_regime=True,
+        with_regime=True,
     )[symbol]["m5"]
     r = np.log(frame["close"]).diff()
     vol = r.groupby(frame["regime"], observed=True).std()
@@ -154,7 +154,7 @@ def test_correlations_rise_in_a_crash(pair, seed):
         end="2024-01-01",
         seed=seed,
         timeframes="m5",
-        include_regime=True,
+        with_regime=True,
     )
     r = _returns(data, "m5")
     regime = data[pair[0]]["m5"]["regime"].reindex(r.index)
