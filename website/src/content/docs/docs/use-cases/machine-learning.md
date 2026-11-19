@@ -73,25 +73,22 @@ Do not expect a high score from a baseline like this. Trained on eight seeds and
 
 ## Recipe: windows for a sequence model
 
-Turn a panel of returns into fixed-length windows for a PyTorch, JAX or Keras model. The target here is the next window's regime; swap in the next return, the next volatility, or anything else you can compute from the candles.
+`windows()` cuts every instrument's candles into fixed-length windows for a PyTorch, JAX or Keras model, as float32, labelled with the regime at each window's last candle. Features are any column, or `return`, `log_volume` and `range` computed from the candles: returns rather than prices, since every seed starts at the same prices.
 
 ```python
-import numpy as np
 import marketforge as mf
 
-def windows(seed: int, length: int = 128):
-    data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", end="2024-03-01",
-                       seed=seed, timeframes=["m5"], with_regime=True)
-    returns = np.log(data.panel("close", "m5")).diff().dropna()       # time × instrument
-    regime = data["BTCUSD"]["m5"]["regime"].cat.codes.reindex(returns.index)
-    x = np.lib.stride_tricks.sliding_window_view(returns.to_numpy(np.float32), length, axis=0)
-    x = x.transpose(0, 2, 1)[:-1]                                     # (n, length, instruments)
-    y = regime.to_numpy()[length:]                                    # regime after each window
-    return x, y
+data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", end="2024-03-01",
+                   seed=0, timeframes=["m5"], with_regime=True)
+x, y, times, symbols = data.windows("m5", 128, stride=8)   # labels: regime at the last candle
+print(x.shape, y.shape)                                     # (windows, 128, 2) (windows,)
 
-x, y = windows(seed=0)
-print(x.shape, y.shape)
+# Forecast instead: the next candle's return
+x, y, times, symbols = data.windows("m5", 128, features=["return", "range"],
+                                    target="return", horizon=1)
 ```
+
+A window never mixes instruments, and `times` and `symbols` say where each one came from. To feed a model, wrap the arrays: `torch.utils.data.TensorDataset(torch.from_numpy(x), torch.from_numpy(y))`. For a cross-sectional model that sees every instrument at once, `to_numpy("m5", dtype=np.float32)` gives the `(time, instrument, column)` array instead.
 
 Crypto trades 24/7, so its panel has no gaps. A panel that mixes markets has NaN where a market was closed, and markets start their candles on different clocks (a stock's `H1` candles at half past the hour), so their times may never coincide. MarketForge never forward-fills for you: see [Working with the data](../../guides/working-with-data/#several-instruments-side-by-side) for lining them up without look-ahead.
 
