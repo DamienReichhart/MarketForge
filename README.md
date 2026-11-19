@@ -79,7 +79,7 @@ show in the data.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/DamienReichhart/MarketForge/main/docs/readme/seeds-dark.svg">
-  <img alt="Six months of BTCUSD bought and held: one seed has a worst drawdown of 56%, and across 32 seeds the worst drawdown runs from 25% to 97%" src="https://raw.githubusercontent.com/DamienReichhart/MarketForge/main/docs/readme/seeds-light.svg" width="100%">
+  <img alt="Six months of BTCUSD bought and held: one seed has a worst drawdown of 50%, and across 32 seeds the worst drawdown runs from 25% to 97%" src="https://raw.githubusercontent.com/DamienReichhart/MarketForge/main/docs/readme/seeds-light.svg" width="100%">
 </picture>
 
 Six months of BTCUSD, the same model and the same dates, under 32 seeds.
