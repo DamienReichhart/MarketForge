@@ -82,7 +82,7 @@ def daily_correlation(
 
 
 def fit_minute(
-    market: MarketType, daily: np.ndarray, iterations: int, seeds: int, years: int
+    market: MarketType, daily: np.ndarray, iterations: int, seeds: int, years: int, step: float
 ) -> np.ndarray:
     """The minute matrix whose simulated daily correlations are ``daily``."""
     off = ~np.eye(len(daily), dtype=bool)
@@ -99,7 +99,7 @@ def fit_minute(
         )
         if size < best_error:
             best, best_error = minute, size
-        minute, _ = nearest_correlation(minute - error)
+        minute, _ = nearest_correlation(minute - step * error)
     return best
 
 
@@ -109,6 +109,9 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=5)
     parser.add_argument("--seeds", type=int, default=3)
     parser.add_argument("--years", type=int, default=10)
+    # A full step suits coins and stocks; forex's anchor matrix is nearly
+    # singular (ADR 0012), and a full step there makes some pairs swing.
+    parser.add_argument("--step", type=float, default=None, help="default: 1, forex 0.5")
     args = parser.parse_args()
     for market in map(MarketType, args.markets.split(",")):
         p = fit_problem(market)
@@ -129,7 +132,8 @@ def main() -> None:
             print(f"  crosses: implied / stated volatility {ratio.min():.2f} to {ratio.max():.2f}")
         path = CATALOG / market.value / FILE_NAME
         path.write_text(document(market, c), encoding="utf-8")  # loadable while the minute fit runs
-        minute = fit_minute(market, c, args.iterations, args.seeds, args.years)
+        step = args.step or (0.5 if market == MarketType.FOREX else 1.0)
+        minute = fit_minute(market, c, args.iterations, args.seeds, args.years, step)
         off = ~np.eye(len(c), dtype=bool)
         print(f"  minute correlations {np.mean(minute[off] - c[off]):+.3f} on average", flush=True)
         path.write_text(document(market, c, minute), encoding="utf-8")
