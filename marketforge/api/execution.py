@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from threadpoolctl import threadpool_limits
 
+from marketforge._warnings import PACKAGE_DIRS
 from marketforge.aggregation.streaming import BarAggregator
 from marketforge.api.planning import RESUME_DAYS, Checkpoint, MarketPlan, Request
 from marketforge.calendars.trading_calendar import get_calendar
@@ -94,14 +95,28 @@ def execute(
             return {p.market: f.result() for p, f in zip(request.plans, futures, strict=True)}
 
 
-def warn_about_empty(empty: Iterable[tuple[str, str]]) -> None:
-    """Warn once about the (instrument, timeframe) outputs that received no candle."""
+class NothingGenerated(ValueError):
+    """Every requested output is empty: the range holds no complete candle."""
+
+
+def warn_about_empty(empty: Iterable[tuple[str, str]], total: int) -> None:
+    """Warn once about the (instrument, timeframe) outputs that received no candle.
+
+    Raises:
+        NothingGenerated: if every one of the ``total`` outputs is empty.
+    """
     names = [f"{symbol} {timeframe}" for symbol, timeframe in empty]
     if not names:
         return
+    if len(names) == total:
+        raise NothingGenerated(
+            "Nothing to generate: the range holds no complete candle of any requested "
+            "timeframe (a candle is published only when the range covers all of it). "
+            "Lengthen the range or ask for shorter timeframes"
+        )
     shown = ", ".join(names[:6]) + (f" and {len(names) - 6} more" if len(names) > 6 else "")
     warnings.warn(
         f"No candles for {shown}: the range holds no complete candle of that timeframe "
         "(the market is closed, or the range is shorter than the candle)",
-        stacklevel=3,
+        skip_file_prefixes=PACKAGE_DIRS,
     )

@@ -153,6 +153,14 @@ class TradingCalendar:
         ts = np.arange(first, int(end), 60, dtype=np.int64)
         return np.asarray(ts[self.open_mask(ts)])
 
+    def is_open_during(self, start: int, end: int) -> bool:
+        """Whether the market has at least one open minute in [start, end)."""
+        step = 7 * SECONDS_PER_DAY  # every week of every market has open minutes
+        return any(
+            self.open_minutes(lo, min(lo + step, int(end))).size
+            for lo in range(int(start), int(end), step)
+        )
+
     def count_open_minutes(self, start: int, end: int, chunk_days: int = 366) -> int:
         """Number of open minutes in [start, end), computed in bounded memory."""
         total = 0

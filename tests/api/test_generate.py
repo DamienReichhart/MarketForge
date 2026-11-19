@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -65,14 +66,53 @@ def test_market_filter_and_errors():
         mf.generate(["AAPL"], markets=["crypto"], start="2024-01-01", end="2024-01-02")
     with pytest.raises(ValueError, match="Unknown anomaly"):
         mf.generate(["AAPL"], start="2024-01-01", end="2024-01-02", anomalies=["gaps"])
-    with pytest.raises(ValueError, match="before end"):
+    with pytest.raises(ValueError, match="start must be before the end"):
         mf.generate(["AAPL"], start="2024-01-02", end="2024-01-01")
 
 
-def test_closed_market_range_returns_empty_frames():
+def test_a_range_in_which_every_market_is_closed_is_an_error(tmp_path):
+    with pytest.raises(ValueError, match="stocks is closed for the whole range"):
+        mf.generate(["AAPL"], start="2024-01-06", end="2024-01-08", seed=1)
+    with pytest.raises(ValueError, match="closed for the whole range"):
+        mf.generate_to_disk(tmp_path / "d", "AAPL,EURUSD", start="2024-01-06", days=1, seed=1)
+    assert not (tmp_path / "d" / "marketforge.json").exists()
+
+
+def test_a_closed_market_beside_an_open_one_gives_empty_frames():
     with pytest.warns(UserWarning, match="No candles for AAPL m1"):
-        df = mf.generate(["AAPL"], start="2024-01-06", end="2024-01-08", seed=1)["AAPL"]["m1"]
+        data = mf.generate("AAPL,BTCUSD", start="2024-01-06", end="2024-01-08", seed=1)
+    df = data["AAPL"]["m1"]
     assert df.empty and list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert len(data["BTCUSD"]["m1"]) == 2880
+
+
+def test_a_range_too_short_for_every_requested_timeframe_is_an_error(tmp_path):
+    kwargs = {"start": "2024-01-02", "days": 2, "seed": 1, "timeframes": "W1"}
+    with pytest.raises(ValueError, match="no complete candle of any requested timeframe"):
+        mf.generate("BTCUSD", **kwargs)
+    with pytest.raises(ValueError, match="no complete candle"):
+        mf.generate_to_disk(tmp_path, "BTCUSD", **kwargs)
+    assert list(tmp_path.iterdir()) == []  # nothing is left behind
+
+
+def test_millisecond_times_are_refused_with_a_hint():
+    with pytest.raises(ValueError, match="looks like Unix milliseconds: divide it by 1,000"):
+        mf.generate("BTCUSD", start=1704067200000, days=1)
+    with pytest.raises(ValueError, match="milliseconds"):
+        mf.parse_time("1704067200000")
+    with pytest.raises(ValueError, match="microseconds"):
+        mf.parse_time(1704067200000000)
+
+
+def test_the_same_instrument_in_two_letter_cases_is_generated_once():
+    data = mf.generate("eurusd,EURUSD", start="2024-01-02", days=1, seed=1)
+    assert list(data) == ["EURUSD"]
+
+
+def test_warnings_point_at_the_callers_code():
+    with pytest.warns(UserWarning) as caught:
+        mf.generate("AAPL,BTCUSD", start="2024-01-06", days=1, seed=1)
+    assert {Path(w.filename).name for w in caught} == {Path(__file__).name}
 
 
 @pytest.mark.parametrize("fmt", ["csv", "parquet"])

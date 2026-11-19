@@ -171,6 +171,10 @@ def clear_dataset(dataset: str | os.PathLike[str], *, overwrite: bool) -> None:
         )
     for path in files:
         path.unlink(missing_ok=True)
+    for market in _MARKET_DIRS:  # market folders the old dataset leaves empty
+        folder = Path(dataset) / market
+        if folder.is_dir() and not any(folder.iterdir()):
+            folder.rmdir()
 
 
 def begin_extension(dataset: str | os.PathLike[str], csv_files: list[Path]) -> None:

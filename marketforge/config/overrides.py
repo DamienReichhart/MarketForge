@@ -41,6 +41,7 @@ from typing import Any
 
 import numpy as np
 
+from marketforge._warnings import PACKAGE_DIRS
 from marketforge.config.catalog.correlation import nearest_correlation
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.factors import FactorStructure, forex_structure
@@ -241,7 +242,7 @@ def apply_overrides(
                     else f"your values cannot all hold; moved by up to {moved:.2f} to the "
                     "nearest valid correlation matrix"
                 ),
-                stacklevel=2,
+                skip_file_prefixes=PACKAGE_DIRS,
             )
             mat[np.ix_(idx, idx)] = repaired
         out[market] = MarketConfig(
