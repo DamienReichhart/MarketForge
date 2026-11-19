@@ -115,6 +115,12 @@ docs = [
     "scikit-learn>=1.9",
     "polars>=2.1",
     "duckdb>=2.0",
+    # The Backtesting page's engine recipes.
+    "backtrader>=1.9.78",
+    "backtesting>=0.6.6",
+    "jinja2>=3.1",  # backtesting.py's statistics
+    "vectorbt>=1.2",
+    "nautilus_trader>=1.231",
 ]
 workflow-lint = [
     "actionlint-py>=1.7.12",
