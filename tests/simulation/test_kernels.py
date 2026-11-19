@@ -12,6 +12,7 @@ from marketforge.simulation.kernels import (
     finish_bars,
     gjr_garch,
     project_signed,
+    pull_to_pegs,
     regime_spells,
 )
 
@@ -323,3 +324,27 @@ print(fingerprint())
 
     assert run("emscripten") == run("native")
     assert run("missing") == "refused"
+
+
+def test_pull_to_pegs_is_bit_exact_and_keeps_the_band():
+    rng = np.random.default_rng(11)
+    close = rng.normal(0, 2e-3, (500, 3)).cumsum(0)
+    open_ = np.vstack([np.zeros((1, 3)), close[:-1]])
+    returns = close - open_
+    rest = (
+        np.zeros(3),
+        np.array([1]),
+        np.array([[1.0, 1.0, 0.0]]),
+        np.array([0.0]),
+        np.array([0.01]),
+        np.array([0.001]),
+    )
+    compiled = [a.copy() for a in (open_, close, returns)]
+    interpreted = [a.copy() for a in (open_, close, returns)]
+    pull_to_pegs(*compiled, *rest)
+    pull_to_pegs.py_func(*interpreted, *rest)
+    for a, b in zip(compiled, interpreted, strict=True):
+        np.testing.assert_array_equal(a, b)
+    level = compiled[1][:, 0] + compiled[1][:, 1]  # the pegged pair: factors 0 and 1
+    assert np.abs(level).max() <= 0.01 + 1e-12
+    np.testing.assert_allclose(compiled[2], compiled[1] - compiled[0], atol=1e-15)
