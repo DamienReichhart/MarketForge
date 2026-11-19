@@ -141,8 +141,7 @@ class TradingCalendar:
         close[weekday >= 5] = 0
         lo = (_EPOCH + dt.timedelta(days=int(days.min()))).year
         hi = (_EPOCH + dt.timedelta(days=int(days.max()))).year
-        hol = [_epoch_day(d) for y in range(lo, hi + 1) for d in nyse_holidays(y)]
-        early = [_epoch_day(d) for y in range(lo, hi + 1) for d in nyse_early_closes(y)]
+        hol, early = _nyse_days(lo, hi)
         close[np.isin(days, early)] = NYSE_EARLY_CLOSE
         close[np.isin(days, hol)] = 0
         return close
@@ -168,6 +167,17 @@ class TradingCalendar:
         for lo in range(int(start), int(end), step):
             total += int(self.open_minutes(lo, min(lo + step, int(end))).size)
         return total
+
+
+@cache
+def _nyse_days(first_year: int, last_year: int) -> tuple[np.ndarray, np.ndarray]:
+    """Epoch days of the NYSE holidays and early closes of some years (read-only)."""
+    years = range(first_year, last_year + 1)
+    hol = np.array([_epoch_day(d) for y in years for d in nyse_holidays(y)], dtype=np.int64)
+    early = np.array([_epoch_day(d) for y in years for d in nyse_early_closes(y)], dtype=np.int64)
+    for a in (hol, early):
+        a.setflags(write=False)
+    return hol, early
 
 
 @cache

@@ -71,8 +71,10 @@ class GlobalMixing:
         """Shocks ``z`` (n, F) with their global-direction part tied to ``w`` (n,)."""
         own = np.sum(z * self.weights, axis=1)  # row by row: no BLAS, any row count
         c = np.where(stressed, self.coupling[STRESSED], self.coupling[CALM])
-        mixed = c * w + np.sqrt(1.0 - c * c) * own
-        return np.asarray(z + (mixed - own)[:, None] * self.covariance)
+        shift = c * w + (np.sqrt(1.0 - c * c) - 1.0) * own  # mixed - own
+        out = np.array(z, dtype=float)  # never the caller's array
+        out += shift[:, None] * self.covariance
+        return out
 
 
 def global_mixing(

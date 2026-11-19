@@ -54,6 +54,15 @@ class TickGrid:
     decimals: np.ndarray  # (I,) int
     sub_penny: bool = False
 
+    @property
+    def _scale(self) -> np.ndarray:
+        """10 ** decimals, once (the grid of every price when there is no sub-penny rule)."""
+        cached = self.__dict__.get("_cached_scale")
+        if cached is None:
+            cached = 10.0 ** np.asarray(self.decimals, dtype=float)
+            object.__setattr__(self, "_cached_scale", cached)
+        return np.asarray(cached)
+
     def grid(self, prices: np.ndarray) -> np.ndarray:
         """Decimals of the tick at each price, (k, I) like ``prices``."""
         decimals = np.broadcast_to(self.decimals, prices.shape)
@@ -77,10 +86,16 @@ class TickGrid:
 
     def _apply(self, prices: np.ndarray, how: np.ufunc) -> np.ndarray:
         prices = np.asarray(prices, dtype=float)
-        scale = 10.0 ** self.grid(prices)
-        # A millionth of a tick absorbs the binary error of prices already on the grid.
-        nudge = 0.0 if how is np.rint else (-1e-6 if how is np.ceil else 1e-6)
-        return np.asarray(how(prices * scale + nudge) / scale)
+        # Above $1 a stock's grid is its plain tick: skip the per-price rule.
+        plain = not self.sub_penny or bool(np.all(prices >= 1.0))
+        scale = self._scale if plain else 10.0 ** self.grid(prices)
+        out = prices * scale
+        if how is not np.rint:
+            # A millionth of a tick absorbs the binary error of prices on the grid.
+            out += -1e-6 if how is np.ceil else 1e-6
+        how(out, out=out)
+        out /= scale
+        return np.asarray(out)
 
     def take(self, columns: np.ndarray) -> TickGrid:
         """The grid of some instruments, by column."""
