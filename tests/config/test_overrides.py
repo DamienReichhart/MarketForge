@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from marketforge.config.catalog.fitted import minute_correlation
 from marketforge.config.loader import load_catalog
 from marketforge.config.overrides import OverrideError
 from marketforge.domain.markets import MarketType
@@ -38,7 +39,10 @@ correlations = { BTCUSD = 0.6 }
     cfg = cat[MarketType.CRYPTO]
     assert cfg.symbols[-1] == "MYCOIN"
     i, j = cfg.symbols.index("MYCOIN"), cfg.symbols.index("BTCUSD")
-    assert cfg.correlation_matrix[i, j] == pytest.approx(0.6, abs=0.02)
+    # A stated correlation is a daily one: the minute shocks get what gives it.
+    assert cfg.correlation_matrix[i, j] == pytest.approx(
+        minute_correlation(MarketType.CRYPTO, 0.6), abs=0.02
+    )
     assert np.linalg.eigvalsh(cfg.correlation_matrix).min() > 0
 
 
@@ -92,7 +96,8 @@ def test_edited_correlations_hold_exactly_when_the_catalog_must_give_way():
     with pytest.warns(UserWarning, match="crypto: overridden correlations"):
         cfg = load_catalog({"BTCUSD": {"correlations": {"ETHUSD": -0.5}}})[MarketType.CRYPTO]
     i, j = cfg.symbols.index("BTCUSD"), cfg.symbols.index("ETHUSD")
-    assert cfg.correlation_matrix[i, j] == pytest.approx(-0.5, abs=1e-6)
+    held = minute_correlation(MarketType.CRYPTO, -0.5)  # the minute value of a daily -0.5
+    assert cfg.correlation_matrix[i, j] == pytest.approx(held, abs=1e-6)
     assert np.linalg.eigvalsh(cfg.correlation_matrix).min() > 0
     np.testing.assert_allclose(np.diag(cfg.correlation_matrix), 1.0)
 
