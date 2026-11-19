@@ -58,8 +58,12 @@ The local wall-clock time at which a market's daily and weekly candles start: 00
 _Avoid_: day start, rollover
 
 **Timeframe**:
-The duration a candle summarises: `m1`, `m5`, `m15`, `m30`, `H1`, `H4`, `D1`, `W1`.
+The duration a candle summarises: `m1`, `m2`, `m3`, `m5`, `m10`, `m15`, `m20`, `m30`, `H1`, `H2`, `H3`, `H4`, `H6`, `H8`, `H12`, `D1` or `W1`.
 _Avoid_: resolution, interval, period
+
+**Standard timeframes**:
+The eight timeframes generated when none are named: `m1`, `m5`, `m15`, `m30`, `H1`, `H4`, `D1`, `W1`.
+_Avoid_: default timeframes (in prose), common timeframes
 
 **Tick volume**:
 The number of price updates in a minute; the volume reported for forex, which has no consolidated traded volume.
