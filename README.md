@@ -39,9 +39,11 @@ pip install marketforge
 marketforge generate -o ./data --from 2024-01-01 --days 90 --markets crypto --with-regime --with-spread --seed 42
 ```
 
-That is 90 days of all 53 crypto instruments, every timeframe from `m1` to
-`W1`, with the regime and the bid-ask spread of every candle, as CSV, Parquet,
-Feather or pandas DataFrames. Run it again with seed 42 and you get the same
+That is 90 days of all 53 crypto instruments, the eight standard timeframes
+from `m1` to `W1`, with the regime and the bid-ask spread of every candle:
+about 700 MB of CSV in ten seconds (`--format parquet` writes less than half,
+and `--dry-run` tells you before anything is written). Parquet, Feather and
+pandas DataFrames work too. Run it again with seed 42 and you get the same
 candles, bit for bit. Or skip the install: the
 [playground](https://damienreichhart.github.io/MarketForge/playground/) runs
 the same package in a browser tab.
@@ -98,11 +100,13 @@ seed per process.
 | --- | --- |
 | **Real trading calendars** | Stocks trade the NYSE session (09:30 to 16:00 New York, DST-aware) and skip NYSE holidays and early closes. Forex trades from Sunday 17:00 to Friday 17:00 New York time. Crypto never closes. No candle is printed while a market is shut, and gaps come from the price moving during the closure, as they do in reality. |
 | **One market, one story** | Every instrument of a market is simulated jointly: the correlations the catalog states, Student-t shocks with tail dependence, correlations that intensify in crashes (diversification fails when it matters), and a shared regime. |
+| **One world** | A world-wide shock and macro state link the markets: coins move with stocks (BTC-AAPL about 0.3 weekly), and when the world is stressed, crashes come to every market at once. |
+| **Real market events** | Stocks report earnings four times a year and gap on them, and have opening and closing auctions; pegged currencies hold their bands; forex thins out at Christmas; every price sits on its tick. |
 | **Arbitrage-free forex** | One anchor pair per currency is simulated and every cross is derived from them, so `EURJPY == EURUSD * USDJPY` at every minute, to within the tick each is quoted on. |
-| **Validated, not eyeballed** | Heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread are checked for every instrument, across seeds, against bands measured on real crypto minute data (forex and stock bands are still provisional). The validator ships with the package, and `marketforge calibrate` fits instruments to your own data. |
+| **Validated, not eyeballed** | Heavy tails, volatility clustering, long memory, the leverage effect, intrabar range, autocorrelation, hourly tails, the volume-volatility link and the spread are checked for every instrument, across seeds, against bands measured on real crypto minute data (forex and stock bands are still provisional). The validator ships with the package, and `marketforge calibrate` fits instruments to your own data. |
 | **Reproducible** | A seed fixes every random shock by market and minute. The same seed and version give the same EURUSD, bit for bit on a given platform, whether you generate it alone or with 207 other instruments. CI enforces it on every commit. |
 | **Extendable** | Every dataset carries a manifest of how it was made. `marketforge extend` continues it with exactly the candles of one longer run (byte-identical in CSV), and `marketforge verify` proves a dataset unaltered. |
-| **Built for ML pipelines** | `generate_many()` runs seeds in parallel processes for leak-free splits, `to_numpy()` gives `(time, instrument, feature)` tensors, `read()` loads datasets back with the right types, Feather files load with no copy, and the long layout puts a whole market in one Parquet file. |
+| **Built for ML pipelines** | `generate_many()` runs seeds in parallel processes for leak-free splits, `windows()` cuts float32 training windows, `to_numpy()` gives `(time, instrument, feature)` tensors, `read()` loads datasets back with the right types, Feather files load with no copy, and the long layout puts a whole market in one Parquet file. |
 | **Fast, bounded memory** | Compiled (Numba) kernels stream the simulation day by day. A year of EURUSD across all 8 timeframes takes about 2 s; a month of all 208 instruments about 6 s. Memory does not grow with the range. |
 
 ## Quick start
@@ -133,26 +137,24 @@ Every option is in the
 ```python check=static
 import marketforge as mf
 
-# Disjoint seeds: train, validation and test never share a path.
-# One generation per seed, in parallel processes, yielded in seed order.
-for data in mf.generate_many(
-    "BTCUSD,ETHUSD,SOLUSD", seeds=range(64),
-    start="2024-01-01", end="2024-04-01", timeframes=["m5"],
-    with_regime=True, with_spread=True,
-):
-    x, times, symbols = data.to_numpy("m5")          # (time, instrument, OHLCV), NaN when closed
-    labels = data["BTCUSD"]["m5"]["regime"]          # ground-truth regime per candle
-    ...
+if __name__ == "__main__":  # generate_many() starts processes: guard the script
+    # Disjoint seeds: train, validation and test never share a path.
+    # One generation per seed, in parallel processes, yielded in seed order.
+    for data in mf.generate_many(
+        "BTCUSD,ETHUSD,SOLUSD", seeds=range(64),
+        start="2024-01-01", end="2024-04-01", timeframes=["m5"], with_regime=True,
+    ):
+        x, y, times, symbols = data.windows("m5", 128)   # float32 windows, regime labels
+        ...
 
 # Years of data, streamed to disk; continued later
 mf.generate_to_disk("./data", markets="stocks", start="2015-01-01", end="2025-01-01",
-                    seed=1, format="parquet", jobs=3)
+                    seed=1, format="parquet")
 mf.extend("./data", "2025-02-01")
 
 # Check minute candles against the bands measured on real markets
-m1 = mf.generate("BTCUSD", start="2024-01-01", end="2024-01-15", seed=1)["BTCUSD"]["m1"]
-report = mf.validate(m1, "crypto")
-print(report.summary())
+m1 = mf.generate("BTCUSD", start="2024-01-01", end="2024-01-15", seed=1, timeframes="m1")
+print(mf.validate(m1["BTCUSD"]["m1"], "crypto").summary())
 ```
 
 See the [Python API](https://damienreichhart.github.io/MarketForge/docs/reference/python-api/), and
@@ -172,11 +174,12 @@ data/
 
 ```csv
 timestamp,open,high,low,close,volume,spread,regime
-1704067200,67500,67841.28465635,67497.68731519,67837.68959567,548.7391,0.13516156,range
+1704067200,67500,67547.9,67491.4,67533.6,32.367,0.13284302,range
 ```
 
 Timestamps are the start of the candle in Unix seconds (UTC), or ISO 8601
-with `--timestamps iso`. Prices are mid prices: `bid = price - spread / 2`.
+with `--timestamps iso`. Prices are mid prices on the instrument's tick (0.1 for
+BTCUSD): `bid = price - spread / 2`.
 The regime is one of `trend_up`, `trend_down`, `range`, `high_volatility` and
 `crash`, in files as in memory (a categorical whose codes are 0 to 4 in that
 order). `high >= max(open, close)` and
@@ -215,10 +218,8 @@ See
 
 ```bash
 git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
-pip install -e . --group dev
-ruff check . && ruff format --check . && lint-imports
-mypy marketforge
-pytest
+pip install -e . --group dev    # pip >= 25.1
+nox                             # lint, typecheck and tests, as CI runs them
 ```
 
 These are the checks CI runs; see [`docs/ci-cd.md`](https://github.com/DamienReichhart/MarketForge/blob/main/docs/ci-cd.md) for the
