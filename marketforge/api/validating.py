@@ -16,6 +16,7 @@ import pandas as pd
 
 from marketforge.config.loader import load_catalog
 from marketforge.domain.markets import MarketType
+from marketforge.domain.regimes import RegimeType
 from marketforge.validation.report import ValidationReport, validate_ohlcv
 
 _PRICES = ("open", "high", "low", "close")
@@ -86,7 +87,46 @@ def validate(
         )
     open_, high, low, close = (frame[c].to_numpy() for c in _PRICES)
     spread = frame["spread"].to_numpy() if "spread" in frame.columns else None
-    return validate_ohlcv(open_, high, low, close, market_type, spread)
+    volume = frame["volume"].to_numpy(dtype=float) if "volume" in frame.columns else None
+    return validate_ohlcv(
+        open_,
+        high,
+        low,
+        close,
+        market_type,
+        spread,
+        volume=volume,
+        gaps=_gaps(frame),
+        regime=_regime_codes(frame),
+    )
+
+
+def _seconds(frame: pd.DataFrame) -> np.ndarray | None:
+    if isinstance(frame.index, pd.DatetimeIndex):
+        return np.asarray(frame.index.to_numpy("datetime64[s]").astype(np.int64))
+    if "timestamp" not in frame.columns:
+        return None
+    if pd.api.types.is_numeric_dtype(frame["timestamp"]):
+        return np.asarray(frame["timestamp"].to_numpy(dtype=np.int64))
+    times = pd.to_datetime(frame["timestamp"], utc=True)
+    return np.asarray(times.to_numpy("datetime64[s]").astype(np.int64))
+
+
+def _gaps(frame: pd.DataFrame) -> np.ndarray | None:
+    """The log moves from each close to the next open across a closure."""
+    seconds = _seconds(frame)
+    if seconds is None:
+        return None
+    after = np.flatnonzero(np.diff(seconds) > 60) + 1
+    opens, closes = frame["open"].to_numpy(dtype=float), frame["close"].to_numpy(dtype=float)
+    return np.asarray(np.log(opens[after] / closes[after - 1]))
+
+
+def _regime_codes(frame: pd.DataFrame) -> np.ndarray | None:
+    if "regime" not in frame.columns:
+        return None
+    labels = frame["regime"].astype(str)
+    return np.asarray(pd.Categorical(labels, categories=[r.value for r in RegimeType]).codes)
 
 
 def _market_of(path: Path) -> MarketType:
@@ -106,13 +146,5 @@ def _market_of(path: Path) -> MarketType:
 
 def _minutes_between_candles(frame: pd.DataFrame) -> float | None:
     """Smallest gap between consecutive candles, in minutes; None when times are unknown."""
-    if isinstance(frame.index, pd.DatetimeIndex):
-        seconds = frame.index.to_numpy("datetime64[s]").astype(np.int64)
-    elif "timestamp" not in frame.columns:
-        return None
-    elif pd.api.types.is_numeric_dtype(frame["timestamp"]):
-        seconds = frame["timestamp"].to_numpy(dtype=np.int64)
-    else:
-        times = pd.to_datetime(frame["timestamp"], utc=True)
-        seconds = times.to_numpy("datetime64[s]").astype(np.int64)
-    return float(np.diff(seconds).min()) / 60.0
+    seconds = _seconds(frame)
+    return None if seconds is None else float(np.diff(seconds).min()) / 60.0

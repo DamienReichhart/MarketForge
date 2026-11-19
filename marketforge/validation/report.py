@@ -114,11 +114,22 @@ def validate_returns(returns: np.ndarray, market_type: MarketType) -> Validation
 
 
 def validate_ohlcv(
-    open_, high, low, close, market_type: MarketType, spread=None
+    open_,
+    high,
+    low,
+    close,
+    market_type: MarketType,
+    spread=None,
+    volume=None,
+    gaps=None,
+    regime=None,
 ) -> ValidationReport:
     """
     Validate an OHLC series: return-based facts plus range efficiency, and the
-    level and behaviour of the quoted spread when one is given.
+    level and behaviour of the quoted spread when one is given. With
+    ``volume``, the link between volume and the size of moves; with ``gaps``
+    (the log moves over closures: overnight, weekend), their share of the
+    variance; with ``regime`` codes, the spread of spell lengths.
 
     Return-based facts use each candle's open-to-close log return. Within a
     session that equals the close-to-close return; across a market closure it
@@ -132,8 +143,53 @@ def validate_ohlcv(
         sf.range_efficiency(open_, high, low, close),
         *bands_for(market_type).range_efficiency,
     )
+    bands = bands_for(market_type)
+    loose = not bands.extra_anchored
+    if r.size > 1000:
+        allowance = 2.0 / np.sqrt(r.size)
+        low, high = bands.return_autocorrelation
+        report.metrics["return_autocorrelation"] = _check(
+            "return_autocorrelation",
+            sf.return_autocorrelation(r),
+            round(low - allowance, 4),
+            round(high + allowance, 4),
+            provisional=loose,
+        )
+        report.metrics["hourly_kurtosis"] = _check(
+            "hourly_kurtosis",
+            sf.aggregated_kurtosis(r, 60),
+            *bands.hourly_kurtosis,
+            provisional=loose,
+        )
+    if volume is not None and np.mean(np.asarray(volume) > 0) > 0.95:
+        report.metrics["volume_volatility"] = _check(
+            "volume_volatility",
+            sf.volume_volatility_link(r, volume),
+            bands.volume_volatility_min,
+            None,
+            provisional=loose,
+        )
+    if gaps is not None and np.asarray(gaps).size >= 5:
+        report.metrics["gap_variance_share"] = _check(
+            "gap_variance_share",
+            sf.gap_variance_share(r, gaps),
+            *bands.gap_variance_share,
+            provisional=True,
+        )
+    if regime is not None:
+        variation = sf.spell_variation(regime)
+        if np.isfinite(variation):
+            spells = np.count_nonzero(np.diff(np.asarray(regime)) != 0)
+            allowance = 2.0 * variation / np.sqrt(2.0 * spells)  # standard error of a CV
+            low, high = bands.spell_variation
+            report.metrics["spell_variation"] = _check(
+                "spell_variation",
+                variation,
+                round(low - allowance, 4),
+                round(high + allowance, 4),
+                provisional=True,
+            )
     if spread is not None:
-        bands = bands_for(market_type)
         provisional = not bands.spread_anchored
         report.metrics["spread_bps"] = _check(
             "spread_bps",

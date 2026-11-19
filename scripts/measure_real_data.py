@@ -149,6 +149,8 @@ def window_stats(df: pd.DataFrame) -> dict[str, float]:
         "leverage": sf.leverage_correlation(r),
         "range_efficiency": sf.range_efficiency(o, h, l, c),
         "zero_return_share": float(np.mean(r == 0)),
+        "return_autocorrelation": sf.return_autocorrelation(r),
+        "hourly_kurtosis": sf.aggregated_kurtosis(r, 60),
     }
     for lag in (15, 60, 240, 1440):
         if a.size > lag * 4:
@@ -171,6 +173,7 @@ def window_stats(df: pd.DataFrame) -> dict[str, float]:
                 "log_volume_std": float(lv.std()),
                 "log_volume_acf1": sf._acf(lv, 1),
                 "corr_abs_return_log_volume": float(np.corrcoef(a[pos], lv)[0, 1]),
+                "volume_volatility": sf.volume_volatility_link(r, v),
                 "max_minute_volume_share": float(v.max() / v.sum()),
             }
         )
