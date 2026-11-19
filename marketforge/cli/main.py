@@ -15,6 +15,7 @@ Command-line interface.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import click
@@ -39,6 +40,8 @@ class _Group(click.Group):
     """
 
     def invoke(self, ctx: click.Context) -> Any:
+        if not ctx.params.get("debug"):
+            warnings.showwarning = _show_warning
         try:
             return super().invoke(ctx)
         except (click.ClickException, click.exceptions.Exit, click.exceptions.Abort, SystemExit):
@@ -50,6 +53,11 @@ class _Group(click.Group):
             if not isinstance(e, (ValueError, OSError)):
                 click.echo("Run again with --debug for the full traceback.", err=True)
             ctx.exit(1)
+
+
+def _show_warning(message: Warning | str, *_: Any, **__: Any) -> None:
+    """A warning as the command line shows it: one line, without Python's file and line."""
+    click.secho(f"Warning: {message}", fg="yellow", err=True)
 
 
 @click.group(cls=_Group, context_settings={"help_option_names": ["-h", "--help"]})

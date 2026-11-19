@@ -31,7 +31,9 @@ jobs_option = click.option(
     help="Markets simulated in parallel. Default: one per market, up to the CPU count.",
 )
 progress_option = click.option(
-    "--progress/--no-progress", default=True, show_default=True, help="Show a progress bar."
+    "--progress/--no-progress",
+    default=None,
+    help="Show a progress bar. Default: only when the output is a terminal.",
 )
 quiet_option = click.option(
     "--quiet", "-q", is_flag=True, help="Print nothing but warnings and errors (for scripts)."
@@ -58,7 +60,7 @@ def run(
     fmt: str,
     timestamps: str,
     jobs: int | None,
-    progress: bool,
+    progress: bool | None,
     overwrite: bool = False,
     quiet: bool = False,
 ) -> None:
@@ -67,6 +69,8 @@ def run(
     t0 = time.time()
     bar = None
     lock = threading.Lock()
+    if progress is None:  # no bar in CI logs or pipes unless asked for
+        progress = sys.stderr.isatty()
     if progress and not quiet:
         total = request.n_days * len(request.plans)
         bar = tqdm(total=total, unit="day", desc="Simulating", ncols=90, file=sys.stderr)
