@@ -68,9 +68,21 @@ Upgrading from 4.x? See
   with a half-life of 60 days and a mean square of 1, so the catalog's
   volatility is kept.
 - **Stocks' long-run drift is at most 8% a year.** NVDA and LLY had 15%:
-  history is no guide to the next decade. A 50%-volatile stock still ends
-  ten years anywhere from a tenth to fifty times its start: that is its
-  volatility, not its drift.
+  history is no guide to the next decade.
+- **The catalog's volatility is what daily returns show, and nearly what
+  years show.** Regime trends moved a market by about one spell standard
+  deviation per spell, which added 0.5 to 1 times the diffusion's variance
+  at a day and 3 to 6 times at a year: BTC moved 1.6 a year (in log) for a
+  catalog volatility of 0.55, coins drifted to zero over a decade, and a
+  50%-volatile stock ended ten years anywhere from a hundredth to fifty
+  times its start. Trends are now a quarter of a spell's standard
+  deviation down (trend_down, crash) and what offsets that up (trend_up),
+  and add 2-6% of the variance at a day and 13-30% at a year. A stock's
+  earnings reports are now inside its volatility, which they raised by
+  17%. Daily volatility is 0.99-1.04 times the catalog's, annual 0.94-1.2
+  ([ADR 0018](docs/adr/0018-the-volatility-budget-holds-at-every-horizon.md)).
+  Regime labels carry less trend: detectors find them mostly by their
+  volatility.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell

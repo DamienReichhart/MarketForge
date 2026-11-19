@@ -26,13 +26,21 @@ from marketforge.config.model_params import (
 from marketforge.domain.markets import MarketType
 from marketforge.domain.regimes import RegimeType
 
-# Trend of a spell of each regime, in units of its volatility (see RegimeParams).
-# Trends are centred so the catalog drift is the long-run drift; offsetting
-# the crashes lifts every regime by ~0.3-0.4, so trend_down is set stronger
-# than trend_up: after centering, a spell of either ends in its direction
-# about 70-90% of the time, and a crash spell falls ~1.5 of its own (large)
-# standard deviations.
-TREND_STRENGTH = (1.0, -1.4, 0.0, -0.3, -1.5)
+# Trend of a spell of each regime, in units of its volatility (see RegimeParams),
+# solved per market so that, once centred (the catalog drift is the long-run
+# drift), each label means what it says: a spell of trend_down or a crash
+# falls a quarter of its own standard deviation on average, range is flat,
+# and trend_up rises by what offsets them (about 0.75, 0.5 in forex, whose
+# crashes are rarer): markets climb slowly and fall fast. Trends must stay
+# weak: at (1.0, -1.4, 0, -0.3, -1.5) they added 0.5-1 times the diffusion's
+# variance at a day and 3-6 times at a year, so a coin with a 55% volatility
+# moved 1.6 a year and drifted to zero (ADR 0018). Now they add about 2-6%
+# at a day and 13-30% at a year: the mild momentum of real markets.
+TREND_STRENGTH = {
+    MarketType.CRYPTO: (0.67, -0.23, 0.0, -0.045, -0.23),
+    MarketType.FOREX: (0.44, -0.22, 0.0, -0.044, -0.22),
+    MarketType.STOCKS: (0.68, -0.23, 0.0, -0.045, -0.23),
+}
 
 
 @dataclass(frozen=True)
@@ -104,7 +112,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
             (0.06, 0.10, 0.14, 0.62, 0.08),
             (0.08, 0.08, 0.12, 0.32, 0.40),
         ),
-        trend_strength=TREND_STRENGTH,
+        trend_strength=TREND_STRENGTH[MarketType.CRYPTO],
         volatility_multipliers=(0.9, 0.9, 0.7, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
         # Calibrated on Binance BTC/ETH/SOL m1 (Feb 2024): trends last ~1.7
@@ -163,7 +171,7 @@ FOREX_DEFAULTS = MarketDefaults(
             (0.04, 0.08, 0.18, 0.68, 0.02),
             (0.10, 0.10, 0.20, 0.40, 0.20),
         ),
-        trend_strength=TREND_STRENGTH,
+        trend_strength=TREND_STRENGTH[MarketType.FOREX],
         volatility_multipliers=(0.7, 0.7, 0.5, 1.8, 3.0),
         initial_regime=RegimeType.RANGE,
         # Provisional (no real FX m1 reference yet): trends last ~2.8 days.
@@ -215,7 +223,7 @@ STOCKS_DEFAULTS = MarketDefaults(
             (0.05, 0.10, 0.15, 0.65, 0.05),
             (0.05, 0.05, 0.10, 0.30, 0.50),
         ),
-        trend_strength=TREND_STRENGTH,
+        trend_strength=TREND_STRENGTH[MarketType.STOCKS],
         # A crash is the most volatile regime, as in every market (3.x had it
         # calmer than high_volatility, 1.5 against 1.8).
         volatility_multipliers=(0.8, 0.8, 0.6, 1.8, 2.6),

@@ -34,6 +34,7 @@ BOOST = 1.0
 BOOST_DAYS = 2.0
 BOOST_HORIZON = 10  # calendar days after which the boost is gone
 _QUARTER_MONTHS = (1, 4, 7, 10)
+REPORTS_PER_YEAR = len(_QUARTER_MONTHS)
 _FIRST_DAY = 21  # days into the quarter of the earliest report
 _SPREAD_DAYS = 21  # reports spread over three weeks
 
@@ -63,6 +64,28 @@ def reports_between(
         for d in earnings_days(symbol, year, calendar)
         if first_day <= d <= last_day
     ]
+
+
+def boost_variance_days() -> float:
+    """Extra variance a report's volatility boost adds, in trading days of the stock's variance."""
+    days = np.arange(BOOST_HORIZON + 1)
+    return float(np.sum(volatility_boost(days) ** 2 - 1.0) * 5.0 / 7.0)  # trading days only
+
+
+def diffusion_scale(volatility: float, move: float) -> float:
+    """The share of a stock's volatility left to its diffusion once its reports have theirs.
+
+    The catalog's volatility is the stock's total: four jumps of ``move``
+    (log, one standard deviation) a year and the boosts after them included,
+    so the diffusion's variance s^2 vol^2 solves
+    s^2 vol^2 (1 + 4 B / 252) + 4 move^2 = vol^2. Never below half.
+    """
+    if move <= 0.0 or volatility <= 0.0:
+        return 1.0
+    share = (1.0 - REPORTS_PER_YEAR * move**2 / volatility**2) / (
+        1.0 + REPORTS_PER_YEAR * boost_variance_days() / 252.0
+    )
+    return float(np.sqrt(max(share, 0.25)))
 
 
 def volatility_boost(days_since_open: np.ndarray) -> np.ndarray:
