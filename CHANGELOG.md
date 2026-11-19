@@ -26,7 +26,7 @@ Upgrading from 4.x? See
   stressed about a month in nine) makes high volatility and crashes likelier
   in every market at once and drifts them down together
   ([ADR 0016](docs/adr/0016-markets-share-a-macro-state-and-a-global-shock.md)).
-  BTC-AAPL is now 0.13 daily, 0.28 weekly and 0.39 monthly; crypto is
+  BTC-AAPL is now 0.15 daily, 0.19 weekly and 0.30 monthly; crypto is
   stressed 39% of the time stocks are, against 25% otherwise. Each market's
   own correlations are unchanged. `GeneratedData.macro()` labels every day.
 - **Index CFDs follow the stock market's regime.** SPXUSD shared the
@@ -57,7 +57,7 @@ Upgrading from 4.x? See
   as at D1, unlike real markets (the Epps effect). The quoted mid now
   jitters around the efficient price by a quarter of the minute's
   volatility (0.15 for crypto): lag-1 autocorrelation of AAPL's m1 returns
-  is -0.04, and AAPL-MSFT is 0.73 at m1 against 0.81 daily. Each open is
+  is -0.05, and AAPL-MSFT is 0.74 at m1 against 0.76 daily. Each open is
   still the previous close, and forex crosses still derive from anchors.
 - **Stocks have opening and closing auctions.** The last minute held 0.6%
   of a day's volume; the closing cross now prints about 5-9%, and the open
@@ -83,6 +83,16 @@ Upgrading from 4.x? See
   ([ADR 0018](docs/adr/0018-the-volatility-budget-holds-at-every-horizon.md)).
   Regime labels carry less trend: detectors find them mostly by their
   volatility.
+- **Correlations are the catalog's at the daily horizon.** The regimes'
+  common trends and stress shocks correlated daily returns more than the
+  minute shocks they were set on: coins came out 0.72 daily on average
+  against the catalog's 0.53, AAPL-XOM 0.56 against 0.38. The minute shocks
+  now get the matrix whose simulated daily returns correlate as the catalog
+  states, fitted by simulation offline: within 0.003 on average for coins,
+  0.007 for stocks and 0.03 for forex, whose anchor matrix is at its limit
+  for a few commodity pairs (silver and oil against the dollar come out at
+  half their stated correlation). An override file's correlations are
+  daily ones too.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell

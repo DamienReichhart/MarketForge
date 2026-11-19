@@ -29,13 +29,13 @@ Correlated, unit-variance **Student-t shocks** *z*, built as a normal variance m
 
 Crypto shocks have 6 degrees of freedom, the heaviest tails of the three markets.
 
-In high-volatility and crash regimes a common shock is added to every instrument, so **correlations intensify under stress** as they do in real sell-offs. From range to crash, BTC-SAND goes from 0.55 to 0.82, AAPL-XOM from 0.38 to 0.65 and EURUSD-USDCHF from -0.66 to -0.86. See [ADR 0014](../../adr/0014-correlations-intensify-under-stress/).
+In high-volatility and crash regimes a common shock is added to every instrument, so **correlations intensify under stress** as they do in real sell-offs. From range to crash, BTC-SAND goes from 0.44 to 0.73, AAPL-XOM from 0.32 to 0.54 and EURUSD-USDCHF from -0.55 to -0.81 (m5 returns, two years). See [ADR 0014](../../adr/0014-correlations-intensify-under-stress/).
 
 ## The world
 
 Two world-wide inputs, drawn from streams keyed by the seed and the day but not by the market, link the three markets, and the index CFDs follow the stock market's own regime. See [ADR 0016](../../adr/0016-markets-share-a-macro-state-and-a-global-shock/).
 
-- **The global shock** is one normal per minute. Each market has a global direction: its main factor for coins and stocks, and for forex a risk loading per code (equity index CFDs most, commodity and emerging currencies up, the yen, the franc, the dollar and gold down). The shock of that direction is partly replaced by the global shock, which keeps the market's own correlations exactly and correlates it with the other markets: BTC-AAPL is about 0.13 daily, 0.3 weekly and 0.4 monthly. A market that was closed receives in its gap what the world did meanwhile.
+- **The global shock** is one normal per minute. Each market has a global direction: its main factor for coins and stocks, and for forex a risk loading per code (equity index CFDs most, commodity and emerging currencies up, the yen, the franc, the dollar and gold down). The shock of that direction is partly replaced by the global shock, which keeps the market's own correlations exactly and correlates it with the other markets: BTC-AAPL is about 0.15 daily, 0.2 weekly and 0.3 monthly. A market that was closed receives in its gap what the world did meanwhile.
 - **The stock market's regime chain** is run by the forex market too (regime draws have a random stream of their own in every market), so during NYSE hours the index CFDs follow the stock market's regime: its trend (each by its risk loading relative to the S&P 500's), its volatility and its stress shocks. SPXUSD correlates about 0.6 weekly with a basket of large caps.
 - **The macro state**, calm or stressed, changes at UTC midnight: about a month stressed per eight months calm. While stressed, every market's coupling to the world rises, its next regime is tilted towards high volatility and crashes, its calm spells end early, and the world drifts down along every market's global direction by about one standard deviation of the stressed spell (calm days drift up by the share that keeps the long-run drift at the catalog's). `GeneratedData.macro()` labels every day.
 
@@ -86,7 +86,7 @@ A **log-AR(1)** process. Volume rises with the size of the standardized move, wi
 
 ## Quotes and ticks
 
-The published mid jitters around the simulated, efficient price by a share of the minute's volatility (0.25 for stocks and forex, 0.15 for crypto), the **microstructure noise** of real quotes: minute returns revert slightly (AAPL's lag-1 autocorrelation is about -0.04) and minute correlations are lower than daily ones (AAPL-MSFT 0.73 at m1, 0.81 daily: the Epps effect). Each open is still the previous close.
+The published mid jitters around the simulated, efficient price by a share of the minute's volatility (0.25 for stocks and forex, 0.15 for crypto), the **microstructure noise** of real quotes: minute returns revert slightly (AAPL's lag-1 autocorrelation is about -0.04) and minute correlations are lower than daily ones (AAPL-MSFT 0.74 at m1, 0.76 daily: the Epps effect). Each open is still the previous close.
 
 Every price is then a whole number of the instrument's **tick**: a cent for stocks (a hundredth of a cent below $1), and about five significant digits elsewhere (0.00001 on EURUSD, 0.001 on USDJPY, 0.01 on XAUUSD, 0.1 on BTCUSD). `tick_size` in an override file sets it. A forex cross equals the product of its anchors to within the rounding of the three prices.
 
