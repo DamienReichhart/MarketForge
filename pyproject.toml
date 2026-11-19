@@ -121,12 +121,14 @@ docs = [
     "scikit-learn>=1.9",
     "polars>=2.1",
     "duckdb>=2.0",
-    # The Backtesting page's engine recipes.
+    # The Backtesting page's engine recipes. vectorbt and nautilus_trader
+    # support Python < 3.15 only, so the documentation runs on the newest
+    # Python they support (DOCS_PYTHON in ci.yml and noxfile.py).
     "backtrader>=1.9.78",
     "backtesting>=0.6.6",
     "jinja2>=3.1",  # backtesting.py's statistics
-    "vectorbt>=1.2",
-    "nautilus_trader>=1.231",
+    "vectorbt>=1.2; python_version < '3.15'",
+    "nautilus_trader>=1.231; python_version < '3.15'",
 ]
 workflow-lint = [
     "actionlint-py>=1.7.12",
