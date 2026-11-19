@@ -129,15 +129,47 @@ def test_generate_takes_lowercase_timeframes_and_warns_about_empty_files(tmp_pat
         "--to",
         "2024-01-01T12:00",
         "--instruments",
-        "AAPL",
+        "AAPL,EURUSD",
         "-t",
-        "d1",
+        "m1,d1",
         "--seed",
         "1",
         "--no-progress",
     )
     assert res.exit_code == 0, res.output
-    assert "Warning: No candles for AAPL D1" in res.output
+    assert "Warning: No candles for AAPL m1, AAPL D1, EURUSD D1" in res.output
+
+
+def test_warnings_are_one_line_without_python_internals(tmp_path):
+    res = _run(
+        "generate",
+        "-o",
+        str(tmp_path),
+        "--from",
+        "2024-01-02",
+        "--days",
+        "1",
+        "-i",
+        "BTCUSD,AAPL",
+        "--market",
+        "crypto",
+        "-t",
+        "m1",
+        "--seed",
+        "1",
+    )
+    assert res.exit_code == 0, res.output
+    assert "Warning: AAPL (stocks) not in the requested markets" in res.output
+    assert "UserWarning" not in res.output and ".py:" not in res.output
+
+
+def test_a_range_with_every_market_closed_fails_and_writes_nothing(tmp_path):
+    res = _run(
+        "generate", "-o", str(tmp_path / "d"), "--from", "2024-01-06", "--days", "1", "-i", "AAPL"
+    )
+    assert res.exit_code == 1
+    assert "stocks is closed for the whole range" in res.output
+    assert not (tmp_path / "d").exists()
 
 
 def test_generate_asks_for_an_output_directory_before_planning():

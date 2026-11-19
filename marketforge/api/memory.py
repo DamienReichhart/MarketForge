@@ -189,7 +189,8 @@ def generate(
             for symbol, frame in zip(plan.selected, frames, strict=True):
                 out.setdefault(symbol, {})[tf.name] = frame
     warn_about_empty(
-        (symbol, name) for symbol, frames in out.items() for name, f in frames.items() if f.empty
+        ((symbol, name) for symbol, frames in out.items() for name, f in frames.items() if f.empty),
+        total=sum(len(frames) for frames in out.values()),
     )
     return out
 
