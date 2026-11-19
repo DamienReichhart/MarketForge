@@ -20,6 +20,7 @@ from marketforge.api.catalog import instruments
 from marketforge.api.data import GeneratedData, InstrumentData, Windows
 from marketforge.api.disk import DiskReport, extend, generate_to_disk
 from marketforge.api.estimating import Estimate, estimate
+from marketforge.api.exporting import ExportReport, export
 from marketforge.api.inspecting import DatasetInfo, VerifyReport, info, verify
 from marketforge.api.memory import concat, generate, generate_many
 from marketforge.api.parsing import parse_time
@@ -36,6 +37,7 @@ __all__ = [
     "DatasetInfo",
     "DiskReport",
     "Estimate",
+    "ExportReport",
     "GeneratedData",
     "InstrumentData",
     "MetricResult",
@@ -47,6 +49,7 @@ __all__ = [
     "calibrate",
     "concat",
     "estimate",
+    "export",
     "extend",
     "generate",
     "generate_many",

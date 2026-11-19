@@ -180,6 +180,23 @@ Fits instruments to `m1` candle files you have, and are allowed to use, and writ
 | `-m, --market` | `crypto`, `forex` or `stocks`: the market the instruments join, for their calendar and correlations. Required. |
 | `-o, --output FILE` | The override file to write. Default: `calibrated.toml`. |
 
+## export
+
+```bash
+marketforge generate -o ./data -i BTCUSD,ETHUSD --from 2024-01-01 --days 7 -t m1,H1
+marketforge export freqtrade ./data user_data/data/kraken
+marketforge export lean ./data ./lean-data
+```
+
+Writes a dataset in the file layout a backtesting engine reads, without changing the dataset. See [Backtesting](../../use-cases/backtesting/#freqtrade) for each engine's layout.
+
+| Option | Meaning |
+| --- | --- |
+| `ENGINE` | `freqtrade` (Feather files per pair and timeframe) or `lean` (LEAN's data folder, built from the dataset's `m1` candles). |
+| `DATASET` | The dataset directory. |
+| `DEST` | Where to write: freqtrade's data directory (its `--datadir`), or LEAN's data folder. |
+| `--quote CODE` | freqtrade: the code of the dollar coins are quoted in, in pair names (`USDT` gives `BTC_USDT-5m.feather`). |
+
 ## list-instruments
 
 ```bash check=static
