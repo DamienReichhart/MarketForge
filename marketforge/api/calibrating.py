@@ -40,6 +40,8 @@ def calibrate(
     - ``start_price``: the last close, so a generation continues from there;
     - ``volatility``: the annualised volatility of its log returns, overnight
       and weekend gaps included, as the catalog defines it;
+    - ``tick_size``: the price step the closes are on (a power of ten), so
+      the generated prices keep the data's decimals;
     - ``volume_base``: the mean volume per minute;
     - ``correlations``: the correlation of hourly returns with every file
       before it, on the hours both trade, kept within +/-0.99 as an override
@@ -77,9 +79,12 @@ def calibrate(
             "start_price": float(candles["close"].iloc[-1]),
             "volatility": round(volatility, 6),
         }
+        tick = _tick_size(candles["close"].to_numpy(dtype=float))
+        if tick is not None and tick <= body["start_price"]:
+            body["tick_size"] = tick
         if "volume" in candles.columns and candles["volume"].sum() > 0:
             observed = float(candles["volume"].mean())
-            body["volume_base"] = round(observed / _volume_scale(market), 4)
+            body["volume_base"] = round(observed / _volume_scale(market, symbol), 4)
         series = pd.Series(log_close, index=candles.index).resample("1h").last().diff().dropna()
         correlations = {}
         for other, theirs in hourly.items():
@@ -102,6 +107,15 @@ def calibrate(
     return out
 
 
+def _tick_size(closes: np.ndarray) -> float | None:
+    """The coarsest step, from 1 down to 1e-8 (a power of ten), every close is on."""
+    for decimals in range(9):
+        scaled = closes * 10.0**decimals
+        if np.all(np.abs(scaled - np.rint(scaled)) <= 1e-6 + 1e-12 * np.abs(scaled)):
+            return float(f"1e-{decimals}")
+    return None
+
+
 def _symbol_of(path: Path) -> str:
     stem = path.stem
     if not stem.lower().endswith("_m1") or len(stem) <= 3:
@@ -112,20 +126,35 @@ def _symbol_of(path: Path) -> str:
     return stem[:-3].upper()
 
 
-@cache
-def _volume_scale(market: MarketType) -> float:
-    """Mean generated volume per unit of ``volume_base`` in a market, measured once.
+# The seeds and days _volume_scale averages over: one seed's 90 days were
+# off by 10% or more, as the regimes and the world move the mean volume.
+_SCALE_SEEDS = (0, 1, 2, 3)
+_SCALE_DAYS = 45
 
-    Turbulence, seasonality and the regimes all scale volume, so a catalog
-    ``volume_base`` is not the mean volume it produces; dividing an observed
-    mean by this gives the ``volume_base`` that reproduces it.
+
+@cache
+def _volume_scale(market: MarketType, symbol: str) -> float:
+    """Mean generated volume per unit of ``volume_base`` for an instrument, measured once.
+
+    Turbulence, seasonality and the regimes all scale volume, and by how much
+    depends on the instrument (its volume volatility, its turbulence), so a
+    catalog ``volume_base`` is not the mean volume it produces; dividing an
+    observed mean by this gives the ``volume_base`` that reproduces it. An
+    instrument the catalog does not have is measured as the market's first.
     """
     from marketforge.api.memory import generate  # the simulator, only when calibrating
 
     catalog = instruments(market.value)
-    symbol = str(catalog.index[0])
-    frame = generate(symbol, start="2023-01-02", days=90, seed=0)[symbol]["m1"]
-    return float(frame["volume"].mean()) / float(catalog.loc[symbol, "volume_base"])
+    known = symbol if symbol in catalog.index else str(catalog.index[0])
+    ratios = [
+        float(
+            generate(known, start="2023-01-02", days=_SCALE_DAYS, seed=seed)[known]["m1"][
+                "volume"
+            ].mean()
+        )
+        for seed in _SCALE_SEEDS
+    ]
+    return float(np.mean(ratios)) / float(catalog.loc[known, "volume_base"])
 
 
 def write_overrides(overrides: dict[str, dict[str, Any]], path: str | os.PathLike[str]) -> Path:

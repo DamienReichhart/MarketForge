@@ -32,7 +32,9 @@ def test_calibrate_writes_an_override_file_that_reproduces_the_data(real, tmp_pa
     assert doc["ETHUSD"]["correlations"]["BTCUSD"] == pytest.approx(0.88, abs=0.1)
     # The file is a valid override: generation uses it.
     data = mf.generate("BTCUSD", start="2024-06-01", days=1, seed=1, overrides=out)
-    assert data["BTCUSD"]["m1"]["open"].iloc[0] == pytest.approx(doc["BTCUSD"]["start_price"])
+    # On the data's own tick, so it continues exactly from the last close.
+    assert doc["BTCUSD"]["tick_size"] == 0.1 and doc["ETHUSD"]["tick_size"] == 0.01
+    assert data["BTCUSD"]["m1"]["open"].iloc[0] == doc["BTCUSD"]["start_price"]
 
 
 def test_calibrate_names_new_instruments_by_their_file(real, tmp_path):
