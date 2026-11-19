@@ -12,6 +12,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ from marketforge.api.parsing import (
     Names,
     TimeLike,
     parse_format,
+    parse_layout,
     parse_time,
     parse_timestamps,
     range_end,
@@ -40,12 +42,14 @@ from marketforge.domain.bars import Bars
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import Timeframe
 from marketforge.output.file_limits import ensure_open_file_capacity
-from marketforge.output.formats import OutputFormat, TimestampFormat, check_formats
+from marketforge.output.formats import Layout, OutputFormat, TimestampFormat, check_formats
 from marketforge.output.manifest import (
+    REWRITE_SUFFIX,
     Manifest,
     begin_extension,
     clear_dataset,
     commit_extension,
+    file_record,
     iso_time,
     read_manifest,
     recover,
@@ -66,7 +70,16 @@ class DiskReport:
 
     @property
     def n_files(self) -> int:
-        return sum(len(tfs) for syms in self.paths.values() for tfs in syms.values())
+        return len(self.files)
+
+    @property
+    def files(self) -> list[Path]:
+        """Every candle file written, once (in the long layout, instruments share files)."""
+        return list(
+            dict.fromkeys(
+                p for syms in self.paths.values() for tfs in syms.values() for p in tfs.values()
+            )
+        )
 
 
 @renamed_arguments
@@ -87,6 +100,7 @@ def generate_to_disk(
     overrides: Overrides | None = None,
     format: str | OutputFormat = OutputFormat.CSV,
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
+    layout: str | Layout = Layout.SPLIT,
     jobs: int | None = None,
     on_day: Callable[[MarketType], None] | None = None,
     overwrite: bool = False,
@@ -97,8 +111,12 @@ def generate_to_disk(
     Takes the same arguments as :func:`generate` plus ``format`` (``csv``,
     ``parquet`` or ``feather``), ``timestamps`` (``unix`` seconds; ``iso`` 8601
     in CSV files; ``datetime``, a native UTC time column, in Parquet and
-    Feather files) and ``jobs`` (markets simulated in parallel; default one
-    per market, up to the CPU count, as on the command line). Memory use does
+    Feather files), ``layout`` (``split``: one file per instrument and
+    timeframe; ``long``, Parquet and Feather only: one file per market and
+    timeframe, ``{market}/{tf}.{format}``, with ``symbol`` and ``market``
+    columns, sorted by time then symbol) and ``jobs`` (markets simulated in
+    parallel; default one per market, up to the CPU count, as on the command
+    line). Memory use does
     not grow with the length of the range. The manifest (``marketforge.json``)
     records how the dataset was produced, so that it can be reproduced, and
     continued later with :func:`extend`.
@@ -111,8 +129,8 @@ def generate_to_disk(
     Raises:
         FileExistsError: if ``output_dir`` holds a dataset and ``overwrite`` is false.
     """
-    fmt, stamps = parse_format(format), parse_timestamps(timestamps)
-    check_formats(fmt, stamps)
+    fmt, stamps, shape = parse_format(format), parse_timestamps(timestamps), parse_layout(layout)
+    check_formats(fmt, stamps, shape)
     request = plan_request(
         instruments,
         markets,
@@ -132,6 +150,7 @@ def generate_to_disk(
         output_dir,
         fmt=fmt,
         timestamps=stamps,
+        layout=shape,
         jobs=default_jobs(request, jobs),
         on_day=on_day,
         overwrite=overwrite,
@@ -169,6 +188,7 @@ def extend(
         dataset,
         fmt=fmt,
         timestamps=timestamps,
+        layout=Layout(read_manifest(dataset).layout),
         jobs=default_jobs(request, jobs),
         on_day=on_day,
     )
@@ -217,6 +237,7 @@ def write_request(
     *,
     fmt: str | OutputFormat = OutputFormat.CSV,
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
+    layout: str | Layout = Layout.SPLIT,
     jobs: int = 1,
     on_day: Callable[[MarketType], None] | None = None,
     overwrite: bool = False,
@@ -224,11 +245,12 @@ def write_request(
     """Run an already resolved request (a new dataset or an extension) into ``output_dir``."""
     fmt = OutputFormat(fmt)
     timestamps = TimestampFormat(timestamps)
+    shape = Layout(layout)
     root = Path(output_dir)
     extending = request.extends_from is not None
     if fmt != OutputFormat.CSV:
-        n_files = sum(len(p.selected) for p in request.plans) * len(request.timeframes)
-        ensure_open_file_capacity(n_files)
+        per_market = [1 if shape == Layout.LONG else len(p.selected) for p in request.plans]
+        ensure_open_file_capacity(sum(per_market) * len(request.timeframes))
     if not extending:
         root.mkdir(parents=True, exist_ok=True)
         clear_dataset(root, overwrite=overwrite)
@@ -245,11 +267,17 @@ def write_request(
             include_spread=request.include_spread,
             include_bid_ask=request.include_bid_ask,
             timestamps=timestamps,
+            layout=shape,
+            metadata=file_metadata(request.seed),
         )
         for plan in request.plans
     }
     if extending:
-        files = [p for w in writers.values() for tfs in w.paths.values() for p in tfs.values()]
+        files = list(
+            dict.fromkeys(
+                p for w in writers.values() for tfs in w.paths.values() for p in tfs.values()
+            )
+        )
         begin_extension(root, files if fmt == OutputFormat.CSV else [])
 
     def write(plan: MarketPlan, tf: Timeframe, bars: Bars) -> None:
@@ -286,6 +314,7 @@ def write_request(
         start=request.start,
         end=request.end,
         format=fmt.value,
+        layout=shape.value,
         timestamps=timestamps.value,
         timeframes=[tf.name for tf in request.timeframes],
         anomalies=sorted(request.anomalies),
@@ -306,8 +335,24 @@ def write_request(
         except NothingGenerated:
             clear_dataset(root, overwrite=True)  # header-only files are not a dataset
             raise
+    manifest.files = _records(root, report.files)
     report.manifest = (commit_extension if extending else write_manifest)(root, manifest)
     return report
+
+
+def file_metadata(seed: int) -> dict[str, str]:
+    """What every Parquet and Feather file says about the generation that wrote it."""
+    return {"marketforge": __version__, "model_revision": str(MODEL_REVISION), "seed": str(seed)}
+
+
+def _records(root: Path, files: list[Path]) -> dict[str, dict[str, Any]]:
+    """Rows, size and checksum of each file, as written (an extension's rewritten ones too)."""
+    out = {}
+    for path in files:
+        pending = path.with_name(path.name + REWRITE_SUFFIX)
+        current = pending if pending.exists() else path
+        out[path.relative_to(root).as_posix()] = file_record(current)
+    return out
 
 
 def save_data(
@@ -316,6 +361,7 @@ def save_data(
     *,
     format: str | OutputFormat = OutputFormat.CSV,
     timestamps: str | TimestampFormat = TimestampFormat.UNIX,
+    layout: str | Layout = Layout.SPLIT,
     overwrite: bool = False,
 ) -> DiskReport:
     """Write candles held in memory as a dataset (:meth:`GeneratedData.save`)."""
@@ -325,8 +371,8 @@ def save_data(
             "This data was cut in time with between(), so it is not the output of a generation "
             "and could not be extended: save the whole result, or write its frames yourself"
         )
-    fmt, stamps = parse_format(format), parse_timestamps(timestamps)
-    check_formats(fmt, stamps)
+    fmt, stamps, shape = parse_format(format), parse_timestamps(timestamps), parse_layout(layout)
+    check_formats(fmt, stamps, shape)
     columns = set(data.columns)
     with_regime, with_spread = "regime" in columns, "spread" in columns
     with_bid_ask = "bid" in columns
@@ -336,7 +382,8 @@ def save_data(
     root.mkdir(parents=True, exist_ok=True)
     clear_dataset(root, overwrite=overwrite)
     if fmt != OutputFormat.CSV:
-        ensure_open_file_capacity(len(data.symbols) * len(timeframes))
+        per_market = [1 if shape == Layout.LONG else len(s) for s in by_market.values()]
+        ensure_open_file_capacity(sum(per_market) * len(timeframes))
     report = DiskReport(seed=data.seed)
     for market, symbols in by_market.items():
         writer = CandleWriter(
@@ -350,6 +397,8 @@ def save_data(
             include_spread=with_spread,
             include_bid_ask=with_bid_ask,
             timestamps=stamps,
+            layout=shape,
+            metadata=file_metadata(data.seed),
         )
         for tf in timeframes:
             writer.write(tf, _bars([data.frame(s, tf.name) for s in symbols]))
@@ -362,6 +411,7 @@ def save_data(
         start=origin.start,
         end=origin.end,
         format=fmt.value,
+        layout=shape.value,
         timestamps=stamps.value,
         timeframes=[tf.name for tf in timeframes],
         anomalies=list(origin.anomalies),
@@ -380,6 +430,7 @@ def save_data(
             for market in by_market
         },
     )
+    manifest.files = _records(root, report.files)
     report.manifest = write_manifest(root, manifest)
     return report
 

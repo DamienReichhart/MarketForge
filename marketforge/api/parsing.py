@@ -18,7 +18,7 @@ from marketforge.aggregation.streaming import SUPPORTED_TIMEFRAMES
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.markets import MarketType
 from marketforge.domain.timeframes import STANDARD_TIMEFRAMES, Timeframe
-from marketforge.output.formats import OutputFormat, TimestampFormat
+from marketforge.output.formats import Layout, OutputFormat, TimestampFormat
 
 TimeLike = int | float | str | dt.datetime | dt.date
 # Unix seconds past this (the year 5138) are milliseconds or microseconds
@@ -153,6 +153,16 @@ def parse_format(value: str | OutputFormat) -> OutputFormat:
     except ValueError:
         raise ValueError(
             f"Unknown format {value!r}; choose from {', '.join(f.value for f in OutputFormat)}"
+        ) from None
+
+
+def parse_layout(value: str | Layout) -> Layout:
+    """A dataset layout by name, in any letter case."""
+    try:
+        return Layout(str(value).strip().lower())
+    except ValueError:
+        raise ValueError(
+            f"Unknown layout {value!r}; choose from {', '.join(f.value for f in Layout)}"
         ) from None
 
 

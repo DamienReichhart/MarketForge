@@ -23,6 +23,7 @@ def print_plan(
     output_dir: str | None,
     random_seed: bool,
     jobs: int | None = None,
+    layout: str = "split",
 ) -> None:
     def iso(t: int) -> str:
         return dt.datetime.fromtimestamp(t, dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -44,8 +45,9 @@ def print_plan(
         click.echo(
             f"  {plan.market.value:<11} {len(plan.selected)} instrument(s), {minutes:,} open minutes: {names}"
         )
+    files = len(request.plans) * len(request.timeframes) if layout == "long" else guess.files
     click.echo(
-        f"  Output      {guess.files} {fmt} files, ~{guess.rows:,} rows, ~{_human(guess.disk_bytes)}"
+        f"  Output      {files} {fmt} files, ~{guess.rows:,} rows, ~{_human(guess.disk_bytes)}"
         + (
             f" {'added to' if request.extends_from is not None else 'in'} {output_dir}"
             if output_dir

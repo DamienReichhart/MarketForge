@@ -52,9 +52,10 @@ def extend(
     generated with. Afterwards it holds exactly the candles a single
     generation up to the new end would have produced.
     """
-    new_end = end_of_range(read_manifest(dataset).end, end, days)
+    manifest = read_manifest(dataset)
+    new_end = end_of_range(manifest.end, end, days)
     request, fmt, timestamps = plan_extension(dataset, new_end)
     if not quiet or dry_run:
-        print_plan(request, fmt, dataset, random_seed=False, jobs=jobs)
+        print_plan(request, fmt, dataset, random_seed=False, jobs=jobs, layout=manifest.layout)
     if not dry_run:
-        run(request, dataset, fmt, timestamps, jobs, progress, quiet=quiet)
+        run(request, dataset, fmt, timestamps, jobs, progress, quiet=quiet, layout=manifest.layout)

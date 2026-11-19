@@ -75,13 +75,24 @@ def read(
             )
     lo = None if start is None else parse_time(start)
     hi = None if end is None else parse_time(end)
-    frames = {
-        symbol: {
-            tf: _frame(root / owner[symbol] / f"{symbol}_{tf}.{manifest.format}", manifest, lo, hi)
-            for tf in tfs
+    if manifest.layout == "long":
+        frames: dict[str, dict[str, pd.DataFrame]] = {s: {} for s in wanted}
+        for market in dict.fromkeys(owner[s] for s in wanted):
+            symbols = [s for s in wanted if owner[s] == market]
+            for tf in tfs:
+                path = root / market / f"{tf}.{manifest.format}"
+                for symbol, frame in _long_frames(path, manifest, symbols, lo, hi).items():
+                    frames[symbol][tf] = frame
+    else:
+        frames = {
+            symbol: {
+                tf: _frame(
+                    root / owner[symbol] / f"{symbol}_{tf}.{manifest.format}", manifest, lo, hi
+                )
+                for tf in tfs
+            }
+            for symbol in wanted
         }
-        for symbol in wanted
-    }
     origin = Origin(
         version=manifest.version,
         model_revision=manifest.model_revision,
@@ -96,15 +107,45 @@ def read(
     return data if lo is None and hi is None else data.between(lo, hi)
 
 
+def _long_frames(
+    path: Path, manifest: Manifest, symbols: list[str], lo: int | None, hi: int | None
+) -> dict[str, pd.DataFrame]:
+    """The frames of some instruments from one long-layout file."""
+    table = _table(path, manifest.format, lo, hi)
+    table = table.filter(pc.is_in(pc.cast(table["symbol"], pa.string()), pa.array(symbols)))
+    raw = table.to_pandas()
+    names = raw.pop("symbol").astype(str)
+    raw = raw.drop(columns="market")
+    return {s: _typed(raw[(names == s).to_numpy()].reset_index(drop=True)) for s in symbols}
+
+
+def _table(path: Path, fmt: str, lo: int | None, hi: int | None) -> pa.Table:
+    table = pq.read_table(path) if fmt == "parquet" else feather.read_table(path)
+    if lo is not None or hi is not None:
+        table = table.filter(_time_filter(table, lo, hi))
+    return table
+
+
 def _frame(path: Path, manifest: Manifest, lo: int | None, hi: int | None) -> pd.DataFrame:
     fmt = manifest.format
     if fmt in ("parquet", "feather"):
-        table = pq.read_table(path) if fmt == "parquet" else feather.read_table(path)
-        if lo is not None or hi is not None:
-            table = table.filter(_time_filter(table, lo, hi))
-        raw = table.to_pandas()
+        raw = _table(path, fmt, lo, hi).to_pandas()
     else:
         raw = pd.read_csv(path)
+    frame = _typed(raw)
+    if fmt == "csv" and (lo is not None or hi is not None):
+        seconds = frame.index.as_unit("s").asi8
+        keep = np.ones(len(frame), dtype=bool)
+        if lo is not None:
+            keep &= seconds >= lo
+        if hi is not None:
+            keep &= seconds < hi
+        frame = frame[keep]
+    return frame
+
+
+def _typed(raw: pd.DataFrame) -> pd.DataFrame:
+    """Candles read from a file, with MarketForge's index and column types."""
     stamps = raw.pop("timestamp")
     if pd.api.types.is_numeric_dtype(stamps):
         seconds = stamps.to_numpy(dtype=np.int64)
@@ -117,13 +158,6 @@ def _frame(path: Path, manifest: Manifest, lo: int | None, hi: int | None) -> pd
         else:
             frame[column] = frame[column].astype("float64")
     frame.index = time_index(seconds)
-    if fmt == "csv" and (lo is not None or hi is not None):
-        keep = np.ones(len(frame), dtype=bool)
-        if lo is not None:
-            keep &= seconds >= lo
-        if hi is not None:
-            keep &= seconds < hi
-        frame = frame[keep]
     return frame
 
 

@@ -16,7 +16,7 @@ class OutputFormat(StrEnum):
 
     CSV = "csv"
     PARQUET = "parquet"
-    FEATHER = "feather"  # Arrow IPC: memory-mapped, zero-copy reads
+    FEATHER = "feather"  # Arrow IPC, uncompressed: memory-mapped, zero-copy reads
 
 
 class TimestampFormat(StrEnum):
@@ -27,8 +27,22 @@ class TimestampFormat(StrEnum):
     DATETIME = "datetime"  # a native UTC timestamp column, Parquet and Feather
 
 
-def check_formats(fmt: OutputFormat, timestamps: TimestampFormat) -> None:
-    """Refuse a combination of file format and timestamps that cannot be written."""
+class Layout(StrEnum):
+    """How a dataset's candles are split into files."""
+
+    SPLIT = "split"  # {market}/{SYMBOL}_{tf}: one file per instrument and timeframe
+    LONG = "long"  # {market}/{tf}: one file per market and timeframe, a symbol column
+
+
+def check_formats(
+    fmt: OutputFormat, timestamps: TimestampFormat, layout: Layout = Layout.SPLIT
+) -> None:
+    """Refuse a combination of file format, timestamps and layout that cannot be written."""
+    if layout == Layout.LONG and fmt == OutputFormat.CSV:
+        raise ValueError(
+            "The long layout is for Parquet and Feather files, which keep the symbol column "
+            "small; CSV takes the split layout"
+        )
     if timestamps == TimestampFormat.ISO and fmt != OutputFormat.CSV:
         raise ValueError(
             f"ISO timestamps are for CSV files; {fmt.value} stores Unix seconds, or a native "

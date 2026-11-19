@@ -19,10 +19,11 @@ Parquet files discarded; once it is ready, the remaining files are swapped in.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,10 @@ class Manifest:
     instruments: dict[str, list[str]]  # market -> symbols, in file order
     overrides: dict[str, dict[str, Any]]
     checkpoint: dict[str, dict[str, Any]]  # market -> where to resume
+    layout: str = "split"
+    # Relative path -> {"rows", "bytes", "sha256"}: what each candle file held
+    # when written, so it can be checked without regenerating it.
+    files: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_json(self) -> str:
         doc = {
@@ -65,6 +70,7 @@ class Manifest:
             "start": iso_time(self.start),
             "end": iso_time(self.end),
             "format": self.format,
+            "layout": self.layout,
             "timestamps": self.timestamps,
             "timeframes": self.timeframes,
             "anomalies": self.anomalies,
@@ -74,6 +80,7 @@ class Manifest:
             "instruments": self.instruments,
             "overrides": self.overrides,
             "checkpoint": self.checkpoint,
+            "files": self.files,
         }
         return json.dumps(doc, indent=1) + "\n"
 
@@ -97,6 +104,8 @@ class Manifest:
             instruments=doc["instruments"],
             overrides=doc["overrides"],
             checkpoint=doc["checkpoint"],
+            layout=doc.get("layout", "split"),
+            files=doc.get("files", {}),
         )
 
 
@@ -131,8 +140,9 @@ def write_manifest(dataset: str | os.PathLike[str], manifest: Manifest) -> Path:
 
 
 _MARKET_DIRS = tuple(market.value for market in MarketType)
+# {SYMBOL}_{tf}.ext in the split layout, {tf}.ext in the long one.
 _CANDLE_FILE = re.compile(
-    r"^[^/\\]+_(?:"
+    r"^(?:[^/\\]+_)?(?:"
     + "|".join(tf.name for tf in Timeframe)
     + r")\.(?:csv|parquet|feather)(?:\.tmp)?$"
 )
@@ -176,6 +186,35 @@ def clear_dataset(dataset: str | os.PathLike[str], *, overwrite: bool) -> None:
         folder = Path(dataset) / market
         if folder.is_dir() and not any(folder.iterdir()):
             folder.rmdir()
+
+
+def file_record(path: Path) -> dict[str, Any]:
+    """What the manifest records about a candle file: rows, bytes and SHA-256."""
+    digest = hashlib.sha256()
+    newlines = 0
+    with open(path, "rb") as fh:
+        while chunk := fh.read(1 << 20):
+            digest.update(chunk)
+            newlines += chunk.count(b"\n")
+    return {
+        "rows": _rows(path, newlines),
+        "bytes": path.stat().st_size,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _rows(path: Path, newlines: int) -> int:
+    import pyarrow as pa  # only to count rows of binary files
+    import pyarrow.parquet as pq
+
+    kind = Path(path.name.removesuffix(REWRITE_SUFFIX)).suffix  # an extension's .tmp files too
+    if kind == ".csv":
+        return max(newlines - 1, 0)  # the header
+    if kind == ".parquet":
+        return int(pq.ParquetFile(path).metadata.num_rows)
+    with pa.memory_map(str(path)) as source:
+        reader = pa.ipc.open_file(source)
+        return sum(reader.get_batch(i).num_rows for i in range(reader.num_record_batches))
 
 
 def begin_extension(dataset: str | os.PathLike[str], csv_files: list[Path]) -> None:
