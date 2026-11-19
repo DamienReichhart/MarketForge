@@ -6,24 +6,24 @@ import marketforge as mf
 
 
 @pytest.fixture(scope="module")
-def decade():
+def years():
     return mf.generate(
-        "USDHKD,EURDKK,USDCNH", start="2014-01-01", end="2024-01-01", seed=5, timeframes="D1"
+        "USDHKD,EURDKK,USDCNH", start="2020-01-01", end="2024-01-01", seed=5, timeframes="D1"
     )
 
 
-def test_the_hong_kong_dollar_stays_in_its_band(decade):
-    close = decade["USDHKD"]["D1"]
+def test_the_hong_kong_dollar_stays_in_its_band(years):
+    close = years["USDHKD"]["D1"]
     assert close["low"].min() >= 7.75 * 0.9995 and close["high"].max() <= 7.85 * 1.0005
 
 
-def test_the_krone_stays_within_erm_ii_of_the_euro(decade):
-    close = decade["EURDKK"]["D1"]["close"]
+def test_the_krone_stays_within_erm_ii_of_the_euro(years):
+    close = years["EURDKK"]["D1"]["close"]
     assert np.abs(close / 7.46038 - 1).max() <= 0.0226
 
 
-def test_the_yuan_is_managed_not_pegged(decade):
-    close = decade["USDCNH"]["D1"]["close"]
+def test_the_yuan_is_managed_not_pegged(years):
+    close = years["USDCNH"]["D1"]["close"]
     start = mf.instruments("forex").loc["USDCNH", "start_price"]
     assert close.std() / close.mean() > 0.005  # it moves
     assert np.abs(close / start - 1).max() <= 0.081

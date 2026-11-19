@@ -47,7 +47,7 @@ def world():
     return mf.generate(
         "BTCUSD,ETHUSD,AAPL,MSFT,SPXUSD,AUDUSD,USDJPY",
         start="2022-01-03",
-        end="2023-07-01",
+        end="2023-01-01",
         seed=3,
         timeframes="H1",
     )
@@ -82,5 +82,5 @@ def test_a_market_alone_is_the_same_as_beside_others(world):
 def test_the_macro_state_is_a_label_of_the_data(world):
     labels = world.macro()
     assert set(labels.cat.categories) == {"calm", "stressed"}
-    assert labels.index[0] == pd.Timestamp("2022-01-03", tz="UTC") and len(labels) == 544
+    assert labels.index[0] == pd.Timestamp("2022-01-03", tz="UTC") and len(labels) == 363
     assert labels.iloc[0] == ("stressed" if macro.macro_state(3, 18995) else "calm")

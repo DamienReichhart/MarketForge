@@ -128,9 +128,22 @@ def test_forex_has_no_saturday_candles_and_crosses_are_arbitrage_free():
 
 def test_no_minute_dominates_volume(stocks_two_weeks):
     v = stocks_two_weeks.volume
+    # The last minute of each session is the closing auction.
+    closes = np.r_[np.diff(stocks_two_weeks.timestamps) > 60, True]
     # v2 put ~50% of a period's volume in one minute; turbulent minutes may still
     # reach a few hundred times the median, as in real markets.
-    assert (v.max(axis=0) / v.sum(axis=0)).max() < 0.05
+    assert (v[~closes].max(axis=0) / v.sum(axis=0)).max() < 0.05
+
+
+def test_the_closing_auction_prints_a_large_share_of_the_day(stocks_two_weeks):
+    v = stocks_two_weeks.volume
+    closes = np.r_[np.diff(stocks_two_weeks.timestamps) > 60, True]
+    share = v[closes].sum(axis=0) / v.sum(axis=0)
+    assert 0.04 < np.median(share) < 0.15  # the closing cross: ~8% of volume
+    session = np.cumsum(np.r_[True, np.diff(stocks_two_weeks.timestamps) > 60])
+    for day in np.unique(session):
+        in_day = session == day
+        assert (v[in_day & closes].sum(axis=0) / v[in_day].sum(axis=0)).max() < 0.5
 
 
 def test_spikes_and_flash_crashes_are_injected():

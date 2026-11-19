@@ -79,6 +79,11 @@ class MarketDefaults:
     # Coupling of the market's global direction to the global shock, calm and
     # stressed (ADR 0016): the share of its main factor the world drives.
     global_coupling: tuple[float, float] = (0.0, 0.0)
+    # Microstructure noise of the quoted mid, in units of the minute's
+    # volatility: quotes jitter around the efficient price, so minute returns
+    # revert slightly (lag-1 autocorrelation about -k^2 / (1 + 2 k^2)) and
+    # minute correlations are lower than daily ones (the Epps effect).
+    microstructure_noise: float = 0.0
 
 
 CRYPTO_DEFAULTS = MarketDefaults(
@@ -102,6 +107,7 @@ CRYPTO_DEFAULTS = MarketDefaults(
     # Coins move with stocks, more in sell-offs: BTC-S&P daily correlation
     # ~0.2-0.3 in calm years, ~0.4-0.5 in 2022.
     global_coupling=(0.45, 0.65),
+    microstructure_noise=0.15,
     anomaly_config=AnomalyConfig(
         spike_probability=0.001,
         spike_magnitude_range=(0.03, 0.15),
@@ -140,6 +146,7 @@ FOREX_DEFAULTS = MarketDefaults(
     # The index CFDs are the stock market: nearly all of their common move
     # is the world's; the commodity currencies and havens follow.
     global_coupling=(0.97, 0.99),
+    microstructure_noise=0.25,
     garch_params=GARCHParams(alpha=0.03, beta=0.91, gamma=0.08),
     regime_params=RegimeParams(
         transition_matrix=(
@@ -187,6 +194,7 @@ STOCKS_DEFAULTS = MarketDefaults(
     market_type=MarketType.STOCKS,
     # US large caps' market factor is most of what the world calls risk.
     global_coupling=(0.95, 0.98),
+    microstructure_noise=0.25,
     # v2 used alpha=0.04, gamma=0.16: on minute data a run of negative
     # Student-t shocks compounded variance to ~260x its mean (37-sigma
     # minutes, excess kurtosis in the hundreds). gamma=0.08 keeps a clearly
