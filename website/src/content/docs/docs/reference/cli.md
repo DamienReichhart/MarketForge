@@ -167,12 +167,13 @@ Measures heavy tails, volatility clustering, long memory, the leverage effect, i
 
 ## calibrate
 
-```bash check=static
-marketforge calibrate real/EURUSD_m1.csv real/GBPUSD_m1.csv --market forex -o mine.toml
+```bash
+marketforge generate -o ./real --from 2024-01-01 --days 30 -i EURUSD,GBPUSD -t m1
+marketforge calibrate real/forex/EURUSD_m1.csv real/forex/GBPUSD_m1.csv --market forex -o mine.toml
 marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --overrides mine.toml
 ```
 
-Fits instruments to `m1` candle files you have, and are allowed to use, and writes an override file to generate data like them. Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`): the symbol comes from the name. A catalog symbol gets new parameters, and any other becomes a new instrument. What is fitted is listed in [Custom instruments](../../guides/custom-instruments/#fit-instruments-to-your-own-data).
+Fits instruments to `m1` candle files you have, and are allowed to use, and writes an override file to generate data like them (the example's first line makes stand-in files, MarketForge's own, to try it). Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`): the symbol comes from the name. A catalog symbol gets new parameters, and any other becomes a new instrument. What is fitted is listed in [Custom instruments](../../guides/custom-instruments/#fit-instruments-to-your-own-data).
 
 | Option | Meaning |
 | --- | --- |
@@ -199,10 +200,18 @@ Writes a dataset in the file layout a backtesting engine reads, without changing
 
 ## list-instruments
 
-```bash check=static
+```toml
+# my_instruments.toml
+[instruments.MYCOIN]
+market = "crypto"
+start_price = 1.50
+volatility = 0.90
+```
+
+```bash
 marketforge list-instruments --markets forex
 marketforge list-instruments --search eur
-marketforge list-instruments --overrides my_instruments.toml
+marketforge list-instruments --overrides my_instruments.toml --search coin
 marketforge list-instruments --json
 ```
 

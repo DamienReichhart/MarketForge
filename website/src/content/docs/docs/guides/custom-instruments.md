@@ -60,14 +60,24 @@ Forex crosses take their start price, volatility, drift and correlations from th
 
 The resolved overrides are written into the dataset's [manifest](../../reference/output/#the-manifest), as values, so a dataset made with an override file can be reproduced and extended without it. Anyone you share the dataset with can read those parameters.
 
-Use `marketforge list-instruments --overrides my_instruments.toml` to check the catalog after your overrides.
+Check the catalog after your overrides:
+
+```bash
+marketforge list-instruments --overrides my_instruments.toml --search coin
+```
 
 ## Fit instruments to your own data
 
-`marketforge calibrate` fits instruments to m1 candle files you have (and are allowed to use), and writes an override file:
+`marketforge calibrate` fits instruments to m1 candle files you have (and are allowed to use), and writes an override file. To try it without files of your own, let MarketForge's candles stand in for real ones:
 
-```bash check=static
-marketforge calibrate real/EURUSD_m1.csv real/GBPUSD_m1.csv --market forex -o mine.toml
+```bash
+marketforge generate -o ./real --from 2024-01-01 --days 30 -i EURUSD,GBPUSD -t m1
+```
+
+Then fit to them, and generate more like them:
+
+```bash
+marketforge calibrate real/forex/EURUSD_m1.csv real/forex/GBPUSD_m1.csv --market forex -o mine.toml
 marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --overrides mine.toml
 ```
 
