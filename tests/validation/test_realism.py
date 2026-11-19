@@ -87,29 +87,26 @@ def _spell_returns(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-@pytest.fixture(scope="module")
-def crypto_year():
-    return mf.generate(
-        "BTCUSD,ETHUSD",
-        start="2023-01-01",
-        end="2024-01-01",
-        seed=2,
-        timeframes="H1",
+def test_trend_regimes_trend():
+    # A label is only ground truth for a classifier if it shows in the data, but
+    # trends are weak, as in real markets (ADR 0018): over a spell, trend_up
+    # rises about three times in four, trend_down and crashes fall about three
+    # times in five (crashes the most), and range goes nowhere.
+    years = mf.generate(
+        "BTCUSD,ETHUSD", start="2021-01-01", end="2024-01-01", seed=2, timeframes="H1",
         with_regime=True,
-    )
-
-
-def test_trend_regimes_trend(crypto_year):
-    # A label is only ground truth for a classifier if it shows in the data: over a
-    # spell, trend_up rises and trend_down falls more often than not.
+    )  # fmt: skip
     for symbol in ("BTCUSD", "ETHUSD"):
-        spells = _spell_returns(crypto_year[symbol]["H1"])
-        up = spells.loc[spells.regime == "trend_up", "ret"]
-        down = spells.loc[spells.regime == "trend_down", "ret"]
-        assert (up > 0).mean() > 0.65, symbol
-        assert (down < 0).mean() > 0.65, symbol
-        crash = spells.loc[spells.regime == "crash", "ret"]
-        assert crash.mean() < down.mean() < 0 < up.mean(), symbol
+        spells = _spell_returns(years[symbol]["H1"]).reset_index(drop=True)
+        ret = {
+            r: spells.loc[spells.regime == r, "ret"]
+            for r in ("trend_up", "trend_down", "range", "crash")
+        }
+        assert (ret["trend_up"] > 0).mean() > 0.65, symbol
+        assert (ret["trend_down"] < 0).mean() > 0.52, symbol
+        assert (ret["crash"] < 0).mean() > 0.52, symbol
+        assert ret["crash"].mean() < ret["trend_down"].mean() < 0 < ret["trend_up"].mean(), symbol
+        assert abs(ret["range"].mean()) < 0.2 * ret["trend_up"].mean(), symbol
 
 
 def test_forex_trends_move_pairs_with_their_correlation():
