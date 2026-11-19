@@ -207,10 +207,11 @@ Raise it when the engines publish wheels for the next Python.
 
 ## CD: how a release happens
 
-**To release: bump `[project].version` in `pyproject.toml`, add a
-`## <version>` section to `CHANGELOG.md`, and merge to `main`.** That is all.
-`pyproject.toml` is the only place the version is written;
-`marketforge.__version__` reads it back from the installed metadata.
+**To release: bump `[project].version` in `pyproject.toml` and `version` in
+`CITATION.cff`, add a `## <version>` section to `CHANGELOG.md`, and merge to
+`main`.** That is all. `marketforge.__version__` reads the version back from
+the installed metadata; `CITATION.cff` repeats it so a citation names the
+release, and `tests/tooling/test_versions_agree.py` fails if the two differ.
 
 ```
 guard ─┐

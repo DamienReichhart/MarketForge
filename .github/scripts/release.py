@@ -102,7 +102,7 @@ def check_not_tagged(version: Version, tags: Iterable[str]) -> None:
     if version in existing:
         raise ReleaseError(
             f"version {version} is already released: tag '{existing[version]}' exists. "
-            "Bump [project].version in pyproject.toml (and add a CHANGELOG.md entry) "
+            "Bump [project].version in pyproject.toml and CITATION.cff (and add a CHANGELOG.md entry) "
             "to cut a new release"
         )
 

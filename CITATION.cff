@@ -2,6 +2,7 @@ cff-version: 1.2.0
 message: "If you use MarketForge in research, please cite it as below."
 title: "MarketForge: synthetic market data for training AI trading models and testing backtesters"
 type: software
+version: "5.0.0"
 authors:
   - family-names: Reichhart
     given-names: Damien
