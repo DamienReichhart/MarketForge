@@ -17,7 +17,7 @@ Each market was simulated from its own random stream and nothing else, so market
 ## Consequences
 
 - Every seed's candles change (model revision 2).
-- Daily correlations over 2022-2023, seed 3: BTC-AAPL 0.13 (0.28 weekly, 0.39 monthly), AUDUSD-SPXUSD 0.24, USDJPY-SPXUSD 0.50. Crypto is in high volatility or a crash 39% of the time stocks are, against 25% otherwise.
+- BTC-AAPL correlates 0.15 daily, 0.19 weekly and 0.30 monthly (2016-2023, six seeds); daily over 2022-2023 (seed 3), AUDUSD-SPXUSD 0.48 and USDJPY-SPXUSD 0.50. Crypto is in high volatility or a crash 39% of the time stocks are, against 25% otherwise.
 - SPXUSD follows the stocks: over 2016-2023 (three seeds) it correlates with an equal-weight basket of ten large caps 0.65 at m1 during NYSE hours, 0.60 weekly and 0.65 monthly. It correlated about 0.1 week to week when only the global shock was shared, and 0.4 with the trends but not the stress shocks: the stocks' high-volatility and crash spells, whose shocks hold most of their variance, passed SPXUSD by.
 - Real index futures correlate more with large caps (about 0.85 weekly): the forex catalog's correlations allow SPXUSD's shock to be about 0.84 the world's, and SPXUSD trades through the night on the forex calendar's seasonality, not the stocks'.
 - Running the stock chain costs the forex simulator two draws of 1440 numbers and a 390-step loop a day, only when an index CFD is generated.
