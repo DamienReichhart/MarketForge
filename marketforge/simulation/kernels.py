@@ -195,6 +195,7 @@ def ar1(drivers: np.ndarray, phi: float, state: np.ndarray) -> tuple[np.ndarray,
 def factor_paths(
     h: np.ndarray,
     vol_mult: np.ndarray,
+    vol_of: np.ndarray,
     drift_mult: np.ndarray,
     season: np.ndarray,
     z: np.ndarray,
@@ -210,7 +211,7 @@ def factor_paths(
 
     Exactly reproduces::
 
-        level     = sqrt(h) * vol_mult[:, None]
+        level     = sqrt(h) * vol_mult[:, vol_of]
         sigma_f   = sigma * level * season[:, None]
         returns   = mu + drift_mult @ trend + sigma_f * z      (trends added in order)
         log_close = log_price + cumsum(gap + returns, axis=0)
@@ -220,7 +221,10 @@ def factor_paths(
 
     Args:
         h: (n, F) GJR-GARCH variance multipliers.
-        vol_mult, season: (n,) market-wide multipliers.
+        vol_mult: (n, V) regime volatility multipliers: the market's, and for
+            index CFDs the stock market's during NYSE hours.
+        vol_of: (F,) the column of ``vol_mult`` each factor follows.
+        season: (n,) the market's intraday seasonality.
         drift_mult: (n, K) the strength of each of K trends (the market's
             regime, and for index CFDs the stock market's), in units of ``trend``.
         z: (n, F) unit-variance shocks.
@@ -244,9 +248,8 @@ def factor_paths(
     g_idx = 0
     for t in range(n):
         at_gap = g_idx < gap_rows.shape[0] and gap_rows[g_idx] == t
-        level_t = vol_mult[t]
         for i in range(f):
-            s = sigma[i] * (np.sqrt(h[t, i]) * level_t) * season[t]
+            s = sigma[i] * (np.sqrt(h[t, i]) * vol_mult[t, vol_of[i]]) * season[t]
             r = mu[i]
             for j in range(k):
                 r += trend[j, i] * drift_mult[t, j]
