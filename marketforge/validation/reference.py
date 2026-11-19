@@ -143,7 +143,10 @@ def _from_reference(ref: Reference) -> Bands:
 # generous margins; FX gets a looser leverage ceiling because crosses have no
 # natural "down" (EURAUD rises when AUD sells off).
 _PROVISIONAL: dict[MarketType, Bands] = {
-    MarketType.FOREX: Bands((1.0, 200.0), 0.02, 0.08, (1.2, 2.5), 0.01, anchored=False),
+    # Forex closes only at the weekend: its gaps hold a sliver of the variance.
+    MarketType.FOREX: Bands(
+        (1.0, 200.0), 0.02, 0.08, (1.2, 2.5), 0.01, anchored=False, gap_variance_share=(0.0, 0.1)
+    ),
     MarketType.STOCKS: Bands((1.5, 200.0), 0.02, 0.02, (1.2, 2.5), 0.01, anchored=False),
 }
 
