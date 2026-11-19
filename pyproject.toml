@@ -88,7 +88,13 @@ lint = [
     "ruff>=0.17,<0.18",
     "import-linter>=2.17",
 ]
+# The task runner (noxfile.py) and the commit hooks (.pre-commit-config.yaml).
+tools = [
+    "nox>=2025.5.1",
+    "pre-commit>=4.0",
+]
 dev = [
+    {include-group = "tools"},
     {include-group = "fit"},
     {include-group = "test"},
     {include-group = "typecheck"},
@@ -199,6 +205,7 @@ ignore = [
 "website/scripts/**" = ["T20"]
 ".github/scripts/**" = ["T20"]
 "tests/**" = ["T20", "E731"]  # small lambda helpers read fine in tests
+"noxfile.py" = ["T20"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["marketforge"]
