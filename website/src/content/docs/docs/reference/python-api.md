@@ -32,6 +32,7 @@ The supported API is what `import marketforge` exposes, listed on this page. Mod
 | [`estimate()`](#estimate) | Files, rows, size, memory and time of a generation, without running it. |
 | [`validate()`](#validate) | Checks `m1` candles against the stylized facts of real markets. |
 | [`calibrate()`](#calibrate) | Fits instruments to your own `m1` files and returns overrides. |
+| [`export()`](#export) | Writes a dataset in a backtesting engine's file layout (freqtrade, LEAN). |
 | [`instruments()`](#instruments) | The catalog as a DataFrame. |
 | [`parse_time()`](#parse_time) | The Unix seconds of any time MarketForge accepts. |
 | `__version__`, `MODEL_REVISION` | The installed version, and the revision of the model that decides what a seed produces (see [Reproducibility](../reproducibility/)). |
@@ -221,6 +222,14 @@ mf.calibrate(files, market) -> dict[str, dict[str, Any]]
 ```
 
 Fits instruments to `m1` candle files named `SYMBOL_m1.csv` (or `.parquet`, `.feather`): start price, annual volatility, volume level and correlations (kept within ±0.99), as described in [Custom instruments](../../guides/custom-instruments/#fit-instruments-to-your-own-data). Returns overrides to pass as `overrides=`, the same that `marketforge calibrate` writes as TOML, already checked as generation will check them: a file not named `SYMBOL_m1`, or an instrument the market would refuse (a forex symbol that is not six characters), raises `ValueError` here.
+
+## export()
+
+```python check=signature
+mf.export(engine, dataset, dest, *, quote=None) -> ExportReport
+```
+
+Writes the dataset at `dataset` in the file layout of a backtesting engine, under `dest`: `"freqtrade"` (Feather files per pair and timeframe; `quote` renames the dollar coins are quoted in, e.g. `"USDT"`) or `"lean"` (LEAN's data folder, built from the dataset's `m1` candles). The dataset is read one instrument at a time. Returns an `ExportReport` with `engine`, `files` (the paths written) and `skipped` (what the engine has no place for, such as a timeframe freqtrade lacks). Raises `ValueError` for an unknown engine, a directory that is not a dataset, or LEAN without `m1` candles. See [Backtesting](../../use-cases/backtesting/#freqtrade).
 
 ## instruments()
 

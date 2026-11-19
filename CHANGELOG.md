@@ -151,6 +151,14 @@ Upgrading from 4.x? See
 - **`mf.info()` and `mf.verify()`** do from Python what the commands do.
 
 ### Python API and command line
+- **`marketforge export ENGINE DATASET DEST`** (and `mf.export()`) writes a
+  dataset in the file layout a backtesting engine reads: `freqtrade` (Feather
+  files per pair and timeframe) and `lean` (QuantConnect's data folder:
+  zipped minute files per day, hour and daily files, equity map and factor
+  files, quote bars for forex and CFDs). A weekly workflow backtests an
+  export in freqtrade and runs an algorithm on one in LEAN's own engine.
+- **`calibrate` fits the tick size** the data's closes are on, so a
+  generation continues on its decimals.
 - **`extend(days=)`**, as on the command line; `generate_to_disk()` runs one
   market per core by default, as the command line does; `estimate()` takes
   every argument `generate_to_disk()` does.
