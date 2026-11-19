@@ -29,6 +29,15 @@ Upgrading from 4.x? See
   BTC-AAPL is now 0.13 daily, 0.31 weekly and 0.44 monthly; crypto is
   stressed 39% of the time stocks are, against 25% otherwise. Each market's
   own correlations are unchanged. `GeneratedData.macro()` labels every day.
+- **Stocks report earnings.** Gaps were scaled diffusion: AAPL's largest
+  overnight move in two years was 3.6%, and NVDA's big gaps fell at random.
+  Every stock now reports four times a year, after the close of a day of its
+  own in the fourth to sixth week of each quarter, whatever the seed. The
+  next open jumps by about 2.5 days of the stock's volatility, heavy-tailed
+  (NVDA up to ~20%), and volatility, volume and the spread stay raised for a
+  few days. Daily kurtosis is 9-11 instead of 4-5. `earnings_move` sets the
+  jump per stock (0 for none), and `GeneratedData.earnings()` lists the
+  events. Dividends and splits are not modelled.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell
