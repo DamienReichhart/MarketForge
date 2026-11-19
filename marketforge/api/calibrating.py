@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -17,10 +18,14 @@ import numpy as np
 import pandas as pd
 
 from marketforge.api.catalog import instruments
+from marketforge.config.loader import load_catalog
 from marketforge.domain.markets import MarketType
 
 _SECONDS_PER_YEAR = 365.25 * 86_400
 _TIME_COLUMNS = ("timestamp", "time", "datetime", "date")
+# Override files take correlations strictly between -1 and 1; near-identical
+# series (GOOG and GOOGL) would otherwise write 1.0 and be refused.
+_MAX_CORRELATION = 0.99
 
 
 def calibrate(
@@ -29,26 +34,36 @@ def calibrate(
     """
     Fit instrument parameters to m1 candle files: an override for each one.
 
-    For each file (``SYMBOL_m1.csv`` / ``.parquet`` / ``.feather``, or any
-    name: the symbol is the part before the first ``_``):
+    Each file is named ``SYMBOL_m1.csv`` (or ``.parquet``, ``.feather``); the
+    symbol comes from the name. For each one:
 
     - ``start_price``: the last close, so a generation continues from there;
     - ``volatility``: the annualised volatility of its log returns, overnight
       and weekend gaps included, as the catalog defines it;
     - ``volume_base``: the mean volume per minute;
     - ``correlations``: the correlation of hourly returns with every file
-      before it, on the hours both trade.
+      before it, on the hours both trade, kept within +/-0.99 as an override
+      file requires.
 
     Drift is not estimated: below several years of data it is noise. The
     result is the ``[instruments]`` table of an override file (see
-    :func:`write_overrides`) and can be passed as ``overrides=``.
+    :func:`write_overrides`) and can be passed as ``overrides=``; it is
+    checked as generation would check it, so an error shows here, not later.
+
+    Raises:
+        ValueError: a file is not named ``SYMBOL_m1``, two files name the same
+            symbol, a file has fewer than 1000 candles, or the fitted
+            instruments are not valid for the market (e.g. a forex symbol that
+            is not six characters).
     """
     market = MarketType(str(market).lower())
     out: dict[str, dict[str, Any]] = {}
     hourly: dict[str, pd.Series] = {}
     for file in files:
         path = Path(file)
-        symbol = path.stem.split("_")[0].upper()
+        symbol = _symbol_of(path)
+        if symbol in out:
+            raise ValueError(f"{path}: {symbol} is already calibrated from another file")
         candles = _read_candles(path)
         if len(candles) < 1000:
             raise ValueError(f"{path} has {len(candles)} candles; calibration needs at least 1000")
@@ -70,12 +85,31 @@ def calibrate(
         for other, theirs in hourly.items():
             both = pd.concat([series, theirs], axis=1, join="inner").dropna()
             if len(both) >= 100:
-                correlations[other] = round(float(both.corr().iloc[0, 1]), 4)
+                value = round(float(both.corr().iloc[0, 1]), 4)
+                correlations[other] = min(max(value, -_MAX_CORRELATION), _MAX_CORRELATION)
         if correlations:
             body["correlations"] = correlations
         hourly[symbol] = series
         out[symbol] = body
+    try:
+        with warnings.catch_warnings():  # generation repeats any warning
+            warnings.simplefilter("ignore")
+            load_catalog(out)
+    except ValueError as e:
+        raise ValueError(
+            f"The fitted instruments are not valid {market.value} instruments: {e}"
+        ) from None
     return out
+
+
+def _symbol_of(path: Path) -> str:
+    stem = path.stem
+    if not stem.lower().endswith("_m1") or len(stem) <= 3:
+        raise ValueError(
+            f"{path.name}: name calibration files SYMBOL_m1{path.suffix} "
+            "(e.g. EURUSD_m1.csv); the symbol comes from the file name"
+        )
+    return stem[:-3].upper()
 
 
 @cache
