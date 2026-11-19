@@ -212,7 +212,7 @@ def factor_paths(
 
         level     = sqrt(h) * vol_mult[:, None]
         sigma_f   = sigma * level * season[:, None]
-        returns   = mu + trend * drift_mult[:, None] + sigma_f * z
+        returns   = mu + drift_mult @ trend + sigma_f * z      (trends added in order)
         log_close = log_price + cumsum(gap + returns, axis=0)
         log_open  = vstack([log_price, log_close[:-1]]) + gap
 
@@ -220,11 +220,12 @@ def factor_paths(
 
     Args:
         h: (n, F) GJR-GARCH variance multipliers.
-        vol_mult, drift_mult, season: (n,) market-wide multipliers; drift_mult
-            is the regime's trend, in units of ``trend``.
+        vol_mult, season: (n,) market-wide multipliers.
+        drift_mult: (n, K) the strength of each of K trends (the market's
+            regime, and for index CFDs the stock market's), in units of ``trend``.
         z: (n, F) unit-variance shocks.
         sigma, mu: (F,) per-minute volatility and drift.
-        trend: (F,) per-minute return of each factor per unit of trend.
+        trend: (K, F) per-minute return of each factor per unit of each trend.
         gap_rows: (k,) rows that open after a closure (strictly increasing).
         gap: (k, F) log gap applied at those rows.
         log_price: (F,) log close before the first row.
@@ -233,6 +234,7 @@ def factor_paths(
         (sigma_f, returns, log_open, log_close), each (n, F).
     """
     n, f = z.shape
+    k = trend.shape[0]
     sigma_f = np.empty((n, f))
     returns = np.empty((n, f))
     log_open = np.empty((n, f))
@@ -245,7 +247,10 @@ def factor_paths(
         level_t = vol_mult[t]
         for i in range(f):
             s = sigma[i] * (np.sqrt(h[t, i]) * level_t) * season[t]
-            r = mu[i] + trend[i] * drift_mult[t] + s * z[t, i]
+            r = mu[i]
+            for j in range(k):
+                r += trend[j, i] * drift_mult[t, j]
+            r += s * z[t, i]
             g = gap[g_idx, i] if at_gap else 0.0
             x = g + r
             c = x if t == 0 else cum[i] + x
