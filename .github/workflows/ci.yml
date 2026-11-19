@@ -36,6 +36,10 @@ env:
   UV_NO_PROGRESS: "1"
   # Newest supported Python, for the jobs that need only one interpreter.
   DEFAULT_PYTHON: "3.15"
+  # The documentation's examples import backtesting engines that lag new
+  # Pythons (vectorbt and nautilus_trader declare Requires-Python < 3.15):
+  # they run on the newest Python every one of them supports.
+  DOCS_PYTHON: "3.14"
 
 defaults:
   run:
@@ -329,7 +333,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
+          python-version: ${{ env.DOCS_PYTHON }}
           activate-environment: "true"
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml
@@ -357,7 +361,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
+          python-version: ${{ env.DOCS_PYTHON }}
           activate-environment: "true"
           enable-cache: "true"
           cache-dependency-glob: pyproject.toml

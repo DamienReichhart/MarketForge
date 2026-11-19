@@ -23,6 +23,8 @@ nox.options.sessions = ["lint", "typecheck", "tests"]
 nox.options.error_on_missing_interpreters = False  # run the Pythons you have
 
 PYTHONS = ["3.12", "3.13", "3.14", "3.15"]
+# The newest Python every backtesting engine of the docs supports (ci.yml).
+DOCS_PYTHON = "3.14"
 
 
 @nox.session
@@ -48,7 +50,7 @@ def tests(session: nox.Session) -> None:
     session.run("pytest", *session.posargs)
 
 
-@nox.session
+@nox.session(python=DOCS_PYTHON)
 def docs(session: nox.Session) -> None:
     """Run every code block of the README and the website against a built wheel."""
     session.install("build")
@@ -58,7 +60,7 @@ def docs(session: nox.Session) -> None:
     session.run("python", "-I", ".github/scripts/doc_examples.py", *session.posargs)
 
 
-@nox.session
+@nox.session(python=DOCS_PYTHON)
 def examples(session: nox.Session) -> None:
     """Run every script of examples/."""
     session.install(".", "--group", "docs")
