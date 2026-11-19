@@ -15,28 +15,29 @@ from pathlib import Path
 import click
 
 from marketforge.api.validating import validate as validate_candles
+from marketforge.cli.renamed import renamed_option
 from marketforge.domain.markets import MarketType
 from marketforge.output.manifest import dataset_files
 
 
 @click.command()
-@click.option(
-    "--input",
-    "input_path",
-    required=True,
-    type=click.Path(exists=True),
-    help="An m1 candle file (CSV, Parquet or Feather) with open/high/low/close columns, "
-    "or a dataset directory: every m1 file in it.",
-)
+@click.argument("path", type=click.Path(exists=True))
+@renamed_option("--input", "the path as an argument, marketforge validate PATH")
 @click.option(
     "--market",
-    type=click.Choice([m.value for m in MarketType]),
+    "-m",
+    type=click.Choice([m.value for m in MarketType], case_sensitive=False),
     help="Market whose bands to apply. Default: read from the path ({market}/{SYMBOL}_m1).",
 )
 @click.option("--json", "as_json", is_flag=True, help="Print each file's statistics as JSON.")
-def validate(input_path: str, market: str | None, as_json: bool) -> None:
-    """Check m1 candles against real-market stylized facts (exit 1 on failure)."""
-    root = Path(input_path)
+def validate(path: str, market: str | None, as_json: bool) -> None:
+    """
+    Check m1 candles against real-market stylized facts (exit 1 on failure).
+
+    PATH is an m1 candle file (CSV, Parquet or Feather) with open, high, low
+    and close columns, or a dataset directory: every m1 file in it.
+    """
+    root = Path(path)
     if root.is_dir():
         files = sorted(p for p in dataset_files(root) if p.stem.endswith("_m1"))
         if not files:
@@ -48,13 +49,13 @@ def validate(input_path: str, market: str | None, as_json: bool) -> None:
         files = [root]
     reports = {}
     skipped: dict[Path, str] = {}
-    for path in files:
+    for file in files:
         try:
-            reports[path] = validate_candles(path, market)
+            reports[file] = validate_candles(file, market)
         except ValueError as e:
             if not root.is_dir():
                 raise click.ClickException(str(e)) from None
-            skipped[path] = str(e)  # one unusable file does not stop the others
+            skipped[file] = str(e)  # one unusable file does not stop the others
     if not reports:
         raise click.ClickException(
             f"No m1 file of {root} could be validated:\n"
@@ -76,19 +77,18 @@ def validate(input_path: str, market: str | None, as_json: bool) -> None:
             )
         )
     elif root.is_dir():
-        for path, report in reports.items():
+        for file, report in reports.items():
             flag = "ok  " if report.passed else "FAIL"
-            click.echo(f"{flag} {path.relative_to(root).as_posix()}")
+            click.echo(f"{flag} {file.relative_to(root).as_posix()}")
             if not report.passed:
                 failed = [m for m in report.metrics.values() if not m.passed]
                 for m in failed:
                     click.echo(f"       {m.name} = {m.value:.4f}")
-        for path, why in skipped.items():
-            click.echo(f"skip {path.relative_to(root).as_posix()}: {why}")
+        for file, why in skipped.items():
+            click.echo(f"skip {file.relative_to(root).as_posix()}: {why}")
         good = sum(r.passed for r in reports.values())
         click.secho(
-            f"{good}/{len(reports)} files pass"
-            + (f" ({len(skipped)} skipped)" if skipped else ""),
+            f"{good}/{len(reports)} files pass" + (f" ({len(skipped)} skipped)" if skipped else ""),
             fg="green" if passed else "red",
             bold=True,
         )

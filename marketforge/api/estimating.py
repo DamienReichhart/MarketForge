@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from marketforge.api.parsing import Names, TimeLike
-from marketforge.api.planning import DEFAULT_TIMEFRAMES, MarketPlan, Request, plan_request
+from marketforge.api.parsing import Names, TimeLike, parse_format
+from marketforge.api.planning import MarketPlan, Request, plan_request
+from marketforge.api.renamed import renamed_arguments
 from marketforge.calendars.trading_calendar import get_calendar
 from marketforge.config.overrides import Overrides
 from marketforge.domain.markets import MarketType
@@ -61,6 +62,7 @@ class Estimate:
         return shared + max(max(self._market_seconds), sum(self._market_seconds) / jobs)
 
 
+@renamed_arguments
 def estimate(
     instruments: Names | None = None,
     *,
@@ -68,19 +70,21 @@ def estimate(
     end: TimeLike | None = None,
     days: int | None = None,
     markets: Names | None = None,
-    timeframes: Names = DEFAULT_TIMEFRAMES,
-    include_regime: bool = False,
-    include_spread: bool = False,
-    overrides: Overrides | None = None,
-    fmt: str | OutputFormat = OutputFormat.CSV,
     seed: int | None = None,
+    timeframes: Names | None = None,
+    anomalies: Names = (),
+    with_regime: bool = False,
+    with_spread: bool = False,
+    with_bid_ask: bool = False,
+    overrides: Overrides | None = None,
+    format: str | OutputFormat = OutputFormat.CSV,
 ) -> Estimate:
     """
     Estimate the files, rows, size and time of a generation, without running it.
 
-    Takes the arguments of :func:`generate_to_disk` (``fmt`` sets the size per
-    row); ``memory_bytes`` is what :func:`generate` would need instead. The
-    timeframes default to all eight, as on disk.
+    Takes the arguments of :func:`generate_to_disk` (``format`` sets the size
+    per row); ``memory_bytes`` is what :func:`generate` would need instead,
+    and :meth:`Estimate.wall_seconds` the time with markets in parallel.
     """
     request = plan_request(
         instruments,
@@ -90,11 +94,13 @@ def estimate(
         days=days,
         seed=seed if seed is not None else 0,
         timeframes=timeframes,
-        include_regime=include_regime,
-        include_spread=include_spread,
+        anomalies=anomalies,
+        include_regime=with_regime,
+        include_spread=with_spread,
+        include_bid_ask=with_bid_ask,
         overrides=overrides,
     )
-    return estimate_request(request, OutputFormat(fmt).value)
+    return estimate_request(request, parse_format(format).value)
 
 
 def estimate_request(request: Request, fmt: str) -> Estimate:

@@ -17,7 +17,7 @@ data = mf.generate(
     days=30,
     seed=7,
     timeframes="m5",
-    include_regime=True,
+    with_regime=True,
 )
 array, times, symbols = data.to_numpy("m5", columns=["close", "volume", "regime"])
 log_close = np.log(array[:, :, 0])

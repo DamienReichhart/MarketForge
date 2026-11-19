@@ -15,7 +15,7 @@ data = mf.generate(
     end="2024-07-01",
     seed=3,
     timeframes="m30",
-    include_bid_ask=True,
+    with_bid_ask=True,
 )
 bars = data["AAPL"]["m30"]
 fast, slow = bars["close"].rolling(8).mean(), bars["close"].rolling(32).mean()

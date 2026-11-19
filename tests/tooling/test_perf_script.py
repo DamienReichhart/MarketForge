@@ -124,9 +124,22 @@ def test_a_workload_is_skipped_when_the_version_lacks_one_of_its_parameters(tmp_
     run = perf._call(module, "w", spec, tmp_path)
     assert run is not None and run() == (["BTCUSD"], "a", "b", None)
 
-    with_spread = {**spec, "kwargs": {**spec["kwargs"], "include_spread": True}}
+    with_spread = {**spec, "kwargs": {**spec["kwargs"], "with_spread": True}}
     assert perf._call(module, "w", with_spread, tmp_path) is None
     assert perf._call(SimpleNamespace(), "w", spec, tmp_path) is None
+
+
+def test_a_workload_uses_the_names_a_release_before_5_takes(tmp_path):
+    def generate(instruments=None, *, start, end, include_spread=False):
+        return (instruments, start, end, include_spread)
+
+    spec = {
+        "call": "generate",
+        "instruments": ["BTCUSD"],
+        "kwargs": {"start": "a", "end": "b", "with_spread": True},
+    }
+    run = perf._call(SimpleNamespace(generate=generate), "w", spec, tmp_path)
+    assert run is not None and run() == (["BTCUSD"], "a", "b", True)
 
 
 def test_every_workload_runs_on_the_current_api(tmp_path):

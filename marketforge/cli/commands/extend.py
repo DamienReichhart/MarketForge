@@ -42,7 +42,7 @@ def extend(
     days: int | None,
     jobs: int | None,
     dry_run: bool,
-    progress: bool,
+    progress: bool | None,
     quiet: bool,
 ) -> None:
     """

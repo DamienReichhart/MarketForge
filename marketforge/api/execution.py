@@ -99,21 +99,26 @@ class NothingGenerated(ValueError):
     """Every requested output is empty: the range holds no complete candle."""
 
 
-def warn_about_empty(empty: Iterable[tuple[str, str]], total: int) -> None:
+def warn_about_empty(empty: Iterable[tuple[str, str]], total: int, named: bool = True) -> None:
     """Warn once about the (instrument, timeframe) outputs that received no candle.
+
+    Without ``named`` (the timeframes are the defaults), an output is worth a
+    warning only when it is m1: an empty m1 means the market was closed, an
+    empty W1 of a short range is expected.
 
     Raises:
         NothingGenerated: if every one of the ``total`` outputs is empty.
     """
-    names = [f"{symbol} {timeframe}" for symbol, timeframe in empty]
-    if not names:
-        return
-    if len(names) == total:
+    pairs = list(empty)
+    if len(pairs) == total and total:
         raise NothingGenerated(
             "Nothing to generate: the range holds no complete candle of any requested "
             "timeframe (a candle is published only when the range covers all of it). "
             "Lengthen the range or ask for shorter timeframes"
         )
+    names = [f"{s} {tf}" for s, tf in pairs if named or tf == Timeframe.m1.name]
+    if not names:
+        return
     shown = ", ".join(names[:6]) + (f" and {len(names) - 6} more" if len(names) > 6 else "")
     warnings.warn(
         f"No candles for {shown}: the range holds no complete candle of that timeframe "

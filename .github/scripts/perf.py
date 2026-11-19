@@ -66,7 +66,7 @@ WORKLOADS: dict[str, dict[str, Any]] = {
             "end": "2024-02-12",
             "seed": 1,
             "timeframes": ALL_TIMEFRAMES,
-            "include_regime": True,
+            "with_regime": True,
         },
     },
     "forex: majors and crosses, 2 months": {
@@ -96,13 +96,20 @@ WORKLOADS: dict[str, dict[str, Any]] = {
             "start": "2024-02-01",
             "end": "2024-03-14",
             "seed": 4,
+            "timeframes": ["m1"],
             "anomalies": ["spikes", "flash_crash"],
         },
     },
     "CSV to disk: crypto, 3 weeks, every timeframe": {
         "call": "generate_to_disk",
         "instruments": ["BTCUSD", "ETHUSD"],
-        "kwargs": {"start": "2024-01-01", "end": "2024-01-22", "seed": 5, "fmt": "csv", "jobs": 1},
+        "kwargs": {
+            "start": "2024-01-01",
+            "end": "2024-01-22",
+            "seed": 5,
+            "format": "csv",
+            "jobs": 1,
+        },
     },
 }
 
@@ -112,8 +119,27 @@ WORKLOADS: dict[str, dict[str, Any]] = {
 COLD_START = "cold start: import and first generate"
 COLD_START_CODE = (
     "import marketforge as mf; "
-    "mf.generate(['EURUSD'], start='2024-01-02', end='2024-01-03', seed=1)"
+    "mf.generate(['EURUSD'], start='2024-01-02', end='2024-01-03', seed=1, timeframes=['m1'])"
 )
+
+
+# 5.0 renamed these keyword arguments; a release before it takes the old names.
+# Drop this once the baseline release is 5.0 or newer.
+_BEFORE_5 = {
+    "format": "fmt",
+    "with_regime": "include_regime",
+    "with_spread": "include_spread",
+    "with_bid_ask": "include_bid_ask",
+}
+
+
+def _for_version(function: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """``kwargs`` in the spelling ``function`` takes (old names before 5.0)."""
+    parameters = signature(function).parameters
+    return {
+        (_BEFORE_5[k] if k not in parameters and k in _BEFORE_5 else k): v
+        for k, v in kwargs.items()
+    }
 
 
 def _call(mf: Any, name: str, spec: dict[str, Any], workdir: Path) -> Callable[[], object] | None:
@@ -122,14 +148,15 @@ def _call(mf: Any, name: str, spec: dict[str, Any], workdir: Path) -> Callable[[
     if function is None:
         return None
     parameters = signature(function).parameters
-    if any(key not in parameters for key in spec["kwargs"]):
+    kwargs = _for_version(function, spec["kwargs"])
+    if any(key not in parameters for key in kwargs):
         return None
     if spec["call"] == "generate_to_disk":
         out = workdir / re.sub(r"\W+", "-", name)
         # Each timing writes the dataset again; 4.0 refuses that without overwrite.
         again = {"overwrite": True} if "overwrite" in parameters else {}
-        return lambda: function(out, list(spec["instruments"]), **spec["kwargs"], **again)
-    return lambda: function(list(spec["instruments"]), **spec["kwargs"])
+        return lambda: function(out, list(spec["instruments"]), **kwargs, **again)
+    return lambda: function(list(spec["instruments"]), **kwargs)
 
 
 def measure(repeat: int) -> dict[str, Any]:

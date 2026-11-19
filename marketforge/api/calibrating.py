@@ -131,7 +131,7 @@ def _volume_scale(market: MarketType) -> float:
 def write_overrides(overrides: dict[str, dict[str, Any]], path: str | os.PathLike[str]) -> Path:
     """Write the ``[instruments]`` tables of an override file."""
     lines = [
-        "# Fitted by `marketforge calibrate`: pass with --config or overrides=.",
+        "# Fitted by `marketforge calibrate`: pass with --overrides or overrides=.",
         "# Drift is not estimated (it is noise below several years of data).",
         "",
     ]

@@ -76,14 +76,14 @@ def test_shell_commands_follow_continuations_comments_and_separators():
         "# a comment line\n"
         "marketforge generate -o ./data \\\n"
         "    --from 2024-01-01 --days 2   # trailing comment\n"
-        "cd x && marketforge validate --input a.csv; git status\n",
+        "cd x && marketforge validate a.csv; git status\n",
         language="shell",
         line=20,
     )
     commands = docs.shell_commands(block, substitute=False)
     assert [(c.line, c.args) for c in commands] == [
         (22, ["generate", "-o", "./data", "--from", "2024-01-01", "--days", "2"]),
-        (24, ["validate", "--input", "a.csv"]),
+        (24, ["validate", "a.csv"]),
     ]
 
 
@@ -133,13 +133,24 @@ def test_a_failing_example_reports_the_page_line_of_the_error():
 
 
 def test_a_displayed_signature_must_match_the_real_one():
-    real = "mf.extend(\n    dataset, end, *, jobs=1, on_day=None,\n) -> DiskReport"
+    real = (
+        "mf.extend(\n    dataset, end=None, *, days=None, jobs=None, on_day=None,\n) -> DiskReport"
+    )
     docs.check_signature(_block(real, mode="signature"))
     for wrong, reason in [
-        ("mf.extend(dataset, end, *, jobs=2, on_day=None) -> DiskReport", "differs"),
-        ("mf.extend(dataset, end, jobs=1, on_day=None) -> DiskReport", "differs"),
-        ("mf.extend(dataset, *, jobs=1, on_day=None) -> DiskReport", "differs"),
-        ("mf.extend(dataset, end, *, jobs=1, on_day=None) -> Report", "returns DiskReport"),
+        (
+            "mf.extend(dataset, end=None, *, days=None, jobs=2, on_day=None) -> DiskReport",
+            "differs",
+        ),
+        (
+            "mf.extend(dataset, end=None, days=None, jobs=None, on_day=None) -> DiskReport",
+            "differs",
+        ),
+        ("mf.extend(dataset, *, days=None, jobs=None, on_day=None) -> DiskReport", "differs"),
+        (
+            "mf.extend(dataset, end=None, *, days=None, jobs=None, on_day=None) -> Report",
+            "returns DiskReport",
+        ),
         ("extend(dataset)", "expects"),
     ]:
         with pytest.raises(docs.ExampleError, match=reason):
@@ -162,7 +173,7 @@ def test_generate_is_planned_with_dry_run_and_refuses_unknown_names():
 
 
 def test_other_commands_are_parsed_without_needing_their_files():
-    docs.check_command(docs.Command(1, ["validate", "--input", "missing.csv", "--market", "forex"]))
+    docs.check_command(docs.Command(1, ["validate", "missing.csv", "--market", "forex"]))
     docs.check_command(docs.Command(1, ["--version"]))
     with pytest.raises(docs.ExampleError, match="No such option"):
         docs.check_command(docs.Command(1, ["validate", "--file", "x.csv"]))

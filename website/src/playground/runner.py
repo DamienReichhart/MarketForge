@@ -48,8 +48,8 @@ def _selection(request: dict[str, Any]) -> dict[str, Any]:
         "days": int(request["days"]),
         "seed": int(request["seed"]),
         "timeframes": request["timeframes"],
-        "include_regime": bool(request.get("include_regime")),
-        "include_spread": bool(request.get("include_spread")),
+        "with_regime": bool(request.get("include_regime")),
+        "with_spread": bool(request.get("include_spread")),
     }
 
 
@@ -62,7 +62,7 @@ def check(request_json: str, limits_json: str) -> str:
     if not request["timeframes"]:
         return json.dumps({"ok": False, "reason": "Choose at least one timeframe."})
     selection = _selection(request)
-    estimate = mf.estimate(**selection, fmt="csv")
+    estimate = mf.estimate(**selection, format="csv")
     markets = selection["markets"] or sorted(
         set(mf.instruments().loc[selection["instruments"], "market"])
     )
@@ -110,10 +110,10 @@ def run(request_json: str, limits_json: str) -> str:
     _result = mf.generate(
         **selection,
         anomalies=request.get("anomalies") or (),
-        include_bid_ask=bool(request.get("include_bid_ask")),
+        with_bid_ask=bool(request.get("include_bid_ask")),
     )
     _timeframes = list(selection["timeframes"])
-    rows = sum(len(frame) for frames in _result.values() for frame in frames.values())
+    rows = int(_result.summary()["candles"].sum())
     seconds = time.perf_counter() - started
     _calibrated.update(verdict["markets"])
     return json.dumps(

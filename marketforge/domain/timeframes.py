@@ -44,3 +44,16 @@ class Timeframe(Enum):
             if timeframe.name.lower() == wanted:
                 return timeframe
         raise ValueError(f"Unknown timeframe {s!r}; valid: {', '.join(t.name for t in cls)}")
+
+
+# What is generated when no timeframe is named: one per common chart period.
+STANDARD_TIMEFRAMES = (
+    Timeframe.m1,
+    Timeframe.m5,
+    Timeframe.m15,
+    Timeframe.m30,
+    Timeframe.H1,
+    Timeframe.H4,
+    Timeframe.D1,
+    Timeframe.W1,
+)

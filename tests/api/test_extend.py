@@ -19,8 +19,8 @@ END = "2024-02-02T15:17"
 OPTIONS = {
     "seed": 0,
     "anomalies": "spikes,flash_crash",
-    "include_regime": True,
-    "include_spread": True,
+    "with_regime": True,
+    "with_spread": True,
 }
 
 
@@ -34,7 +34,7 @@ def _files(root: Path) -> dict[str, Path]:
 
 def _whole(tmp_path_factory, fmt: str) -> Path:
     root = tmp_path_factory.mktemp(f"whole-{fmt}")
-    mf.generate_to_disk(root, INSTRUMENTS, start=START, end=END, fmt=fmt, **OPTIONS)
+    mf.generate_to_disk(root, INSTRUMENTS, start=START, end=END, format=fmt, **OPTIONS)
     return root
 
 
@@ -75,7 +75,7 @@ def test_an_extended_csv_dataset_is_byte_identical_to_one_generation(tmp_path, w
 
 def test_an_extended_parquet_dataset_holds_the_same_candles(tmp_path, whole_parquet):
     mf.generate_to_disk(
-        tmp_path, INSTRUMENTS, start=START, end="2024-01-16T15:03", fmt="parquet", **OPTIONS
+        tmp_path, INSTRUMENTS, start=START, end="2024-01-16T15:03", format="parquet", **OPTIONS
     )
     mf.extend(tmp_path, "2024-01-16T15:04")  # one more minute: most files get nothing new
     mf.extend(tmp_path, END, jobs=3)
@@ -108,9 +108,9 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
         "timestamps": "unix",
         "timeframes": ["H1"],
         "anomalies": [],
-        "include_regime": False,
-        "include_spread": False,
-        "include_bid_ask": False,
+        "with_regime": False,
+        "with_spread": False,
+        "with_bid_ask": False,
         "instruments": {"crypto": ["MYCOIN"], "forex": ["EURUSD"]},
         "overrides": overrides,
     }
@@ -147,7 +147,7 @@ def test_generating_again_replaces_the_dataset_and_its_manifest(tmp_path):
 @pytest.mark.parametrize("fmt", ["csv", "parquet"])
 def test_a_failed_extension_leaves_the_dataset_as_it_was(tmp_path, monkeypatch, fmt):
     mf.generate_to_disk(
-        tmp_path, "BTCUSD,ETHUSD", start="2024-01-01", end="2024-01-10", seed=3, fmt=fmt
+        tmp_path, "BTCUSD,ETHUSD", start="2024-01-01", end="2024-01-10", seed=3, format=fmt
     )
     before = {name: path.read_bytes() for name, path in _files(tmp_path).items()}
     manifest = (tmp_path / "marketforge.json").read_text()
@@ -176,7 +176,7 @@ def test_a_failed_extension_leaves_the_dataset_as_it_was(tmp_path, monkeypatch, 
 def test_an_extension_killed_midway_is_undone_or_finished_by_the_next_one(
     tmp_path, monkeypatch, fmt, killed
 ):
-    kwargs = {"start": "2024-01-01", "seed": 3, "fmt": fmt, "timeframes": "m1,H4,W1"}
+    kwargs = {"start": "2024-01-01", "seed": 3, "format": fmt, "timeframes": "m1,H4,W1"}
     mf.generate_to_disk(tmp_path / "killed", "BTCUSD,ETHUSD", end="2024-01-10", **kwargs)
     mf.generate_to_disk(tmp_path / "whole", "BTCUSD,ETHUSD", end="2024-01-25", **kwargs)
 
@@ -213,7 +213,7 @@ def test_iso_timestamps_survive_an_extension_and_validation(tmp_path):
     assert m1.read_bytes() == (tmp_path / "whole" / "crypto" / "BTCUSD_m1.csv").read_bytes()
     assert mf.validate(m1).passed
     with pytest.raises(ValueError, match="ISO timestamps are for CSV files"):
-        mf.generate_to_disk(tmp_path / "pq", "BTCUSD", end="2024-01-03", fmt="parquet", **kwargs)
+        mf.generate_to_disk(tmp_path / "pq", "BTCUSD", end="2024-01-03", format="parquet", **kwargs)
 
 
 def test_extend_continues_a_dataset_from_another_version_with_the_same_model_revision(tmp_path):
@@ -231,7 +231,7 @@ def test_recovering_an_extension_leaves_files_marketforge_did_not_write_alone(
     tmp_path, monkeypatch, killed
 ):
     mf.generate_to_disk(
-        tmp_path, "BTCUSD", start="2024-01-01", end="2024-01-05", seed=3, fmt="parquet"
+        tmp_path, "BTCUSD", start="2024-01-01", end="2024-01-05", seed=3, format="parquet"
     )
     (tmp_path / "notebooks").mkdir()
     theirs = tmp_path / "notebooks" / "work.tmp"

@@ -257,7 +257,7 @@ import numpy as np
 def fingerprint():
     import marketforge as mf
     data = mf.generate(["BTCUSD", "AAPL"], start="2024-01-02", days=1, seed=5,
-                       timeframes=["m1"], include_regime=True, include_spread=True)
+                       timeframes=["m1"], with_regime=True, with_spread=True)
     frame = data.to_long()
     values = frame.select_dtypes("number").to_numpy(dtype="float64")
     return hashlib.sha256(np.ascontiguousarray(values).tobytes()).hexdigest()

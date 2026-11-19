@@ -21,7 +21,7 @@ from marketforge.domain.markets import MarketType
     "--market",
     "-m",
     required=True,
-    type=click.Choice([m.value for m in MarketType]),
+    type=click.Choice([m.value for m in MarketType], case_sensitive=False),
     help="The market the instruments belong to (its calendar and correlations).",
 )
 @click.option(
@@ -39,7 +39,7 @@ def calibrate(files: tuple[str, ...], market: str, output: str) -> None:
     Each file is one instrument, named SYMBOL_m1.csv (or .parquet, .feather):
     a catalog symbol is re-parameterised, any other becomes a new instrument.
     Start price, annualised volatility, volume and correlations are fitted;
-    use the file with --config to generate data like yours.
+    use the file with --overrides to generate data like yours.
     """
     overrides = fit(list(files), market)
     path = write_overrides(overrides, output)
@@ -48,4 +48,4 @@ def calibrate(files: tuple[str, ...], market: str, output: str) -> None:
             f"  {symbol:<10} start {body['start_price']:,.6g}  volatility {body['volatility']:.3f}"
             + (f"  volume {body['volume_base']:,.1f}" if "volume_base" in body else "")
         )
-    click.secho(f"Wrote {path}: generate with --config {path}", fg="green")
+    click.secho(f"Wrote {path}: generate with --overrides {path}", fg="green")

@@ -29,7 +29,7 @@ def main() -> None:
     for seed in (int(s) for s in args.seeds.split(",")):
         for market in MarketType:
             data = mf.generate(
-                markets=[market], start=start, end=end, seed=seed, include_spread=True
+                markets=[market], start=start, end=end, seed=seed, with_spread=True
             )
             for symbol, frames in data.items():
                 report = mf.validate(frames["m1"], market)
