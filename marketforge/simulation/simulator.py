@@ -56,6 +56,7 @@ from marketforge.simulation.earnings import (
     BOOST_HORIZON,
     EARNINGS_MOVE_DAYS,
     EARNINGS_NU,
+    diffusion_scale,
     reports_between,
     volatility_boost,
 )
@@ -268,6 +269,10 @@ class MarketSimulator:
                 for a, v in zip(factors, daily, strict=True)
             ]
         )
+        if self._reports:  # the reports' variance is part of the catalog's volatility
+            self._sigma = self._sigma * np.array(
+                [diffusion_scale(factors[f].volatility, float(moves[f])) for f in fa]
+            )
         self._report_symbols = [structure.factors[i] for i in fa]
         self._report_days: dict[tuple[str, int], np.ndarray] = {}
         self._report_moves = moves[fa]
@@ -291,7 +296,8 @@ class MarketSimulator:
         # and its price.
         self._spread = spread
         sp = d.spread_params
-        annual = self._sigma_ref * np.sqrt(minutes_per_year)
+        # The catalog's volatility, reports included (not the diffusion's).
+        annual = self._projection.sigma(sigma[fa][None, :])[0] * np.sqrt(minutes_per_year)
         self._spread_scale = (
             np.array([by_symbol[s].start_price for s in selected]) if sp.fixed_scale else None
         )
