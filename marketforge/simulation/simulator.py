@@ -115,6 +115,7 @@ class _State:
     last_timestamp: int | None = None
     spell_left: float = 0.0  # open minutes left in the current regime spell
     noise: np.ndarray | None = None  # (Fa,) microstructure noise of the last close
+    slow: np.ndarray | None = None  # (Fa,) log slow volatility of each active factor
 
 
 class MarketSimulator:
@@ -227,6 +228,8 @@ class MarketSimulator:
         )
         self._mixing = global_mixing(spec.factor_correlation, direction, d.global_coupling)
         self._noise = float(d.microstructure_noise)
+        self._slow_std = float(d.slow_volatility)
+        self._slow_phi = 0.5 ** (1.0 / float(d.slow_volatility_days))
         # The world's bull and bear markets move each factor along its share
         # of the global direction, by as much as the market is coupled to it.
         calm, bear = macro_trends(_OPEN_MINUTES_PER_DAY[spec.market])
@@ -309,6 +312,7 @@ class MarketSimulator:
             "last_timestamp": st.last_timestamp,
             "spell_left": float(st.spell_left),
             "noise": None if st.noise is None else st.noise.tolist(),
+            "slow": None if st.slow is None else st.slow.tolist(),
         }
 
     def restore(self, snapshot: dict[str, Any]) -> None:
@@ -332,6 +336,9 @@ class MarketSimulator:
             noise=None
             if snapshot.get("noise") is None
             else np.asarray(snapshot["noise"], dtype=float),
+            slow=None
+            if snapshot.get("slow") is None
+            else np.asarray(snapshot["slow"], dtype=float),
             **arrays,
         )
 
@@ -395,7 +402,18 @@ class MarketSimulator:
         if jumps.any():
             gap = gap.copy()
             gap[0] += jumps  # the session's first open is its first gap
-        return self._sigma * boost, gap
+        return boost, gap
+
+    def _slow_volatility(self, day: int) -> np.ndarray:
+        """Advance each factor's slow log volatility by a day; its multiplier, of mean square 1."""
+        st = self._state
+        if self._slow_std == 0.0:
+            return np.ones(self._sigma.size)
+        shock = self._day_rng(day, 5).standard_normal(self._n_factors)[self._factors]
+        x = np.zeros(self._sigma.size) if st.slow is None else st.slow
+        x = self._slow_phi * x + np.sqrt(1.0 - self._slow_phi**2) * self._slow_std * shock
+        st.slow = x
+        return np.asarray(np.exp(x - self._slow_std**2))
 
     def _next_session(self, local_day: int) -> int:
         """The local day of the first session after ``local_day``."""
@@ -523,9 +541,10 @@ class MarketSimulator:
                 )
 
         start_log_price = st.log_price
-        sigma = self._sigma
+        sigma = self._sigma * self._slow_volatility(day)
         if self._reports:
-            sigma, gap = self._earnings(day, ts, gap_rows, gap, prev_close_day)
+            boost, gap = self._earnings(day, ts, gap_rows, gap, prev_close_day)
+            sigma = sigma * boost
         # Factor paths, then instruments.
         sigma_f, returns_f, log_open_f, log_close_f = factor_paths(
             h,

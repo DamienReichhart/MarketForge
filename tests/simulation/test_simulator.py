@@ -3,6 +3,7 @@ import datetime as dt
 import numpy as np
 import pytest
 
+import marketforge as mf
 from marketforge.config.loader import load_market_config
 from marketforge.domain.anomalies import AnomalyType
 from marketforge.domain.bars import Bars
@@ -305,3 +306,13 @@ def test_a_restored_snapshot_continues_bit_for_bit(market):
         np.testing.assert_array_equal(getattr(got, field), getattr(expected, field))
     with pytest.raises(ValueError, match="does not match the instruments"):
         MarketSimulator(spec, 5, symbols[:1]).restore(snapshot)
+
+
+def test_volatility_has_slow_cycles_of_its_own():
+    # Weekly realised volatility persists from one month to the next.
+    w1 = mf.generate("EURUSD", start="2020-01-06", end="2024-01-01", seed=2, timeframes="W1")[
+        "EURUSD"
+    ]["W1"]
+    vol = np.log(w1["high"] / w1["low"]).rolling(4).mean().dropna()
+    monthly = vol.iloc[::4].to_numpy()
+    assert np.corrcoef(monthly[:-1], monthly[1:])[0, 1] > 0.3

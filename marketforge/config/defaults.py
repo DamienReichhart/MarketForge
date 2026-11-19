@@ -84,6 +84,13 @@ class MarketDefaults:
     # revert slightly (lag-1 autocorrelation about -k^2 / (1 + 2 k^2)) and
     # minute correlations are lower than daily ones (the Epps effect).
     microstructure_noise: float = 0.0
+    # Slow volatility: each factor's log volatility wanders as a daily AR(1)
+    # with this stationary standard deviation and half-life (days), on top of
+    # GARCH (minutes to hours) and the regimes (hours to days), so a decade
+    # has calm and turbulent years. Its mean square is 1: the catalog's
+    # volatility is kept.
+    slow_volatility: float = 0.25
+    slow_volatility_days: float = 60.0
 
 
 CRYPTO_DEFAULTS = MarketDefaults(

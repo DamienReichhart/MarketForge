@@ -55,6 +55,15 @@ Upgrading from 4.x? See
 - **Stocks have opening and closing auctions.** The last minute held 0.6%
   of a day's volume; the closing cross now prints about 5-9%, and the open
   about 3%.
+- **Volatility has slow cycles.** Volatility clustered over minutes (GARCH)
+  and days (regimes) but not over months, so a decade had no calm or
+  turbulent years. Each series' log volatility now also wanders by day,
+  with a half-life of 60 days and a mean square of 1, so the catalog's
+  volatility is kept.
+- **Stocks' long-run drift is at most 8% a year.** NVDA and LLY had 15%:
+  history is no guide to the next decade. A 50%-volatile stock still ends
+  ten years anywhere from a tenth to fifty times its start: that is its
+  volatility, not its drift.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell

@@ -15,35 +15,38 @@ from marketforge.config.catalog.schema import InstrumentParams
 # Volume in thousands of shares
 
 # volume_base is the mean number of shares traded per minute of the session.
+# Drift is the long-run annual log drift, at most 0.08 (about the equity
+# premium): a stock's history is no guide to its next decade, and 0.15 sent
+# NVDA 50-fold in ten years on some seeds.
 INSTRUMENTS = {
     # Technology - Mega Cap
     "AAPL": InstrumentParams("AAPL", 185.00, 0.25, 0.08, 50000, 0.45),
-    "MSFT": InstrumentParams("MSFT", 415.00, 0.24, 0.10, 25000, 0.45),
+    "MSFT": InstrumentParams("MSFT", 415.00, 0.24, 0.08, 25000, 0.45),
     "GOOGL": InstrumentParams("GOOGL", 165.00, 0.28, 0.08, 25000, 0.48),
     "GOOG": InstrumentParams("GOOG", 167.00, 0.28, 0.08, 15000, 0.48),
-    "AMZN": InstrumentParams("AMZN", 195.00, 0.30, 0.10, 40000, 0.50),
-    "NVDA": InstrumentParams("NVDA", 875.00, 0.50, 0.15, 45000, 0.55),
-    "META": InstrumentParams("META", 520.00, 0.38, 0.12, 20000, 0.52),
+    "AMZN": InstrumentParams("AMZN", 195.00, 0.30, 0.08, 40000, 0.50),
+    "NVDA": InstrumentParams("NVDA", 875.00, 0.50, 0.08, 45000, 0.55),
+    "META": InstrumentParams("META", 520.00, 0.38, 0.08, 20000, 0.52),
     "TSLA": InstrumentParams("TSLA", 245.00, 0.55, 0.08, 80000, 0.60),
     # Technology - Software/Cloud
     "ADBE": InstrumentParams("ADBE", 575.00, 0.32, 0.08, 3000, 0.50),
-    "CRM": InstrumentParams("CRM", 285.00, 0.32, 0.10, 6000, 0.50),
+    "CRM": InstrumentParams("CRM", 285.00, 0.32, 0.08, 6000, 0.50),
     "ORCL": InstrumentParams("ORCL", 145.00, 0.28, 0.08, 8000, 0.48),
-    "NOW": InstrumentParams("NOW", 825.00, 0.35, 0.12, 2000, 0.52),
-    "PANW": InstrumentParams("PANW", 315.00, 0.38, 0.12, 3500, 0.52),
-    "SNOW": InstrumentParams("SNOW", 175.00, 0.50, 0.10, 4000, 0.58),
+    "NOW": InstrumentParams("NOW", 825.00, 0.35, 0.08, 2000, 0.52),
+    "PANW": InstrumentParams("PANW", 315.00, 0.38, 0.08, 3500, 0.52),
+    "SNOW": InstrumentParams("SNOW", 175.00, 0.50, 0.08, 4000, 0.58),
     # Technology - Semiconductors
-    "AMD": InstrumentParams("AMD", 165.00, 0.45, 0.12, 35000, 0.55),
+    "AMD": InstrumentParams("AMD", 165.00, 0.45, 0.08, 35000, 0.55),
     "QCOM": InstrumentParams("QCOM", 175.00, 0.35, 0.08, 8000, 0.50),
     "INTC": InstrumentParams("INTC", 42.00, 0.38, 0.02, 30000, 0.52),
-    "AVGO": InstrumentParams("AVGO", 1450.00, 0.32, 0.10, 3000, 0.48),
+    "AVGO": InstrumentParams("AVGO", 1450.00, 0.32, 0.08, 3000, 0.48),
     "TXN": InstrumentParams("TXN", 185.00, 0.28, 0.08, 5000, 0.48),
-    "LRCX": InstrumentParams("LRCX", 960.00, 0.38, 0.10, 2000, 0.52),
+    "LRCX": InstrumentParams("LRCX", 960.00, 0.38, 0.08, 2000, 0.52),
     "MU": InstrumentParams("MU", 115.00, 0.45, 0.08, 15000, 0.55),
     "ADI": InstrumentParams("ADI", 225.00, 0.30, 0.08, 3500, 0.48),
     # Technology - Internet/Services
-    "NFLX": InstrumentParams("NFLX", 685.00, 0.40, 0.10, 5000, 0.52),
-    "UBER": InstrumentParams("UBER", 72.00, 0.42, 0.10, 20000, 0.55),
+    "NFLX": InstrumentParams("NFLX", 685.00, 0.40, 0.08, 5000, 0.52),
+    "UBER": InstrumentParams("UBER", 72.00, 0.42, 0.08, 20000, 0.55),
     "BKNG": InstrumentParams("BKNG", 4150.00, 0.32, 0.08, 500, 0.50),
     # Financials - Banks
     "JPM": InstrumentParams("JPM", 195.00, 0.25, 0.08, 10000, 0.45),
@@ -53,29 +56,29 @@ INSTRUMENTS = {
     "BLK": InstrumentParams("BLK", 825.00, 0.28, 0.08, 1000, 0.48),
     "SCHW": InstrumentParams("SCHW", 72.00, 0.35, 0.06, 8000, 0.52),
     "AXP": InstrumentParams("AXP", 235.00, 0.28, 0.08, 3000, 0.48),
-    "V": InstrumentParams("V", 285.00, 0.22, 0.10, 7000, 0.42),
-    "MA": InstrumentParams("MA", 475.00, 0.24, 0.10, 3500, 0.44),
-    "SPGI": InstrumentParams("SPGI", 485.00, 0.25, 0.10, 1500, 0.45),
+    "V": InstrumentParams("V", 285.00, 0.22, 0.08, 7000, 0.42),
+    "MA": InstrumentParams("MA", 475.00, 0.24, 0.08, 3500, 0.44),
+    "SPGI": InstrumentParams("SPGI", 485.00, 0.25, 0.08, 1500, 0.45),
     # Healthcare - Pharma
     "JNJ": InstrumentParams("JNJ", 158.00, 0.18, 0.05, 7000, 0.38),
-    "LLY": InstrumentParams("LLY", 785.00, 0.32, 0.15, 4000, 0.50),
+    "LLY": InstrumentParams("LLY", 785.00, 0.32, 0.08, 4000, 0.50),
     "MRK": InstrumentParams("MRK", 125.00, 0.22, 0.06, 10000, 0.42),
     "ABBV": InstrumentParams("ABBV", 175.00, 0.24, 0.06, 6000, 0.44),
     "BMY": InstrumentParams("BMY", 52.00, 0.28, 0.03, 12000, 0.48),
     "AMGN": InstrumentParams("AMGN", 315.00, 0.24, 0.05, 3000, 0.44),
     "GILD": InstrumentParams("GILD", 85.00, 0.28, 0.04, 6000, 0.48),
     # Healthcare - Insurance/Services
-    "UNH": InstrumentParams("UNH", 535.00, 0.22, 0.10, 4000, 0.42),
+    "UNH": InstrumentParams("UNH", 535.00, 0.22, 0.08, 4000, 0.42),
     "ELV": InstrumentParams("ELV", 515.00, 0.25, 0.08, 1500, 0.45),
     # Healthcare - Devices/Equipment
     "TMO": InstrumentParams("TMO", 585.00, 0.26, 0.08, 1500, 0.46),
     "ABT": InstrumentParams("ABT", 115.00, 0.22, 0.06, 6000, 0.42),
     "DHR": InstrumentParams("DHR", 275.00, 0.26, 0.08, 3000, 0.46),
     "MDT": InstrumentParams("MDT", 88.00, 0.25, 0.04, 6000, 0.45),
-    "ISRG": InstrumentParams("ISRG", 425.00, 0.30, 0.10, 2000, 0.48),
+    "ISRG": InstrumentParams("ISRG", 425.00, 0.30, 0.08, 2000, 0.48),
     # Consumer - Retail
     "WMT": InstrumentParams("WMT", 165.00, 0.20, 0.08, 8000, 0.40),
-    "COST": InstrumentParams("COST", 725.00, 0.22, 0.10, 2500, 0.42),
+    "COST": InstrumentParams("COST", 725.00, 0.22, 0.08, 2500, 0.42),
     "HD": InstrumentParams("HD", 365.00, 0.24, 0.08, 4000, 0.44),
     "LOW": InstrumentParams("LOW", 235.00, 0.26, 0.07, 4000, 0.46),
     # Consumer - Staples
@@ -94,7 +97,7 @@ INSTRUMENTS = {
     "UPS": InstrumentParams("UPS", 145.00, 0.26, 0.05, 3000, 0.46),
     "RTX": InstrumentParams("RTX", 115.00, 0.25, 0.07, 5000, 0.45),
     "LIN": InstrumentParams("LIN", 465.00, 0.22, 0.08, 1500, 0.42),
-    "ACN": InstrumentParams("ACN", 365.00, 0.26, 0.09, 2000, 0.46),
+    "ACN": InstrumentParams("ACN", 365.00, 0.26, 0.08, 2000, 0.46),
     # Communication Services
     "VZ": InstrumentParams("VZ", 42.00, 0.22, 0.04, 15000, 0.42),
     "CMCSA": InstrumentParams("CMCSA", 42.00, 0.28, 0.05, 15000, 0.48),
