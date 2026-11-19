@@ -11,8 +11,8 @@ The examples use one small dataset, two coins and a stock as Parquet with native
 import marketforge as mf
 
 mf.generate_to_disk("./data", "BTCUSD,ETHUSD,AAPL", start="2024-01-01", days=30, seed=7,
-                    timeframes=["m1", "H1", "D1"], fmt="parquet", timestamps="datetime",
-                    include_regime=True, include_spread=True)
+                    timeframes=["m1", "H1", "D1"], format="parquet", timestamps="datetime",
+                    with_regime=True, with_spread=True)
 ```
 
 The command line equivalent is `marketforge generate -o ./data --from 2024-01-01 --days 30 -i BTCUSD,ETHUSD,AAPL -t m1,H1,D1 --format parquet --timestamps datetime --with-regime --with-spread --seed 7`.
@@ -155,7 +155,7 @@ bid = btc["close"] - btc["spread"] / 2
 ask = btc["close"] + btc["spread"] / 2
 ```
 
-`--with-bid-ask` (`include_bid_ask=True`) writes those two columns for you. A backtest that buys at `ask` and sells at `bid` pays the spread on every round trip, as it would with a broker. See [Bid-ask spread](../../reference/spread/).
+`--with-bid-ask` (`with_bid_ask=True`) writes those two columns for you. A backtest that buys at `ask` and sells at `bid` pays the spread on every round trip, as it would with a broker. See [Bid-ask spread](../../reference/spread/).
 
 ## Model returns, not prices
 

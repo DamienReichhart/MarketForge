@@ -24,7 +24,7 @@ correlations = { BTCUSD = 0.6, ETHUSD = 0.55 }
 
 ```bash
 marketforge generate -o ./data --from 2024-01-01 --to 2024-03-01 \
-    --instruments MYCOIN,BTCUSD --config my_instruments.toml
+    --instruments MYCOIN,BTCUSD --overrides my_instruments.toml
 ```
 
 In Python, pass the path or the same content as a dict:
@@ -59,7 +59,7 @@ Forex crosses take their start price, volatility, drift and correlations from th
 
 The resolved overrides are written into the dataset's [manifest](../../reference/output/#the-manifest), as values, so a dataset made with an override file can be reproduced and extended without it. Anyone you share the dataset with can read those parameters.
 
-Use `marketforge list-instruments --config my_instruments.toml` to check the catalog after your overrides.
+Use `marketforge list-instruments --overrides my_instruments.toml` to check the catalog after your overrides.
 
 ## Fit instruments to your own data
 
@@ -67,7 +67,7 @@ Use `marketforge list-instruments --config my_instruments.toml` to check the cat
 
 ```bash check=static
 marketforge calibrate real/EURUSD_m1.csv real/GBPUSD_m1.csv --market forex -o mine.toml
-marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --config mine.toml
+marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD --overrides mine.toml
 ```
 
 Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`), with a `timestamp` (or `time`) column and `close`, plus `volume` if you have it. A catalog symbol gets new parameters, and any other symbol becomes a new instrument. For each file it fits:

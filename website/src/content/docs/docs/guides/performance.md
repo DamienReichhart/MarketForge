@@ -23,7 +23,7 @@ The first run in a fresh environment adds a second or two while Numba compiles t
 `--dry-run` prints the plan and its estimates and writes nothing:
 
 ```bash
-marketforge generate --from 2015-01-01 --to 2025-01-01 --market all --format parquet --dry-run
+marketforge generate --from 2015-01-01 --to 2025-01-01 --markets all --format parquet --dry-run
 ```
 
 From Python, [`mf.estimate()`](../../reference/python-api/#estimate) returns the same figures, including the memory `generate()` would need:
@@ -32,7 +32,7 @@ From Python, [`mf.estimate()`](../../reference/python-api/#estimate) returns the
 import marketforge as mf
 
 plan = mf.estimate(markets="crypto", start="2020-01-01", end="2024-01-01",
-                   timeframes=["m5", "H1"], include_regime=True, fmt="parquet")
+                   timeframes=["m5", "H1"], with_regime=True, format="parquet")
 print(f"{plan.files} files, {plan.rows:,} rows, {plan.disk_bytes / 1e9:.1f} GB on disk, "
       f"{plan.memory_bytes / 1e9:.1f} GB in memory, ~{plan.wall_seconds(jobs=3):.0f} s")
 ```
@@ -56,7 +56,7 @@ In order of effect:
 ```python check=static
 # 64 seeds of 90 days, one process per core, yielded in seed order
 for data in mf.generate_many("BTCUSD,ETHUSD", seeds=range(64), start="2024-01-01", days=90,
-                             timeframes=["m5"], include_regime=True):
+                             timeframes=["m5"], with_regime=True):
     ...
 ```
 

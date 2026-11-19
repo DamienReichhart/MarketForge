@@ -49,7 +49,7 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
    import marketforge as mf
 
    data = mf.generate("BTCUSD,ETHUSD,SOLUSD", start="2024-01-01", end="2024-03-31",
-                      seed=42, timeframes=["H1"], include_regime=True, include_spread=True)
+                      seed=42, timeframes=["H1"], with_regime=True, with_spread=True)
    btc = data["BTCUSD"]["H1"]          # same candles as the CSV, as a DataFrame
    closes = data.panel("close", "H1")  # one column per instrument
 
@@ -64,7 +64,7 @@ import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 4. **Check that it looks like a real market.**
 
    ```bash
-   marketforge validate --input ./data/crypto/BTCUSD_m1.csv
+   marketforge validate ./data/crypto/BTCUSD_m1.csv
    ```
 
    The validator measures heavy tails, volatility clustering, long memory, the leverage effect, intrabar range and the spread, and exits with code 1 if any of them falls outside the band measured on real data. See [Validation](../guides/validation/).
