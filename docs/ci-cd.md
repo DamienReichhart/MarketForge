@@ -15,9 +15,9 @@ All third-party actions are pinned to a commit SHA, and runner images to a
 version (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, `windows-2025`), not `-latest`: the
 distributions are built on these images, so moving to a new OS is a
 deliberate PR with a green CI run, never GitHub's migration schedule.
-Dependabot does not bump runner labels; review them yearly. Dependabot
-(`.github/dependabot.yml`) opens one grouped PR a week against `dev` to bump
-them. Every job starts with a read-only token; jobs that need more ask for it
+Dependabot does not bump runner labels, so review them yearly; it does bump
+the pinned actions, in one grouped PR a week against `dev`
+(`.github/dependabot.yml`). Every job starts with a read-only token; jobs that need more ask for it
 explicitly.
 
 ## CI
