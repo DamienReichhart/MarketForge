@@ -114,6 +114,7 @@ class _State:
     volume_memory: np.ndarray  # (I,) one per selected instrument
     last_timestamp: int | None = None
     spell_left: float = 0.0  # open minutes left in the current regime spell
+    noise: np.ndarray | None = None  # (Fa,) microstructure noise of the last close
 
 
 class MarketSimulator:
@@ -225,6 +226,7 @@ class MarketSimulator:
             forex_risk_direction(structure.factors) if spec.market == MarketType.FOREX else loadings
         )
         self._mixing = global_mixing(spec.factor_correlation, direction, d.global_coupling)
+        self._noise = float(d.microstructure_noise)
         # The world's bull and bear markets move each factor along its share
         # of the global direction, by as much as the market is coupled to it.
         calm, bear = macro_trends(_OPEN_MINUTES_PER_DAY[spec.market])
@@ -306,6 +308,7 @@ class MarketSimulator:
             "volume_memory": st.volume_memory.tolist(),
             "last_timestamp": st.last_timestamp,
             "spell_left": float(st.spell_left),
+            "noise": None if st.noise is None else st.noise.tolist(),
         }
 
     def restore(self, snapshot: dict[str, Any]) -> None:
@@ -326,6 +329,9 @@ class MarketSimulator:
             vol_mult=float(snapshot["vol_mult"]),
             last_timestamp=snapshot["last_timestamp"],
             spell_left=float(snapshot["spell_left"]),
+            noise=None
+            if snapshot.get("noise") is None
+            else np.asarray(snapshot["noise"], dtype=float),
             **arrays,
         )
 
@@ -340,6 +346,12 @@ class MarketSimulator:
         full = correlated_shocks(z, chi2, self._cholesky, self._nu)
         full = self._mixing.apply(full, world, np.full(world.shape, stressed))
         return full if self._all_factors else np.ascontiguousarray(full[:, self._factors])
+
+    def _select_factors(self, draws: np.ndarray, rows: np.ndarray) -> np.ndarray:
+        """Rows ``rows`` and the active factors' columns of a market-wide draw."""
+        if self._all_factors:
+            return np.asarray(draws[rows])
+        return np.asarray(draws[np.ix_(rows, self._factors)])
 
     def _select(self, draws: np.ndarray, rows: np.ndarray) -> np.ndarray:
         """Rows ``rows`` and the selected instruments' columns of a market-wide draw."""
@@ -530,7 +542,19 @@ class MarketSimulator:
         )
         if self._pegs[0].size:
             pull_to_pegs(log_open_f, log_close_f, returns_f, start_log_price, *self._pegs)
-        st.log_price = log_close_f[-1].copy()
+        st.log_price = log_close_f[-1].copy()  # the efficient price carries on
+        if self._noise > 0.0:
+            # Quotes jitter around the efficient price; each open is still
+            # the previous close (plus any gap).
+            draw = self._day_rng(day, 4).standard_normal((MINUTES_PER_DAY, self._n_factors))
+            eta = self._noise * sigma_f * self._select_factors(draw, rows)
+            before = np.empty_like(eta)
+            before[0] = 0.0 if st.noise is None else st.noise
+            before[1:] = eta[:-1]
+            log_close_f = log_close_f + eta
+            log_open_f = log_open_f + before
+            returns_f = returns_f + (eta - before)
+            st.noise = eta[-1].copy()
         st.last_timestamp = int(ts[-1])
         proj = self._projection
         if proj.kind == "matrix":  # the only projection that goes through BLAS
@@ -563,6 +587,7 @@ class MarketSimulator:
             level_i,
         )
         np.exp(prices, out=prices)  # open, close, bridge high, bridge low
+        log_volume_season = np.log(season) + self.seasonality.volume_log(ts)
         np.log(level_i, out=level_i)
         phi, lam, kappa = self._volume
         high, low, volume = finish_bars(
@@ -570,7 +595,7 @@ class MarketSimulator:
             body,
             sigma_i,
             level_i,
-            np.log(season),
+            log_volume_season,
             self._volume_noise,
             self._select(e_volume, rows),
             lam,

@@ -45,6 +45,16 @@ Upgrading from 4.x? See
 - **Forex is thin at Christmas and New Year.** It traded those days as
   any other; volatility and tick volume now fall to about a third of normal
   on the 25th and the 1st, and spreads widen.
+- **Quotes jitter, and minute correlations are lower than daily ones.**
+  Minute returns had no autocorrelation and AAPL-MSFT correlated 0.80 at m1
+  as at D1, unlike real markets (the Epps effect). The quoted mid now
+  jitters around the efficient price by a quarter of the minute's
+  volatility (0.15 for crypto): lag-1 autocorrelation of AAPL's m1 returns
+  is -0.04, and AAPL-MSFT is 0.75 at m1 against 0.81 daily. Each open is
+  still the previous close, and forex crosses still derive from anchors.
+- **Stocks have opening and closing auctions.** The last minute held 0.6%
+  of a day's volume; the closing cross now prints about 5-9%, and the open
+  about 3%.
 - **Regimes last a typical length.** Spell lengths were geometric (their
   spread equalled their mean), so an HMM was exactly the right model of the
   data and detectors scored better than they can on real markets. A spell

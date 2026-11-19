@@ -60,6 +60,10 @@ _CRYPTO_FUNDING_WIDTH = 4.0
 # NYSE session landmarks (New York minutes-of-day).
 _NY_OPEN = 570
 _NY_LUNCH = 750
+# Volume of the opening and closing auctions, as multiples of their minute's
+# continuous trading: the closing cross prints ~8% of a day's volume.
+_OPEN_AUCTION = 1.5
+_CLOSE_AUCTION = 20.0
 
 
 class SessionSeasonality:
@@ -78,6 +82,8 @@ class SessionSeasonality:
         raw = self._raw(ref)
         self._norm = float(np.sqrt(np.mean(raw**2)))
         self._log_var = float(np.var(np.log(raw / self._norm)))
+        # Auctions add volume, not volatility: centred so mean volume is kept.
+        self._auction_mean = float(np.mean(np.exp(self._auction_log(ref))))
 
     @property
     def log_variance(self) -> float:
@@ -87,6 +93,20 @@ class SessionSeasonality:
     def factor(self, timestamps: np.ndarray) -> np.ndarray:
         """Seasonality multiplier s(t) for open-minute timestamps."""
         return np.asarray(self._raw(np.asarray(timestamps, dtype=np.int64)) / self._norm)
+
+    def volume_log(self, timestamps: np.ndarray) -> np.ndarray:
+        """Log multiplier of volume alone (the stock auctions), mean 1 over a year."""
+        ts = np.asarray(timestamps, dtype=np.int64)
+        return np.asarray(self._auction_log(ts) - np.log(self._auction_mean))
+
+    def _auction_log(self, ts: np.ndarray) -> np.ndarray:
+        if self._calendar.market != MarketType.STOCKS:
+            return np.zeros(ts.shape)
+        local = self._calendar.local_minutes(ts)
+        mod = local % 1440
+        close = self._calendar.session_close_minute(local // 1440)
+        out = np.where(mod == _NY_OPEN, np.log(_OPEN_AUCTION), 0.0)
+        return np.asarray(np.where(mod == close - 1, np.log(_CLOSE_AUCTION), out))
 
     def _raw(self, ts: np.ndarray) -> np.ndarray:
         market = self._calendar.market
