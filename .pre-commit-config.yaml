@@ -1,0 +1,18 @@
+# ruff on every commit, as CI runs it: `pip install pre-commit && pre-commit install`.
+# The full set of CI checks runs with `nox`.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.5
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+        exclude: ^(website/licenses/|docs/brand/assets/)
+      - id: trailing-whitespace
+        exclude: ^(website/licenses/|docs/brand/assets/)
