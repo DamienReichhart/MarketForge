@@ -17,11 +17,11 @@ module exports; module paths below it can change between releases.
 from marketforge._version import MODEL_REVISION, __version__
 from marketforge.api.calibrating import calibrate
 from marketforge.api.catalog import instruments
-from marketforge.api.data import GeneratedData, InstrumentData
+from marketforge.api.data import GeneratedData, InstrumentData, Windows
 from marketforge.api.disk import DiskReport, extend, generate_to_disk
 from marketforge.api.estimating import Estimate, estimate
 from marketforge.api.inspecting import DatasetInfo, VerifyReport, info, verify
-from marketforge.api.memory import generate, generate_many
+from marketforge.api.memory import concat, generate, generate_many
 from marketforge.api.parsing import parse_time
 from marketforge.api.reading import read
 from marketforge.api.resampling import resample
@@ -42,8 +42,10 @@ __all__ = [
     "OverrideError",
     "ValidationReport",
     "VerifyReport",
+    "Windows",
     "__version__",
     "calibrate",
+    "concat",
     "estimate",
     "extend",
     "generate",

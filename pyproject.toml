@@ -58,6 +58,10 @@ dependencies = [
     "threadpoolctl>=3.1",
 ]
 
+[project.optional-dependencies]
+# GeneratedData.to_polars()
+polars = ["polars>=1.0"]
+
 [project.scripts]
 marketforge = "marketforge.cli.main:main"
 

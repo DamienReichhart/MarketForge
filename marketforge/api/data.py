@@ -12,10 +12,12 @@ import difflib
 import os
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, NamedTuple, overload
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+from numpy.typing import DTypeLike
 
 from marketforge.api.parsing import Names, TimeLike, as_names, parse_time
 from marketforge.domain.markets import MarketType
@@ -26,6 +28,41 @@ if TYPE_CHECKING:
     from marketforge.api.disk import DiskReport
 
 _REGIMES = [r.value for r in RegimeType]
+# Features computed from the previous candle: a window cannot start on the first.
+_NEEDS_PREVIOUS = {"return"}
+
+
+class Windows(NamedTuple):
+    """What :meth:`GeneratedData.windows` returns; unpack as ``x, y, times, symbols``."""
+
+    x: np.ndarray  # (windows, length, features)
+    y: np.ndarray | None  # (windows,): the target, or None
+    times: pd.DatetimeIndex  # the last candle of each window
+    symbols: np.ndarray  # the instrument of each window
+
+
+def _values(series: pd.Series) -> np.ndarray:
+    """A column as floats: a categorical (the regime) as its codes."""
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        return np.asarray(series.cat.codes.to_numpy(dtype=float))
+    return np.asarray(series.to_numpy(dtype=float))
+
+
+def _feature(frame: pd.DataFrame, name: str) -> np.ndarray:
+    """A column, or a feature computed from the candles, as floats."""
+    if name == "return":
+        close = frame["close"].to_numpy(dtype=float)
+        return np.concatenate(([np.nan], np.diff(np.log(close))))
+    if name == "log_volume":
+        return np.asarray(np.log1p(frame["volume"].to_numpy(dtype=float)))
+    if name == "range":
+        return np.asarray(((frame["high"] - frame["low"]) / frame["close"]).to_numpy(dtype=float))
+    if name not in frame.columns:
+        raise ValueError(
+            f"Unknown feature {name!r}: a column ({', '.join(frame.columns)}) or one of "
+            "return, log_volume, range"
+        )
+    return _values(frame[name])
 
 
 @dataclass(frozen=True)
@@ -338,32 +375,115 @@ class GeneratedData(Mapping[str, InstrumentData]):
         self,
         timeframe: str | None = None,
         columns: Sequence[str] = ("open", "high", "low", "close", "volume"),
+        *,
+        dtype: DTypeLike = np.float64,
     ) -> tuple[np.ndarray, pd.DatetimeIndex, list[str]]:
         """
-        One timeframe as a (time, instrument, column) float array, for tensors.
+        One timeframe as a (time, instrument, column) array, for tensors.
 
         The time axis is the union of every instrument's candle times; a value
         is NaN where that instrument's market was closed. The regime column
-        gives its codes (0 trend_up ... 4 crash).
+        gives its codes (0 trend_up ... 4 crash). ``dtype`` may be
+        ``np.float32`` to halve the memory of a training set.
 
         Returns:
             (array, index, symbols): the array, its time axis and its instrument axis.
         """
         name = self._timeframe(timeframe)
         symbols = list(self.symbols)
-        index = pd.DatetimeIndex(
-            sorted(set().union(*(self.frame(s, name).index for s in symbols))), name="time"
-        )
-        out = np.full((len(index), len(symbols), len(columns)), np.nan)
-        for j, symbol in enumerate(symbols):
-            frame = self.frame(symbol, name)
-            rows = index.get_indexer(frame.index)
+        frames = [self.frame(s, name) for s in symbols]
+        stamps = [f.index.as_unit("s").asi8 for f in frames]
+        axis = np.unique(np.concatenate(stamps)) if stamps else np.empty(0, dtype=np.int64)
+        out = np.full((axis.size, len(symbols), len(columns)), np.nan, dtype=dtype)
+        for j, (frame, seconds) in enumerate(zip(frames, stamps, strict=True)):
+            rows = np.searchsorted(axis, seconds)
             for k, column in enumerate(columns):
-                values = frame[column]
-                if isinstance(values.dtype, pd.CategoricalDtype):
-                    values = values.cat.codes
-                out[rows, j, k] = values.to_numpy(dtype=float)
+                out[rows, j, k] = _values(frame[column])
+        index = pd.DatetimeIndex(pd.to_datetime(axis, unit="s", utc=True), name="time")
         return out, index, symbols
+
+    def windows(
+        self,
+        timeframe: str | None = None,
+        length: int = 64,
+        *,
+        stride: int = 1,
+        features: Sequence[str] = ("return", "log_volume"),
+        target: str | None = "regime",
+        horizon: int = 0,
+        symbols: Names | None = None,
+        dtype: DTypeLike = np.float32,
+    ) -> Windows:
+        """
+        Fixed-length windows of every instrument's candles, for a sequence model.
+
+        Each window is ``length`` consecutive candles of one instrument; windows
+        start every ``stride`` candles and never mix instruments. A feature is
+        any column, or one of ``return`` (log return from the previous close),
+        ``log_volume`` (``log1p(volume)``) and ``range`` (``(high - low) /
+        close``); returns rather than prices, because every seed starts at the
+        same prices. The target is a column or feature ``horizon`` candles
+        after the window's last one (0: at it), and the regime as its codes.
+
+        Returns:
+            :class:`Windows`: ``x`` (windows, length, features), ``y`` (windows,)
+            or None without a target, and the ``times`` (the last candle of
+            each window) and ``symbols`` they belong to. NumPy only: wrap them
+            in a ``torch.utils.data.TensorDataset`` or ``tf.data.Dataset``.
+        """
+        if length < 1 or stride < 1 or horizon < 0:
+            raise ValueError("length and stride must be at least 1, and horizon at least 0")
+        name = self._timeframe(timeframe)
+        chosen = [self.instrument(s).symbol for s in as_names(symbols)] or list(self.symbols)
+        xs, ys, times, owners = [], [], [], []
+        for symbol in chosen:
+            frame = self.frame(symbol, name)
+            x = np.column_stack([_feature(frame, f) for f in features]).astype(dtype, copy=False)
+            y = None if target is None else _feature(frame, target)
+            first = 1 if any(f in _NEEDS_PREVIOUS for f in features) else 0
+            last = len(frame) - length - horizon  # the last window's first row
+            starts = np.arange(first, last + 1, stride)
+            if starts.size == 0:
+                continue
+            view = np.lib.stride_tricks.sliding_window_view(x, length, axis=0)
+            xs.append(view[starts].transpose(0, 2, 1))
+            ends = starts + length - 1
+            if y is not None:
+                ys.append(y[ends + horizon])
+            times.append(frame.index[ends])
+            owners.append(np.full(starts.size, symbol))
+        if not xs:
+            raise ValueError(f"No instrument has {length + horizon} {name} candles for a window")
+        labels = None
+        if target is not None:
+            labels = np.concatenate(ys)
+            labels = labels.astype(np.int64) if target == "regime" else labels.astype(dtype)
+        return Windows(
+            x=np.concatenate(xs),
+            y=labels,
+            times=pd.DatetimeIndex(
+                pd.to_datetime(
+                    np.concatenate([t.as_unit("s").asi8 for t in times]), unit="s", utc=True
+                ),
+                name="time",
+            ),
+            symbols=np.concatenate(owners),
+        )
+
+    def to_arrow(self, timeframe: str | None = None) -> pa.Table:
+        """One timeframe as an Arrow table in long format: symbol, time and the candle columns."""
+        long = self.to_long(timeframe).reset_index()
+        return pa.Table.from_pandas(long, preserve_index=False)
+
+    def to_polars(self, timeframe: str | None = None) -> Any:
+        """One timeframe as a polars DataFrame in long format (needs ``marketforge[polars]``)."""
+        try:
+            import polars as pl
+        except ImportError:
+            raise ImportError(
+                "to_polars() needs polars: pip install 'marketforge[polars]'"
+            ) from None
+        return pl.from_arrow(self.to_arrow(timeframe))
 
     def summary(self) -> pd.DataFrame:
         """One row per instrument and timeframe: market, candles, first and last candle."""
