@@ -200,4 +200,4 @@ marketforge generate -o ./mixed -i AAPL,EURUSD,BTCUSD --from 2024-03-04 --days 6
 marketforge export lean ./mixed ./lean-data
 ```
 
-Point LEAN's `data-folder` at `./lean-data`, next to its own `market-hours` and `symbol-properties` folders, and `AddEquity("AAPL")`, `AddForex("EURUSD", market=Market.Oanda)` and `AddCrypto("BTCUSD", market=Market.Coinbase)` read the candles. CI runs an algorithm on such an export in LEAN's own Docker image every week.
+Point LEAN's `data-folder` at `./lean-data`, next to its own `market-hours` and `symbol-properties` folders, and `AddEquity("AAPL")`, `AddForex("EURUSD", market=Market.Oanda)` and `AddCrypto("BTCUSD", market=Market.Coinbase)` read the candles. CI runs an algorithm on such an export in LEAN's own Docker image, and a freqtrade backtest on a freqtrade export, on every change.

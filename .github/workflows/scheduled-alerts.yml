@@ -14,7 +14,7 @@ on:
   # Safe: this job only reads the triggering run's metadata. It never checks
   # out, downloads or executes anything from that run.
   workflow_run: # zizmor: ignore[dangerous-triggers]
-    workflows: [CI, CodeQL, Scorecard, External links, Engine round trips]
+    workflows: [CI, CodeQL, Scorecard, External links]
     types: [completed]
 
 permissions: {}
