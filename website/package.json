@@ -22,7 +22,7 @@
     "sharp": "0.35.5"
   },
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=26"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",
