@@ -400,7 +400,11 @@ def check_command(command: Command) -> None:
     # A dry run reads the override file; one the reader provides cannot exist here,
     # so such an example is only parsed.
     overrides = args[args.index("--overrides") + 1] if "--overrides" in args[:-1] else None
-    if name == "generate" and "--dry-run" not in args and (overrides is None or Path(overrides).exists()):
+    if (
+        name == "generate"
+        and "--dry-run" not in args
+        and (overrides is None or Path(overrides).exists())
+    ):
         code, out = _invoke([*command.args, "--dry-run"])
         if code:
             raise ExampleError(
