@@ -17,7 +17,7 @@ import marketforge as mf
 INSTRUMENT = "BTCUSD"
 MARKET = "crypto"
 START, END = "2024-03-01", "2024-03-11"
-SEED = 23  # ten days that go through every regime, a crash included
+SEED = 25  # ten days that go through every regime, a crash included
 TIMEFRAME = "H1"
 
 OUT = Path(__file__).resolve().parents[1] / "src" / "samples" / "hero-sample.json"
