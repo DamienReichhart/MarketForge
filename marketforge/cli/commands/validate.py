@@ -47,11 +47,19 @@ def validate(input_path: str, market: str | None, as_json: bool) -> None:
     else:
         files = [root]
     reports = {}
+    skipped: dict[Path, str] = {}
     for path in files:
         try:
             reports[path] = validate_candles(path, market)
         except ValueError as e:
-            raise click.UsageError(str(e)) from None
+            if not root.is_dir():
+                raise click.ClickException(str(e)) from None
+            skipped[path] = str(e)  # one unusable file does not stop the others
+    if not reports:
+        raise click.ClickException(
+            f"No m1 file of {root} could be validated:\n"
+            + "\n".join(f"  {p.relative_to(root).as_posix()}: {why}" for p, why in skipped.items())
+        )
     passed = all(r.passed for r in reports.values())
     if as_json:
         click.echo(
@@ -75,8 +83,15 @@ def validate(input_path: str, market: str | None, as_json: bool) -> None:
                 failed = [m for m in report.metrics.values() if not m.passed]
                 for m in failed:
                     click.echo(f"       {m.name} = {m.value:.4f}")
+        for path, why in skipped.items():
+            click.echo(f"skip {path.relative_to(root).as_posix()}: {why}")
         good = sum(r.passed for r in reports.values())
-        click.secho(f"{good}/{len(reports)} files pass", fg="green" if passed else "red", bold=True)
+        click.secho(
+            f"{good}/{len(reports)} files pass"
+            + (f" ({len(skipped)} skipped)" if skipped else ""),
+            fg="green" if passed else "red",
+            bold=True,
+        )
     else:
         click.echo(next(iter(reports.values())).summary())
     if not passed:
