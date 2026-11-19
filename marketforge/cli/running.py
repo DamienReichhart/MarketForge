@@ -63,6 +63,7 @@ def run(
     progress: bool | None,
     overwrite: bool = False,
     quiet: bool = False,
+    layout: str = "split",
 ) -> None:
     """Write a request's candles to ``output_dir`` and report what was done."""
     jobs = jobs or min(len(request.plans), os.cpu_count() or 1)
@@ -88,6 +89,7 @@ def run(
                 output_dir,
                 fmt=fmt,
                 timestamps=timestamps,
+                layout=layout,
                 jobs=jobs,
                 on_day=tick,
                 overwrite=overwrite,

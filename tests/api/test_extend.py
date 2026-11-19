@@ -98,13 +98,14 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
     )
     doc = json.loads(report.manifest.read_text())
     assert report.manifest == tmp_path / "marketforge.json"
-    assert {k: doc[k] for k in list(doc)[:-1]} == {
+    assert {k: doc[k] for k in list(doc) if k not in ("checkpoint", "files")} == {
         "marketforge": mf.__version__,
         "model_revision": mf.MODEL_REVISION,
         "seed": 7,
         "start": "2024-01-01T00:00:00Z",
         "end": "2024-01-03T00:00:00Z",
         "format": "csv",
+        "layout": "split",
         "timestamps": "unix",
         "timeframes": ["H1"],
         "anomalies": [],
@@ -114,9 +115,13 @@ def test_the_manifest_records_how_the_dataset_was_produced(tmp_path):
         "instruments": {"crypto": ["MYCOIN"], "forex": ["EURUSD"]},
         "overrides": overrides,
     }
+    # Every candle file's rows and checksum, as written.
+    mycoin = doc["files"]["crypto/MYCOIN_H1.csv"]
+    assert mycoin["rows"] == 48 and len(mycoin["sha256"]) == 64
     # The overrides travel with the dataset: extending needs no file.
     mf.extend(tmp_path, dt.date(2024, 1, 4))
     assert len((tmp_path / "crypto" / "MYCOIN_H1.csv").read_text().splitlines()) == 1 + 72
+    assert read_manifest(tmp_path).files["crypto/MYCOIN_H1.csv"]["rows"] == 72
 
 
 def test_extend_refuses_what_it_cannot_continue(tmp_path):

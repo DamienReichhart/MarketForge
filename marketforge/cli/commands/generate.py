@@ -81,6 +81,14 @@ from marketforge.output.manifest import dataset_files
     help="Output file format. Feather (Arrow IPC) loads fastest; Parquet is smallest.",
 )
 @click.option(
+    "--layout",
+    type=click.Choice(["split", "long"], case_sensitive=False),
+    default="split",
+    show_default=True,
+    help="split: one file per instrument and timeframe. long (Parquet, Feather): one file "
+    "per market and timeframe, {market}/{tf}.parquet, with symbol and market columns.",
+)
+@click.option(
     "--timestamps",
     type=click.Choice(["unix", "iso", "datetime"], case_sensitive=False),
     default="unix",
@@ -134,6 +142,7 @@ def generate(
     timeframes: str | None,
     anomalies: str | None,
     fmt: str,
+    layout: str,
     timestamps: str,
     overrides: str | None,
     with_spread: bool,
@@ -146,7 +155,9 @@ def generate(
     quiet: bool,
 ) -> None:
     """Generate a dataset: candle files and the manifest that records how they were made."""
-    fmt, timestamps = fmt.lower(), timestamps.lower()
+    fmt, timestamps, layout = fmt.lower(), timestamps.lower(), layout.lower()
+    if layout == "long" and fmt == "csv":
+        raise click.UsageError("--layout long is for Parquet and Feather: add --format parquet.")
     if not dry_run and not output_dir:
         raise click.UsageError("Missing option '--output-dir' / '-o'.")
     if fmt != "csv" and timestamps == "iso":
@@ -177,9 +188,9 @@ def generate(
         overrides=overrides,
     )
     if not quiet or dry_run:
-        print_plan(request, fmt, output_dir, seed is None, jobs)
+        print_plan(request, fmt, output_dir, seed is None, jobs, layout)
     if dry_run or not output_dir:
         return
-    run(request, output_dir, fmt, timestamps, jobs, progress, overwrite, quiet)
+    run(request, output_dir, fmt, timestamps, jobs, progress, overwrite, quiet, layout)
     if not quiet:
         click.echo(f"Reproduce with --seed {request.seed} (the manifest records every setting)")

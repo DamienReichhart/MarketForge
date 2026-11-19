@@ -41,7 +41,9 @@ def info(dataset: str, as_json: bool) -> None:
         )
         click.echo(f"  {market:<11} {len(symbols)} instrument(s): {names}")
     extra = [name.replace("_", "/") for name, on in summary.columns.items() if on]
-    files = f"{summary.files} {summary.format} file{'' if summary.files == 1 else 's'}"
+    files = f"{summary.files} {summary.format} file{'' if summary.files == 1 else 's'}" + (
+        " (long layout)" if summary.layout == "long" else ""
+    )
     click.echo(
         f"  Files       {files}, {_human(summary.bytes)}; "
         f"timeframes {', '.join(summary.timeframes)}"

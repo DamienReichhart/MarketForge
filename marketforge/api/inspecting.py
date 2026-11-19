@@ -23,7 +23,13 @@ import pyarrow.parquet as pq
 from marketforge._version import MODEL_REVISION, __version__
 from marketforge.api.disk import default_jobs, write_request
 from marketforge.api.planning import plan_request
-from marketforge.output.manifest import MANIFEST_NAME, Manifest, dataset_files, read_manifest
+from marketforge.output.manifest import (
+    MANIFEST_NAME,
+    Manifest,
+    dataset_files,
+    file_record,
+    read_manifest,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,7 @@ class DatasetInfo:
     start: str  # ISO 8601 UTC
     end: str
     format: str
+    layout: str
     timestamps: str
     timeframes: list[str]
     instruments: dict[str, list[str]]  # market -> symbols
@@ -74,6 +81,7 @@ def info(dataset: str | os.PathLike[str]) -> DatasetInfo:
         start=_iso(manifest.start),
         end=_iso(manifest.end),
         format=manifest.format,
+        layout=manifest.layout,
         timestamps=manifest.timestamps,
         timeframes=list(manifest.timeframes),
         instruments=manifest.instruments,
@@ -115,19 +123,29 @@ class VerifyReport:
         return len(self.identical) + len(self.differs) + len(self.missing)
 
 
-def verify(dataset: str | os.PathLike[str], *, jobs: int | None = None) -> VerifyReport:
+def verify(
+    dataset: str | os.PathLike[str], *, checksums: bool = False, jobs: int | None = None
+) -> VerifyReport:
     """
     Regenerate a dataset from its manifest and compare every file with it.
 
     The fresh copy is written in a temporary directory beside the dataset (on
     the same disk), so it needs as much free space as the dataset.
 
+    With ``checksums``, nothing is regenerated: every file is compared with
+    the SHA-256 its manifest recorded when it was written. That is fast and
+    proves the files unaltered since, but not that this MarketForge would
+    produce them; it works on datasets of any model revision.
+
     Raises:
-        ValueError: if the directory is not a dataset, or was written by another
-            model revision (which produces other candles).
+        ValueError: if the directory is not a dataset, was written by another
+            model revision (unless ``checksums``), or has no checksums
+            (written before 5.0) when ``checksums`` is asked for.
     """
     root = Path(dataset)
     manifest = read_manifest(root)
+    if checksums:
+        return _check_sums(root, manifest)
     reason = _why_not_current(manifest)
     if reason is not None:
         raise ValueError(f"{root} cannot be verified by MarketForge {__version__}: {reason}")
@@ -157,6 +175,7 @@ def verify(dataset: str | os.PathLike[str], *, jobs: int | None = None) -> Verif
                 fresh,
                 fmt=manifest.format,
                 timestamps=manifest.timestamps,
+                layout=manifest.layout,
                 jobs=default_jobs(request, jobs),
             )
         for path in sorted(p for p in dataset_files(fresh) if p.name != MANIFEST_NAME):
@@ -169,6 +188,25 @@ def verify(dataset: str | os.PathLike[str], *, jobs: int | None = None) -> Verif
                 report.differs.append(rel)
         expected = {_rel(p, fresh) for p in dataset_files(fresh) if p.name != MANIFEST_NAME}
     report.extra.extend(sorted(ours - expected))
+    return report
+
+
+def _check_sums(root: Path, manifest: Manifest) -> VerifyReport:
+    if not manifest.files:
+        raise ValueError(
+            f"{root}'s manifest records no checksums (it was written before MarketForge 5.0): "
+            "verify it by regenerating it instead"
+        )
+    ours = {_rel(p, root) for p in dataset_files(root) if p.name != MANIFEST_NAME}
+    report = VerifyReport()
+    for rel, recorded in sorted(manifest.files.items()):
+        if rel not in ours:
+            report.missing.append(rel)
+        elif file_record(root / rel)["sha256"] == recorded["sha256"]:
+            report.identical.append(rel)
+        else:
+            report.differs.append(rel)
+    report.extra.extend(sorted(ours - manifest.files.keys()))
     return report
 
 

@@ -150,7 +150,7 @@ The directory of candle files one generation produces, together with its manifes
 _Avoid_: output directory (in prose), dump, export
 
 **Layout**:
-How a dataset's candles are split into files: one file per instrument and timeframe (the default), or the long layout of one file per timeframe holding every instrument.
+How a dataset's candles are split into files: the split layout, one file per instrument and timeframe (the default), or the long layout, one file per market and timeframe holding all its instruments.
 _Avoid_: structure, partitioning, schema
 
 **Manifest**:
