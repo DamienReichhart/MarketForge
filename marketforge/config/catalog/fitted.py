@@ -19,9 +19,9 @@ correlations, the weights and the volatilities):
   common trends and stress shocks correlate daily returns more than minute
   shocks (ADR 0018), so it is the lower of the two.
 
-``horizon`` is the straight line from minute to daily correlations over every
-pair, which turns an override file's correlations (daily, like the catalog's)
-into minute ones. Loading checks the digest and the model revision the minute
+``horizon`` maps daily correlations to minute ones (:func:`horizon_table`),
+which turns an override file's correlations (daily, like the catalog's) into
+the minute shocks' that give them. Loading checks the digest and the model revision the minute
 matrix was fitted for, so editing a catalog or the model without refitting
 (``python scripts/fit_correlations.py``) fails loudly instead of silently
 using a stale matrix.
@@ -130,18 +130,19 @@ def document(
     market: MarketType,
     daily: np.ndarray,
     minute: np.ndarray | None = None,
-    horizon: tuple[float, float] = (1.0, 0.0),
+    horizon: tuple[list[float], list[float]] | None = None,
 ) -> str:
     """The JSON file of a market's fit: ``daily`` and the ``minute`` matrix that gives it."""
     p = fit_problem(market)
     minute = daily if minute is None else minute
+    days, minutes = horizon_table(daily, minute) if horizon is None else horizon
     return (
         json.dumps(
             {
                 "digest": p.digest(),
                 "model_revision": MODEL_REVISION,
                 "factors": list(p.structure.factors),
-                "horizon": {"slope": horizon[0], "intercept": horizon[1]},
+                "horizon": {"daily": days, "minute": minutes},
                 "daily": [[float(v) for v in row] for row in daily],
                 "matrix": [[float(v) for v in row] for row in minute],
             },
@@ -168,10 +169,33 @@ def _document(market: MarketType) -> dict[str, Any]:
     return doc
 
 
+def horizon_table(
+    daily: np.ndarray, minute: np.ndarray, bins: int = 12
+) -> tuple[list[float], list[float]]:
+    """A monotone table from daily to minute correlations, over a market's pairs.
+
+    The pairs are binned by their daily correlation and each bin's means
+    kept, then (-1, -1), (0, 0) and (1, 1) are added: a pair the market's
+    common moves do not touch keeps its correlation at every horizon. A
+    straight line fitted to the catalog's pairs, all positive in crypto and
+    stocks, would have sent a daily 0 to a minute -0.3.
+    """
+    off = ~np.eye(len(daily), dtype=bool)
+    d, m = np.asarray(daily)[off], np.asarray(minute)[off]
+    order = np.argsort(d)
+    groups = np.array_split(order, min(bins, d.size))
+    points = {(-1.0, -1.0), (0.0, 0.0), (1.0, 1.0)}
+    points |= {(float(d[g].mean()), float(m[g].mean())) for g in groups if g.size}
+    table = np.array(sorted(points))
+    # Monotone: a higher daily correlation never needs a lower minute one.
+    minutes = np.maximum.accumulate(table[:, 1])
+    return [round(float(x), 6) for x in table[:, 0]], [round(float(y), 6) for y in minutes]
+
+
 def minute_correlation(market: MarketType, daily: float) -> float:
     """The minute shocks' correlation that gives a pair the daily correlation ``daily``."""
-    line = _document(market)["horizon"]
-    rho = (float(daily) - line["intercept"]) / line["slope"]
+    table = _document(market)["horizon"]
+    rho = np.interp(float(daily), table["daily"], table["minute"])
     return float(np.clip(rho, -0.99, 0.99))
 
 
