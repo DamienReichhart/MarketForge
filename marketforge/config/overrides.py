@@ -27,7 +27,8 @@ minute: coins for crypto, ticks for forex, shares for stocks),
 volume_volatility, spread_bps (typical quoted spread in basis points of the
 price; default: the market's rule), tick_size (the price step, a power of
 ten; default: the market's rule), earnings_move (stocks: the standard
-deviation of the jump after each quarterly report; 0 for none), correlations (to instruments of the same market;
+deviation of the jump after each quarterly report; 0 for none), correlations (to
+instruments of the same market, of daily returns as the catalog's are;
 unspecified pairs of a new instrument default to 0).
 """
 
@@ -45,6 +46,7 @@ import numpy as np
 
 from marketforge._warnings import PACKAGE_DIRS
 from marketforge.config.catalog.correlation import nearest_correlation
+from marketforge.config.catalog.fitted import minute_correlation
 from marketforge.config.catalog.schema import InstrumentParams, MarketConfig
 from marketforge.config.factors import FactorStructure, forex_structure
 from marketforge.domain.markets import MarketType
@@ -222,6 +224,10 @@ def apply_overrides(
                 raise OverrideError(
                     f"{a}-{b}: correlation must be strictly between -1 and 1, got {rho}"
                 )
+        # An override's correlations are daily ones, as the catalog's are: the
+        # simulator needs the minute shocks' correlation that gives them.
+        edits = [(a, b, minute_correlation(market, rho)) for a, b, rho in corr_edits[market]]
+        corr_edits[market] = edits
         for i in range(k, n):
             _imply_new_correlations(mat, i, syms, corr_edits[market])
         for a, b, rho in corr_edits[market]:
