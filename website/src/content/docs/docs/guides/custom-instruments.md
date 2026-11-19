@@ -74,6 +74,7 @@ marketforge generate -o ./like-mine --from 2025-01-01 --days 30 -i EURUSD,GBPUSD
 Each file is one instrument, named `SYMBOL_m1.csv` (or `.parquet`, `.feather`), with a `timestamp` (or `time`) column and `close`, plus `volume` if you have it. A catalog symbol gets new parameters, and any other symbol becomes a new instrument. For each file it fits:
 
 - the start price (the last close);
+- the tick size: the step the closes are on, so generated prices keep your data's decimals;
 - the annualised volatility, gaps included;
 - the volume level;
 - the correlations of hourly returns with the files before it.
