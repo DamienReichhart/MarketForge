@@ -15,7 +15,7 @@ const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const TIMEOUT_MS = 20_000;
 const ATTEMPTS = 3;
 const PER_HOST = 2; // concurrent requests to one host
-const USER_AGENT = 'Mozilla/5.0 (compatible; link-check; +https://github.com/DamienReichhart/MarketForge)';
+const USER_AGENT = 'Mozilla/5.0 (compatible; link-check; +https://github.com/DamienReichhart/marketforge)';
 
 function* htmlFiles(dir) {
 	for (const name of readdirSync(dir)) {

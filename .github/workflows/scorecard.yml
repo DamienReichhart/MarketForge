@@ -4,7 +4,7 @@ name: Scorecard
 # (branch protection, pinned actions, token permissions, signed releases,
 # SAST, ...). Findings appear under Security > Code scanning, and the results
 # are published for the public badge at
-# https://scorecard.dev/viewer/?uri=github.com/DamienReichhart/MarketForge
+# https://scorecard.dev/viewer/?uri=github.com/DamienReichhart/marketforge
 #
 # publish_results requires this restricted shape: no top-level env or
 # defaults, and only allow-listed actions in the job.

@@ -5,7 +5,7 @@
 A model that links markets and prices on real ticks, an API that speaks
 one language, and data that drops straight into ML and backtesting tools.
 Upgrading from 4.x? See
-[Migrating to 5.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-5/).
+[Migrating to 5.0](https://damienreichhart.github.io/marketforge/docs/migrating-to-5/).
 
 ### Output changes
 - **Prices sit on each instrument's tick.** Open, high, low and close were
@@ -208,16 +208,20 @@ Upgrading from 4.x? See
 - **`--overwrite` removes the market folders** the old dataset leaves empty.
 
 ### Documentation and tooling
-- [Migrating to 5.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-5/),
+- [Migrating to 5.0](https://damienreichhart.github.io/marketforge/docs/migrating-to-5/),
   and tested recipes for backtrader, backtesting.py, vectorbt, Nautilus
   Trader and freqtrade on the
-  [Backtesting](https://damienreichhart.github.io/MarketForge/docs/use-cases/backtesting/)
+  [Backtesting](https://damienreichhart.github.io/marketforge/docs/use-cases/backtesting/)
   page.
 - The README's Python example guards `generate_many()` with
   `if __name__ == "__main__":`, as scripts that start processes must, and
   states the headline command's disk size.
 - `nox` runs CI's checks locally, `pre-commit` runs ruff before each
   commit, and the `examples/` scripts run in CI.
+- The repository is now `DamienReichhart/marketforge`, and the website moved
+  to [damienreichhart.github.io/marketforge](https://damienreichhart.github.io/marketforge/):
+  GitHub Pages paths are case-sensitive, so links to `/MarketForge/` no
+  longer resolve.
 
 ## 4.0.0
 
@@ -233,7 +237,7 @@ The most realistic MarketForge yet, and the easiest to build on:
 **Realism now comes before seed stability**: seeds produce different candles
 from 3.1.1 (see Output changes), and any later release may change them again
 when that makes the data more realistic. Upgrading from 3.x? See
-[Migrating to 4.0](https://damienreichhart.github.io/MarketForge/docs/migrating-to-4/).
+[Migrating to 4.0](https://damienreichhart.github.io/marketforge/docs/migrating-to-4/).
 
 ### Output changes
 - **Your override correlations hold.** Correlations set in an override file
@@ -479,7 +483,7 @@ when that makes the data more realistic. Upgrading from 3.x? See
 
 ### Website and documentation
 - **MarketForge has a website**,
-  [damienreichhart.github.io/MarketForge](https://damienreichhart.github.io/MarketForge/),
+  [damienreichhart.github.io/marketforge](https://damienreichhart.github.io/marketforge/),
   with full documentation: guides for training ML models, backtesting and
   stress testing, the command line, the Python API, the model, the spread,
   validation and reproducibility, plus this changelog, the glossary and the
@@ -494,7 +498,7 @@ when that makes the data more realistic. Upgrading from 3.x? See
   [`docs/brand`](docs/brand/README.md) and on the site's Brand page. The site
   now sets type in DM Sans and DM Mono, and link previews carry an image.
 - **Try MarketForge in your browser.** The site's
-  [Playground](https://damienreichhart.github.io/MarketForge/playground/)
+  [Playground](https://damienreichhart.github.io/marketforge/playground/)
   runs the released package in the page itself: pick instruments, a range and
   a seed, see the candles with their regimes, download them as CSV or Parquet,
   and copy the equivalent command. It is a preview with limits the installed
@@ -534,7 +538,7 @@ release also ships the hardened release pipeline.
 - Each release carries a **CycloneDX SBOM** (`marketforge-<version>.cdx.json`
   on the GitHub release) and signed build-provenance and SBOM attestations.
   Verify a download with
-  `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
+  `gh attestation verify <file> --repo DamienReichhart/marketforge`.
 - The PyPI release is verified after upload by installing and running it on
   Linux, macOS and Windows.
 - `SECURITY.md`: report vulnerabilities privately through GitHub, not in

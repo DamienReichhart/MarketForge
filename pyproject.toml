@@ -66,11 +66,11 @@ polars = ["polars>=1.0"]
 marketforge = "marketforge.cli.main:main"
 
 [project.urls]
-Homepage = "https://damienreichhart.github.io/MarketForge/"
-Documentation = "https://damienreichhart.github.io/MarketForge/docs/"
-Repository = "https://github.com/DamienReichhart/MarketForge"
-Issues = "https://github.com/DamienReichhart/MarketForge/issues"
-Changelog = "https://damienreichhart.github.io/MarketForge/changelog/"
+Homepage = "https://damienreichhart.github.io/marketforge/"
+Documentation = "https://damienreichhart.github.io/marketforge/docs/"
+Repository = "https://github.com/DamienReichhart/marketforge"
+Issues = "https://github.com/DamienReichhart/marketforge/issues"
+Changelog = "https://damienreichhart.github.io/marketforge/changelog/"
 
 # Development tooling (PEP 735). Not published in the package metadata.
 # Install with `pip install -e . --group dev` (pip >= 25.1) or

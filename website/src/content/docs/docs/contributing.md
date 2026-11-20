@@ -3,12 +3,12 @@ title: "Contributing"
 description: "How to set up a development environment, the checks CI runs, and how releases happen."
 ---
 
-MarketForge is free software under the Apache-2.0 licence, developed on [GitHub](https://github.com/DamienReichhart/MarketForge). Issues, measurements on real data and pull requests are welcome.
+MarketForge is free software under the Apache-2.0 licence, developed on [GitHub](https://github.com/DamienReichhart/marketforge). Issues, measurements on real data and pull requests are welcome.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
+git clone https://github.com/DamienReichhart/marketforge && cd marketforge
 python -m pip install -U "pip>=25.1"    # --group needs pip 25.1
 pip install -e . --group dev            # or: uv pip install -e . --group dev
 pre-commit install                      # ruff on every commit
@@ -40,7 +40,7 @@ This site lives in `website/` (Astro and Starlight). The changelog, the glossary
 ```bash
 cd website
 npm ci
-npm run dev        # http://localhost:4321/MarketForge/
+npm run dev        # http://localhost:4321/marketforge/
 npm run check      # astro check: what CI type-checks
 ```
 
@@ -48,7 +48,7 @@ The landing page's chart is real output, written by `website/scripts/hero_sample
 
 ## Releases
 
-To release: bump `[project].version` in `pyproject.toml`, add a `## <version>` section to `CHANGELOG.md`, and merge `dev` into `main`. The CD pipeline publishes to PyPI, creates the GitHub release, and deploys this website. See [`docs/ci-cd.md`](https://github.com/DamienReichhart/MarketForge/blob/main/docs/ci-cd.md).
+To release: bump `[project].version` in `pyproject.toml`, add a `## <version>` section to `CHANGELOG.md`, and merge `dev` into `main`. The CD pipeline publishes to PyPI, creates the GitHub release, and deploys this website. See [`docs/ci-cd.md`](https://github.com/DamienReichhart/marketforge/blob/main/docs/ci-cd.md).
 
 ## Design decisions
 

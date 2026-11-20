@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security issue
-    url: https://github.com/DamienReichhart/MarketForge/blob/main/SECURITY.md
+    url: https://github.com/DamienReichhart/marketforge/blob/main/SECURITY.md
     about: Report vulnerabilities privately, not in a public issue.

@@ -6,7 +6,7 @@ Synthetic OHLCV market-data generator (Python). See `README.md` for features, ar
 
 ### Issue tracker
 
-Issues live in GitHub Issues on `DamienReichhart/MarketForge` (`gh` locally; GitHub MCP tools in cloud sessions). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues on `DamienReichhart/marketforge` (`gh` locally; GitHub MCP tools in cloud sessions). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
