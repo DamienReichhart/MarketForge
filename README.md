@@ -41,7 +41,7 @@ marketforge generate -o ./data --from 2024-01-01 --days 90 --markets crypto --wi
 
 That is 90 days of all 53 crypto instruments, the eight standard timeframes
 from `m1` to `W1`, with the regime and the bid-ask spread of every candle:
-about 700 MB of CSV in ten seconds (`--format parquet` writes less than half,
+about 650 MB of CSV in ten seconds (`--format parquet` writes half as much,
 and `--dry-run` tells you before anything is written). Parquet, Feather and
 pandas DataFrames work too. Run it again with seed 42 and you get the same
 candles, bit for bit. Or skip the install: the

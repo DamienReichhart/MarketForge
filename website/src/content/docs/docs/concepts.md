@@ -71,7 +71,7 @@ That is what makes three commands possible:
 
 MarketForge puts realism before seed stability: a release may change what a seed produces when that makes the data more realistic. Each such release increments the **model revision** (`mf.MODEL_REVISION`) and lists the change under *Output changes* in the [changelog](../../changelog/). The manifest records both the version and the model revision, and a dataset can only be extended or verified by a release with the same model revision.
 
-To keep a dataset identical, pin the exact version: `pip install marketforge==4.0.0`.
+To keep a dataset identical, pin the exact version: `pip install marketforge==5.0.0`.
 
 ## Next
 

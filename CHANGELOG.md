@@ -107,6 +107,11 @@ Upgrading from 4.x? See
   and, for data with regime labels, the spread of spell lengths.
 - **A dataset's unusable files are skipped**, not fatal, and samples under
   1,950 m1 candles are refused instead of failing on noise.
+- **The provisional spread band allows a little narrowing in turbulence.**
+  The most turbulent tenth of the minutes must have a mean spread at least
+  0.85 times the median (0.9 before): a holiday's thin hours are quiet and
+  wide. For forex it is 0.7, since in a calm fortnight its turbulent minutes
+  are mostly the London and New York hours, when spreads are tightest.
 
 ### Breaking changes
 - **One vocabulary for Python and the command line.** `fmt=` is `format=`;
@@ -193,6 +198,12 @@ Upgrading from 4.x? See
   `InstrumentData`, `Windows`, `ValidationReport`, `MetricResult` and
   `OverrideError`, which the documentation already named.
 
+### Performance
+- **Generation is 13-20% slower than 4.0.0** on CI's benchmark workloads,
+  for the macro state, earnings, auctions, quote noise and ticks; it was
+  24-43% slower before regime targets were computed in closed form. A cold
+  start (import and a first `generate()`) is 8% faster.
+
 ### Fixes
 - **An interrupted `extend` no longer deletes your files.** Recovering it
   removed or renamed every `*.tmp` file anywhere under the dataset; it now
@@ -200,6 +211,10 @@ Upgrading from 4.x? See
 - **`calibrate` writes override files that `generate` accepts**: a
   correlation of 1.0, a forex symbol that is not six characters, or a file
   not named `SYMBOL_m1` used to fail only at generation.
+- **`calibrate` reproduces each instrument's volume.** It converted the
+  observed volume to `volume_base` with a scale measured once per market, on
+  its first instrument and one seed: a calibrated ETHUSD came out about 15%
+  low. The scale is now the instrument's own, averaged over four seeds.
 - **The same instrument in two letter cases** (`eurusd,EURUSD`) is
   generated once, instead of passing `--dry-run` and failing the run.
 - **`resample()` refuses candles it cannot aggregate exactly**: not m1, out
