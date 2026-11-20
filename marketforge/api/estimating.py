@@ -27,10 +27,12 @@ _DRAW_SECONDS = 7e-9
 _INSTRUMENT_MINUTE_SECONDS = 35e-9
 _MARKET_DAY_SECONDS = 1e-3  # per-day bookkeeping (calendar, aggregation, buffers)
 _ROW_SECONDS = {"csv": 0.75e-6, "parquet": 0.6e-6, "feather": 0.5e-6, "memory": 0.2e-6}
-# Bytes per written row (timestamp, OHLCV), and for the spread column.
-_ROW_BYTES = {"csv": 68, "parquet": 33, "feather": 48}
-_SPREAD_BYTES = {"csv": 11, "parquet": 6, "feather": 8}
-_QUOTE_BYTES = {"csv": 15, "parquet": 8, "feather": 8}  # each of bid and ask
+# Bytes per written row (timestamp, OHLCV), and for the spread column, measured
+# on 5.0's tick prices over every market: CSV rows run from 43 bytes (stocks)
+# to 54 (crypto) and Parquet from 21 to 31, so one figure is within 15% of each.
+_ROW_BYTES = {"csv": 49, "parquet": 26, "feather": 48}
+_SPREAD_BYTES = {"csv": 11, "parquet": 7, "feather": 8}
+_QUOTE_BYTES = {"csv": 8, "parquet": 6, "feather": 8}  # each of bid and ask
 
 
 @dataclass(frozen=True)

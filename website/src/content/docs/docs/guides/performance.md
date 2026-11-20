@@ -11,10 +11,10 @@ Measured on a 4-core Linux machine, CSV unless stated:
 
 | Run | Files | Size | Time |
 | --- | --- | --- | --- |
-| One year of EURUSD, 8 timeframes | 8 | 27 MB | 2 s |
-| 90 days of all 53 crypto instruments, 8 timeframes | 424 | 620 MB | 7 s |
-| 30 days of all 208 instruments, 8 timeframes | 1,664 | 450 MB (220 MB Parquet) | 7 to 9 s (4.5 s Feather) |
-| Ten years of all 208 instruments, 8 timeframes | 1,664 | 59 GB (29 GB Parquet) | about 12 min (10 as Parquet), estimated |
+| One year of EURUSD, 8 timeframes | 8 | 22 MB | 4 s |
+| 90 days of all 53 crypto instruments, 8 timeframes | 424 | 470 MB | 10 s |
+| 30 days of all 208 instruments, 8 timeframes | 1,664 | 335 MB (180 MB Parquet) | 7 to 8 s (6 s Feather) |
+| Ten years of all 208 instruments, 8 timeframes | 1,664 | 40 GB (21 GB Parquet) | about 11 min (9 as Parquet), estimated |
 
 The first run in a fresh environment adds a second or two while Numba compiles the kernels. They are cached on disk, so later runs start at once.
 
