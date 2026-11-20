@@ -19,7 +19,7 @@ const websiteDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoDir = join(websiteDir, '..');
 const contentDir = join(websiteDir, 'src', 'content', 'docs');
 
-const REPO_URL = 'https://github.com/DamienReichhart/MarketForge';
+const REPO_URL = 'https://github.com/DamienReichhart/marketforge';
 const BRANCH = 'main';
 
 /**

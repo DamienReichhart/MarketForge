@@ -54,7 +54,7 @@ Candle values are bit-for-bit identical on a given platform and NumPy build. Acr
 
 - **It needs `m1` candles.** The bands describe minute returns; other timeframes are refused.
 - **Short samples are noisy.** The bands allow for sampling noise, but a day or two of minutes is not enough to measure long memory or tails. Validate at least two weeks.
-- **Forex and stock bands are provisional.** They are estimates until real reference data is measured, and their reports say so. A real forex file outside them may be showing a band that is wrong, not data that is: [open an issue](https://github.com/DamienReichhart/MarketForge/issues) with the measurement.
+- **Forex and stock bands are provisional.** They are estimates until real reference data is measured, and their reports say so. A real forex file outside them may be showing a band that is wrong, not data that is: [open an issue](https://github.com/DamienReichhart/marketforge/issues) with the measurement.
 - **Anomalies are excluded from realism.** A dataset generated with `--anomalies` is deliberately unrealistic and may fail some checks.
 
 ### My stock `H1` candles start at :30, my forex `D1` candles at 21:00 or 22:00 UTC
@@ -103,8 +103,8 @@ Yes, under the Apache-2.0 licence, and the data is yours to use, sell or publish
 
 ### How do I cite MarketForge?
 
-The repository has a [`CITATION.cff`](https://github.com/DamienReichhart/MarketForge/blob/main/CITATION.cff); GitHub's *Cite this repository* button formats it. Record the version and seed next to your results, or keep the dataset's `marketforge.json`, which holds both.
+The repository has a [`CITATION.cff`](https://github.com/DamienReichhart/marketforge/blob/main/CITATION.cff); GitHub's *Cite this repository* button formats it. Record the version and seed next to your results, or keep the dataset's `marketforge.json`, which holds both.
 
 ### Something is missing or wrong
 
-[Open an issue](https://github.com/DamienReichhart/MarketForge/issues), and report a security problem [privately](../security/).
+[Open an issue](https://github.com/DamienReichhart/marketforge/issues), and report a security problem [privately](../security/).

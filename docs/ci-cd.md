@@ -38,8 +38,8 @@ explicitly.
 | Dependency vulnerability audit | `pip-audit` on the runtime dependency tree as resolved for Python 3.12 and 3.15 |
 | Secret scan | `gitleaks` over **every commit** of the history, with values redacted in the log. The project has no secrets by design (trusted publishing, no tokens) and GitHub push protection already blocks known token formats; this adds the history and generic patterns. gitleaks is built from source at the version in `GITLEAKS_VERSION` through the Go module proxy, whose checksum database verifies it; Dependabot does not bump that version, so review it with the runner images. A false positive is silenced with a `gitleaks:allow` comment on its line, or a `.gitleaks.toml` allowlist |
 | Lint GitHub workflows | `actionlint` (with shellcheck) and `zizmor` (Actions security audit) |
-| Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability. One advisory is exempted until upstream fixes it: GHSA-fc5q-39xc-vjpf, a picomatch ReDoS that only the website's build runs, on the repository's own globs ([#26](https://github.com/DamienReichhart/MarketForge/issues/26)) |
-| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), tests the site's build scripts (`npm test`), runs the built [playground](https://damienreichhart.github.io/MarketForge/playground/) in Pyodide under Node (`npm run test-playground`: it loads the site's own Pyodide, wheels and MarketForge wheel, generates, exports CSV and Parquet, and refuses an over-budget request), and uploads the built site as the `github-pages` artifact that CD deploys. It needs the build job: the playground serves the wheel CI built, and the Pyodide wheels it downloads at build time must match the hashes in Pyodide's lock file (ADR 0015) |
+| Dependency review | PRs only: fails if the PR adds a dependency with a known moderate-or-worse vulnerability. One advisory is exempted until upstream fixes it: GHSA-fc5q-39xc-vjpf, a picomatch ReDoS that only the website's build runs, on the repository's own globs ([#26](https://github.com/DamienReichhart/marketforge/issues/26)) |
+| Website | Type-checks the Astro/Starlight site in `website/` (`npm run check`: `astro check`, strict TypeScript) and builds it from its lockfile (`npm ci`; the changelog, glossary and ADRs are copied in from the repository at build time), fails on any broken internal link (`npm run check-links`), tests the site's build scripts (`npm test`), runs the built [playground](https://damienreichhart.github.io/marketforge/playground/) in Pyodide under Node (`npm run test-playground`: it loads the site's own Pyodide, wheels and MarketForge wheel, generates, exports CSV and Parquet, and refuses an over-budget request), and uploads the built site as the `github-pages` artifact that CD deploys. It needs the build job: the playground serves the wheel CI built, and the Pyodide wheels it downloads at build time must match the hashes in Pyodide's lock file (ADR 0015) |
 | Release readiness | PRs (and merge-queue runs) into `main` only: runs the CD release guard below, so a PR that would fail to release (version not bumped, no CHANGELOG section, breaking commits without a major bump) is blocked before the merge |
 | **CI OK** | Fails if any job above failed or was cancelled. **Make this the only required status check** |
 
@@ -244,7 +244,7 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    it holds only this version's sdist and wheel, records signed build
    provenance and SBOM attestations, and uploads to PyPI through trusted
    publishing (OIDC, no stored token). Check a download with
-   `gh attestation verify <file> --repo DamienReichhart/MarketForge`.
+   `gh attestation verify <file> --repo DamienReichhart/marketforge`.
 4. **github-release** creates the tag `v<version>` on the released commit and a
    GitHub release with the CHANGELOG section as notes and the distributions
    the SBOM (`marketforge-<version>.cdx.json`) and the third-party licences
@@ -255,7 +255,7 @@ ci ────┴─► publish (PyPI) ──► github-release (tag + release)
    catches up, and runs the CLI and a generation across all three markets.
 6. **pages** deploys the website CI built and link-checked in this run (the
    `github-pages` artifact) to GitHub Pages, at
-   <https://damienreichhart.github.io/MarketForge/>. It needs only **ci**, so
+   <https://damienreichhart.github.io/marketforge/>. It needs only **ci**, so
    it runs on every push to `main`, whether or not there is a version to
    release, and a failed PyPI release does not hold the site back.
 
@@ -292,10 +292,10 @@ These are GitHub and PyPI settings; the workflows cannot apply them.
    `dev`: require a pull request and the status check **CI OK**.
 2. **Trusted publishing (configured).** PyPI accepts uploads only from the
    publisher registered under *marketforge → Manage → Publishing*: owner
-   `DamienReichhart`, repository `MarketForge`, workflow `cd.yml`,
+   `DamienReichhart`, repository `marketforge`, workflow `cd.yml`,
    environment `Deploy`. There is no PyPI API token, in GitHub or anywhere
-   else. Renaming `cd.yml` or the `Deploy` environment breaks publishing until
-   the publisher on PyPI is updated to match.
+   else. Renaming the repository, `cd.yml` or the `Deploy` environment breaks
+   publishing until the publisher on PyPI is updated to match.
 3. **`Deploy` environment.** In *Settings → Environments → Deploy*, limit
    deployment branches to `main`. Add required reviewers if you want to
    approve each upload by hand.

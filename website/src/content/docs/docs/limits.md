@@ -39,4 +39,4 @@ Never present MarketForge output as real data. See the [terms of use](../../lega
 - **No corporate actions.** No splits, dividends, delistings or symbol changes.
 - **Anomalies are deliberately unrealistic.** `spikes` and `flash_crash` are stress events layered on top of the realistic base, not part of it.
 
-Found a property of real markets that matters to you and is missing? [Open an issue](https://github.com/DamienReichhart/MarketForge/issues).
+Found a property of real markets that matters to you and is missing? [Open an issue](https://github.com/DamienReichhart/marketforge/issues).

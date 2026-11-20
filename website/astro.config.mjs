@@ -5,19 +5,19 @@ import { defineConfig } from 'astro/config';
 import servedPackages from './scripts/served-packages.mjs';
 import { codeStyle, codeThemes, languageLabels } from './src/lib/code-theme.mjs';
 
-const repo = 'https://github.com/DamienReichhart/MarketForge';
+const repo = 'https://github.com/DamienReichhart/marketforge';
 
 // Served from GitHub Pages as a project site. To move to a custom domain,
 // set `site` to it, drop `base`, and add public/CNAME.
 export default defineConfig({
 	site: 'https://damienreichhart.github.io',
-	base: '/MarketForge',
+	base: '/marketforge',
 	trailingSlash: 'always',
 	// Pages that moved: their old addresses stay valid for links already out there.
 	redirects: {
-		'/docs/guides/cli/': '/MarketForge/docs/reference/cli/',
-		'/docs/guides/python-api/': '/MarketForge/docs/reference/python-api/',
-		'/docs/guides/output/': '/MarketForge/docs/reference/output/',
+		'/docs/guides/cli/': '/marketforge/docs/reference/cli/',
+		'/docs/guides/python-api/': '/marketforge/docs/reference/python-api/',
+		'/docs/guides/output/': '/marketforge/docs/reference/output/',
 	},
 	integrations: [
 		// Fails the build if a package license-policy.json exempts as not served reaches the site.
@@ -29,13 +29,13 @@ export default defineConfig({
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',
 			head: [
-				{ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/MarketForge/apple-touch-icon.png' } },
+				{ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/marketforge/apple-touch-icon.png' } },
 				{ tag: 'meta', attrs: { name: 'theme-color', content: '#12161b' } },
-				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://damienreichhart.github.io/MarketForge/og-image.png' } },
+				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://damienreichhart.github.io/marketforge/og-image.png' } },
 				{ tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
 				{ tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
 				{ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
-				{ tag: 'meta', attrs: { name: 'twitter:image', content: 'https://damienreichhart.github.io/MarketForge/og-image.png' } },
+				{ tag: 'meta', attrs: { name: 'twitter:image', content: 'https://damienreichhart.github.io/marketforge/og-image.png' } },
 			],
 			social: [{ icon: 'github', label: 'GitHub', href: repo }],
 			editLink: { baseUrl: `${repo}/edit/dev/website/` },

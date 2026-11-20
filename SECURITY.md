@@ -9,7 +9,7 @@ receives security fixes. Upgrade before reporting.
 
 **Do not open a public issue.** Report it privately through GitHub:
 *Security → Report a vulnerability* on
-[DamienReichhart/MarketForge](https://github.com/DamienReichhart/MarketForge/security/advisories/new).
+[DamienReichhart/marketforge](https://github.com/DamienReichhart/marketforge/security/advisories/new).
 
 Include the affected version, how to reproduce it, and its impact. You will
 get an acknowledgement within 7 days. Once a fix is released, the advisory
@@ -22,8 +22,8 @@ publishing, with signed build-provenance and SBOM attestations. Check a
 downloaded distribution with:
 
 ```bash
-gh attestation verify marketforge-<version>-py3-none-any.whl --repo DamienReichhart/MarketForge
+gh attestation verify marketforge-<version>-py3-none-any.whl --repo DamienReichhart/marketforge
 ```
 
 The CycloneDX SBOM of each release is attached to its
-[GitHub release](https://github.com/DamienReichhart/MarketForge/releases).
+[GitHub release](https://github.com/DamienReichhart/marketforge/releases).

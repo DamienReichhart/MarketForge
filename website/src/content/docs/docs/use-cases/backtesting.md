@@ -60,7 +60,7 @@ A backtest on real data gives you one equity curve. Run the same strategy over m
 
 ## Recipes for your engine
 
-MarketForge's frames are pandas DataFrames on a UTC index, so most engines take them with a rename. Each recipe below runs in CI against the released package and the engine's current version: if an engine changes its API, the page is fixed before you copy it. A converter that writes each engine's own file layout is [tracked as an issue](https://github.com/DamienReichhart/MarketForge/issues/27).
+MarketForge's frames are pandas DataFrames on a UTC index, so most engines take them with a rename. Each recipe below runs in CI against the released package and the engine's current version: if an engine changes its API, the page is fixed before you copy it. A converter that writes each engine's own file layout is [tracked as an issue](https://github.com/DamienReichhart/marketforge/issues/27).
 
 ### backtrader
 
