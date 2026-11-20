@@ -421,7 +421,7 @@ def test_estimate_predicts_files_rows_and_size_without_generating(tmp_path):
     size = sum(p.stat().st_size for p in files)
     assert guess.files == len(files) == 6
     assert guess.rows == pytest.approx(rows, rel=0.05)
-    assert guess.disk_bytes == pytest.approx(size, rel=0.5)
+    assert guess.disk_bytes == pytest.approx(size, rel=0.2)
     assert guess.memory_bytes > 0 and guess.seconds > 0
     assert guess.wall_seconds(jobs=3) <= guess.seconds
 
