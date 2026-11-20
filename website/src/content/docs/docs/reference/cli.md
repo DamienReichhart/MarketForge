@@ -121,7 +121,7 @@ Dataset ./eurusd
   Seed        42
   Range       2024-01-01 00:00 UTC -> 2025-01-01 00:00 UTC
   forex       1 instrument(s): EURUSD
-  Files       8 csv files, 27.4 MB; timeframes m1, m5, m15, m30, H1, H4, D1, W1
+  Files       8 csv files, 21.7 MB; timeframes m1, m5, m15, m30, H1, H4, D1, W1
   Can extend  yes
 ```
 
