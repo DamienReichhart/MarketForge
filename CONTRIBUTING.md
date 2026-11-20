@@ -4,12 +4,12 @@ Issues, measurements on real data and pull requests are welcome.
 
 ## The most useful contribution: real-data measurements
 
-The forex and stocks validation bands are provisional: they are not yet measured on real minute data. If you can run `marketforge validate your_real_m1.csv --market forex --json` on data you are allowed to use, [open a realism report](https://github.com/DamienReichhart/MarketForge/issues/new?template=realism.yml) with the statistics. Never attach the raw data itself.
+The forex and stocks validation bands are provisional: they are not yet measured on real minute data. If you can run `marketforge validate your_real_m1.csv --market forex --json` on data you are allowed to use, [open a realism report](https://github.com/DamienReichhart/marketforge/issues/new?template=realism.yml) with the statistics. Never attach the raw data itself.
 
 ## Set up
 
 ```bash
-git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
+git clone https://github.com/DamienReichhart/marketforge && cd marketforge
 python -m pip install -U "pip>=25.1"    # --group needs pip 25.1; Debian's pip 24 fails
 pip install -e . --group dev            # or: uv pip install -e . --group dev
 pre-commit install                      # ruff on every commit

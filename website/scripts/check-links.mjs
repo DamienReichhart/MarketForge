@@ -6,7 +6,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const BASE = '/MarketForge/';
+const BASE = '/marketforge/';
 
 function* htmlFiles(dir) {
 	for (const name of readdirSync(dir)) {

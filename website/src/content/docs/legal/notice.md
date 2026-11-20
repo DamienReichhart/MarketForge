@@ -35,8 +35,8 @@ Damien REICHHART ([contact@damien-reichhart.fr](mailto:contact@damien-reichhart.
   <dd><a href="https://github.com">github.com</a></dd>
 </dl>
 
-The source code, the issue tracker and the release files are also hosted by GitHub, Inc., on [GitHub](https://github.com/DamienReichhart/MarketForge).
+The source code, the issue tracker and the release files are also hosted by GitHub, Inc., on [GitHub](https://github.com/DamienReichhart/marketforge).
 
 ## Contact and reporting content
 
-To ask a question, exercise your rights over your personal data, or report content you believe is unlawful, write to [contact@damien-reichhart.fr](mailto:contact@damien-reichhart.fr). Security problems in MarketForge should be reported privately through [GitHub’s private vulnerability reporting](https://github.com/DamienReichhart/MarketForge/security/advisories/new) instead.
+To ask a question, exercise your rights over your personal data, or report content you believe is unlawful, write to [contact@damien-reichhart.fr](mailto:contact@damien-reichhart.fr). Security problems in MarketForge should be reported privately through [GitHub’s private vulnerability reporting](https://github.com/DamienReichhart/marketforge/security/advisories/new) instead.

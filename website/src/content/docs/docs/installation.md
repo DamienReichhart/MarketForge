@@ -33,7 +33,7 @@ The [Playground](../../playground/) runs MarketForge in your browser with [Pyodi
 To change the code, or to run the test suite:
 
 ```bash
-git clone https://github.com/DamienReichhart/MarketForge && cd MarketForge
+git clone https://github.com/DamienReichhart/marketforge && cd marketforge
 pip install -e . --group dev        # pip 25.1 or newer (PEP 735 dependency groups)
 pytest
 ```
@@ -45,5 +45,5 @@ See [Contributing](../contributing/) for the checks CI runs.
 Every release is built and published by GitHub Actions through PyPI trusted publishing, with signed build-provenance and SBOM attestations:
 
 ```bash
-gh attestation verify marketforge-<version>-py3-none-any.whl --repo DamienReichhart/MarketForge
+gh attestation verify marketforge-<version>-py3-none-any.whl --repo DamienReichhart/marketforge
 ```

@@ -7,8 +7,8 @@ authors:
   - family-names: Reichhart
     given-names: Damien
 license: Apache-2.0
-repository-code: "https://github.com/DamienReichhart/MarketForge"
-url: "https://damienreichhart.github.io/MarketForge/"
+repository-code: "https://github.com/DamienReichhart/marketforge"
+url: "https://damienreichhart.github.io/marketforge/"
 keywords:
   - synthetic data
   - market data
