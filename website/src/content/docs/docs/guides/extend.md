@@ -19,11 +19,11 @@ marketforge info ./data
 
 ```text title="Output"
 Dataset ./data
-  Written by  MarketForge 4.0.0 (model revision 1)
+  Written by  MarketForge 5.0.0 (model revision 2)
   Seed        42
   Range       2024-01-01 00:00 UTC -> 2024-04-01 00:00 UTC
   crypto      3 instrument(s): BTCUSD, ETHUSD, SOLUSD
-  Files       24 csv files, 37.0 MB; timeframes m1, m5, m15, m30, H1, H4, D1, W1
+  Files       24 csv files, 25.4 MB; timeframes m1, m5, m15, m30, H1, H4, D1, W1
   Can extend  yes
 ```
 
